@@ -1200,6 +1200,8 @@ class AbstractEventLoopTests(unittest.TestCase):
         self.assertRaises(
             NotImplementedError, ev_loop.stop)
         self.assertRaises(
+            NotImplementedError, ev_loop.is_running)
+        self.assertRaises(
             NotImplementedError, ev_loop.call_later, None, None)
         self.assertRaises(
             NotImplementedError, ev_loop.call_soon, None)
@@ -1211,6 +1213,8 @@ class AbstractEventLoopTests(unittest.TestCase):
             NotImplementedError, ev_loop.wrap_future, f)
         self.assertRaises(
             NotImplementedError, ev_loop.run_in_executor, f, f)
+        self.assertRaises(
+            NotImplementedError, ev_loop.set_default_executor, f)
         self.assertRaises(
             NotImplementedError, ev_loop.getaddrinfo, 'localhost', 8080)
         self.assertRaises(
