@@ -1465,18 +1465,14 @@ class HandleTests(unittest.TestCase):
         self.assertFalse(h._cancelled)
 
         r = repr(h)
-        self.assertTrue(r.startswith(
-            'Handle('
-            '<function HandleTests.test_handle.<locals>.callback'))
-        self.assertTrue(r.endswith('())'))
+        self.assertTrue(r.startswith('Handle(<function '))
+        self.assertTrue(r.endswith('>, ())'))
 
         h.cancel()
         self.assertTrue(h._cancelled)
 
         r = repr(h)
-        self.assertTrue(r.startswith(
-            'Handle('
-            '<function HandleTests.test_handle.<locals>.callback'))
+        self.assertTrue(r.startswith('Handle(<function '))
         self.assertTrue(r.endswith('())<cancelled>'), r)
 
     def test_make_handle(self):
