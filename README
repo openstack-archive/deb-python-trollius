@@ -17,7 +17,7 @@ Differences between Trollius and Tulip
 ======================================
 
  * Python 2 has no keyword-only parameters
- * Trollius coroutines use yield wheras Tulip coroutines must use yield-from
+ * Trollius coroutines use yield whereas Tulip coroutines must use yield-from
  * Trollius coroutines must use "raise Return(value)", whereas Tulip simply
    uses "return value" thanks to Python 3.3 improvments
  * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
