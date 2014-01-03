@@ -9,6 +9,14 @@ Trollius is an experimental port of the Tulip project (asyncio module, PEP
 Dependencies
 ============
 
+The futures project is needed on Python 2 to get a backport of
+concurrent.futures.
+https://pypi.python.org/pypi/futures
+
+The concurrent.futures is optional, it is only required when
+BaseEventLoop.run_in_executor() is used. This method is used by
+BaseEventLoop.getaddrinfo() and BaseEventLoop.getnameinfo().
+
 Unit tests require the mock module:
 https://pypi.python.org/pypi/mock
 
