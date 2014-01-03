@@ -31,6 +31,7 @@ from asyncio import selector_events
 from asyncio import tasks
 from asyncio import test_utils
 from asyncio import locks
+from asyncio.backport import wrap_error
 from asyncio.time_monotonic import time_monotonic
 from asyncio import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
 
