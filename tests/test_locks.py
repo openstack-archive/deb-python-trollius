@@ -1,9 +1,10 @@
 """Tests for lock.py"""
 
 import unittest
-import unittest.mock
+import mock
 import re
 
+from asyncio import Return
 from asyncio import events
 from asyncio import futures
 from asyncio import locks
@@ -30,7 +31,7 @@ class LockTests(unittest.TestCase):
         self.loop.close()
 
     def test_ctor_loop(self):
-        loop = unittest.mock.Mock()
+        loop = mock.Mock()
         lock = locks.Lock(loop=loop)
         self.assertIs(lock._loop, loop)
 
@@ -52,7 +53,7 @@ class LockTests(unittest.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            yield from lock
+            yield lock
 
         self.loop.run_until_complete(acquire_lock())
         self.assertTrue(repr(lock).endswith('[locked]>'))
@@ -63,7 +64,8 @@ class LockTests(unittest.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            return (yield from lock)
+            result = (yield lock)
+            raise Return(result)
 
         res = self.loop.run_until_complete(acquire_lock())
 
@@ -81,21 +83,21 @@ class LockTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            if (yield from lock.acquire()):
+            if (yield lock.acquire()):
                 result.append(1)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c2(result):
-            if (yield from lock.acquire()):
+            if (yield lock.acquire()):
                 result.append(2)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c3(result):
-            if (yield from lock.acquire()):
+            if (yield lock.acquire()):
                 result.append(3)
-            return True
+            raise Return(True)
 
         t1 = tasks.Task(c1(result), loop=self.loop)
         t2 = tasks.Task(c2(result), loop=self.loop)
@@ -157,10 +159,10 @@ class LockTests(unittest.TestCase):
 
         @tasks.coroutine
         def lockit(name, blocker):
-            yield from lock.acquire()
+            yield lock.acquire()
             try:
                 if blocker is not None:
-                    yield from blocker
+                    yield blocker
             finally:
                 lock.release()
 
@@ -204,7 +206,8 @@ class LockTests(unittest.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            return (yield from lock)
+            result = (yield lock)
+            raise Return(result)
 
         with self.loop.run_until_complete(acquire_lock()):
             self.assertTrue(lock.locked())
@@ -233,7 +236,7 @@ class EventTests(unittest.TestCase):
         self.loop.close()
 
     def test_ctor_loop(self):
-        loop = unittest.mock.Mock()
+        loop = mock.Mock()
         ev = locks.Event(loop=loop)
         self.assertIs(ev._loop, loop)
 
@@ -258,7 +261,7 @@ class EventTests(unittest.TestCase):
         self.assertTrue(repr(ev).endswith('[set]>'))
         self.assertTrue(RGX_REPR.match(repr(ev)))
 
-        ev._waiters.append(unittest.mock.Mock())
+        ev._waiters.append(mock.Mock())
         self.assertTrue('waiters:1' in repr(ev))
         self.assertTrue(RGX_REPR.match(repr(ev)))
 
@@ -270,17 +273,17 @@ class EventTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            if (yield from ev.wait()):
+            if (yield ev.wait()):
                 result.append(1)
 
         @tasks.coroutine
         def c2(result):
-            if (yield from ev.wait()):
+            if (yield ev.wait()):
                 result.append(2)
 
         @tasks.coroutine
         def c3(result):
-            if (yield from ev.wait()):
+            if (yield ev.wait()):
                 result.append(3)
 
         t1 = tasks.Task(c1(result), loop=self.loop)
@@ -335,9 +338,9 @@ class EventTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            if (yield from ev.wait()):
+            if (yield ev.wait()):
                 result.append(1)
-            return True
+            raise Return(True)
 
         t = tasks.Task(c1(result), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -369,7 +372,7 @@ class ConditionTests(unittest.TestCase):
         self.loop.close()
 
     def test_ctor_loop(self):
-        loop = unittest.mock.Mock()
+        loop = mock.Mock()
         cond = locks.Condition(loop=loop)
         self.assertIs(cond._loop, loop)
 
@@ -390,24 +393,24 @@ class ConditionTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(1)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c2(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(2)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c3(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(3)
-            return True
+            raise Return(True)
 
         t1 = tasks.Task(c1(result), loop=self.loop)
         t2 = tasks.Task(c2(result), loop=self.loop)
@@ -479,11 +482,11 @@ class ConditionTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            yield from cond.acquire()
-            if (yield from cond.wait_for(predicate)):
+            yield cond.acquire()
+            if (yield cond.wait_for(predicate)):
                 result.append(1)
                 cond.release()
-            return True
+            raise Return(True)
 
         t = tasks.Task(c1(result), loop=self.loop)
 
@@ -524,27 +527,27 @@ class ConditionTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(1)
                 cond.release()
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c2(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(2)
                 cond.release()
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c3(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(3)
                 cond.release()
-            return True
+            raise Return(True)
 
         t1 = tasks.Task(c1(result), loop=self.loop)
         t2 = tasks.Task(c2(result), loop=self.loop)
@@ -580,19 +583,19 @@ class ConditionTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(1)
                 cond.release()
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c2(result):
-            yield from cond.acquire()
-            if (yield from cond.wait()):
+            yield cond.acquire()
+            if (yield cond.wait()):
                 result.append(2)
                 cond.release()
-            return True
+            raise Return(True)
 
         t1 = tasks.Task(c1(result), loop=self.loop)
         t2 = tasks.Task(c2(result), loop=self.loop)
@@ -627,11 +630,11 @@ class ConditionTests(unittest.TestCase):
         self.loop.run_until_complete(cond.acquire())
         self.assertTrue('locked' in repr(cond))
 
-        cond._waiters.append(unittest.mock.Mock())
+        cond._waiters.append(mock.Mock())
         self.assertTrue('waiters:1' in repr(cond))
         self.assertTrue(RGX_REPR.match(repr(cond)))
 
-        cond._waiters.append(unittest.mock.Mock())
+        cond._waiters.append(mock.Mock())
         self.assertTrue('waiters:2' in repr(cond))
         self.assertTrue(RGX_REPR.match(repr(cond)))
 
@@ -640,7 +643,8 @@ class ConditionTests(unittest.TestCase):
 
         @tasks.coroutine
         def acquire_cond():
-            return (yield from cond)
+            result = (yield cond)
+            raise Return(result)
 
         with self.loop.run_until_complete(acquire_cond()):
             self.assertTrue(cond.locked())
@@ -669,7 +673,7 @@ class SemaphoreTests(unittest.TestCase):
         self.loop.close()
 
     def test_ctor_loop(self):
-        loop = unittest.mock.Mock()
+        loop = mock.Mock()
         sem = locks.Semaphore(loop=loop)
         self.assertIs(sem._loop, loop)
 
@@ -698,11 +702,11 @@ class SemaphoreTests(unittest.TestCase):
         self.assertTrue('waiters' not in repr(sem))
         self.assertTrue(RGX_REPR.match(repr(sem)))
 
-        sem._waiters.append(unittest.mock.Mock())
+        sem._waiters.append(mock.Mock())
         self.assertTrue('waiters:1' in repr(sem))
         self.assertTrue(RGX_REPR.match(repr(sem)))
 
-        sem._waiters.append(unittest.mock.Mock())
+        sem._waiters.append(mock.Mock())
         self.assertTrue('waiters:2' in repr(sem))
         self.assertTrue(RGX_REPR.match(repr(sem)))
 
@@ -712,7 +716,8 @@ class SemaphoreTests(unittest.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            return (yield from sem)
+            result = (yield sem)
+            raise Return(result)
 
         res = self.loop.run_until_complete(acquire_lock())
 
@@ -737,27 +742,27 @@ class SemaphoreTests(unittest.TestCase):
 
         @tasks.coroutine
         def c1(result):
-            yield from sem.acquire()
+            yield sem.acquire()
             result.append(1)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c2(result):
-            yield from sem.acquire()
+            yield sem.acquire()
             result.append(2)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c3(result):
-            yield from sem.acquire()
+            yield sem.acquire()
             result.append(3)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def c4(result):
-            yield from sem.acquire()
+            yield sem.acquire()
             result.append(4)
-            return True
+            raise Return(True)
 
         t1 = tasks.Task(c1(result), loop=self.loop)
         t2 = tasks.Task(c2(result), loop=self.loop)
@@ -822,7 +827,8 @@ class SemaphoreTests(unittest.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            return (yield from sem)
+            result = (yield sem)
+            raise Return(result)
 
         with self.loop.run_until_complete(acquire_lock()):
             self.assertFalse(sem.locked())

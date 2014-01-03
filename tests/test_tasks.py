@@ -2,8 +2,8 @@
 
 import gc
 import unittest
-import unittest.mock
-from unittest.mock import Mock
+import mock
+from mock import Mock
 
 from asyncio import events
 from asyncio import futures
@@ -108,8 +108,8 @@ class TaskTests(unittest.TestCase):
     def test_task_repr(self):
         @tasks.coroutine
         def notmuch():
-            yield from []
-            return 'abc'
+            yield []
+            raise tasks.Return('abc')
 
         t = tasks.Task(notmuch(), loop=self.loop)
         t.add_done_callback(Dummy())
@@ -144,9 +144,9 @@ class TaskTests(unittest.TestCase):
     def test_task_basics(self):
         @tasks.coroutine
         def outer():
-            a = yield from inner1()
-            b = yield from inner2()
-            return a+b
+            a = yield inner1()
+            b = yield inner2()
+            raise tasks.Return(a+b)
 
         @tasks.coroutine
         def inner1():
@@ -171,8 +171,8 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def task():
-            yield from tasks.sleep(10.0, loop=loop)
-            return 12
+            yield tasks.sleep(10.0, loop=loop)
+            raise tasks.Return(12)
 
         t = tasks.Task(task(), loop=loop)
         loop.call_soon(t.cancel)
@@ -187,7 +187,7 @@ class TaskTests(unittest.TestCase):
         def task():
             yield
             yield
-            return 12
+            raise tasks.Return(12)
 
         t = tasks.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)  # start coro
@@ -203,8 +203,8 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def task():
-            yield from f
-            return 12
+            yield f
+            raise tasks.Return(12)
 
         t = tasks.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)  # start task
@@ -219,8 +219,8 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def task():
-            yield from f
-            return 12
+            yield f
+            raise tasks.Return(12)
 
         t = tasks.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -241,11 +241,11 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def task():
-            yield from fut1
+            yield fut1
             try:
-                yield from fut2
+                yield fut2
             except futures.CancelledError:
-                return 42
+                raise tasks.Return(42)
 
         t = tasks.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -266,13 +266,13 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def task():
-            yield from fut1
+            yield fut1
             try:
-                yield from fut2
+                yield fut2
             except futures.CancelledError:
                 pass
-            res = yield from fut3
-            return res
+            res = yield fut3
+            raise tasks.Return(res)
 
         t = tasks.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -299,8 +299,8 @@ class TaskTests(unittest.TestCase):
             t.cancel()
             self.assertTrue(t._must_cancel)  # White-box test.
             # The sleep should be cancelled immediately.
-            yield from tasks.sleep(100, loop=loop)
-            return 12
+            yield tasks.sleep(100, loop=loop)
+            raise tasks.Return(12)
 
         t = tasks.Task(task(), loop=loop)
         self.assertRaises(
@@ -323,24 +323,23 @@ class TaskTests(unittest.TestCase):
         loop = test_utils.TestLoop(gen)
         self.addCleanup(loop.close)
 
-        x = 0
+        non_local = {'x': 0}
         waiters = []
 
         @tasks.coroutine
         def task():
-            nonlocal x
-            while x < 10:
+            while non_local['x'] < 10:
                 waiters.append(tasks.sleep(0.1, loop=loop))
-                yield from waiters[-1]
-                x += 1
-                if x == 2:
+                yield waiters[-1]
+                non_local['x'] += 1
+                if non_local['x'] == 2:
                     loop.stop()
 
         t = tasks.Task(task(), loop=loop)
         self.assertRaises(
             RuntimeError, loop.run_until_complete, t)
         self.assertFalse(t.done())
-        self.assertEqual(x, 2)
+        self.assertEqual(non_local['x'], 2)
         self.assertAlmostEqual(0.3, loop.time())
 
         # close generators
@@ -349,6 +348,7 @@ class TaskTests(unittest.TestCase):
 
     def test_wait_for(self):
 
+        @tasks.coroutine
         def gen():
             when = yield
             self.assertAlmostEqual(0.2, when)
@@ -363,8 +363,8 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def foo():
-            yield from tasks.sleep(0.2, loop=loop)
-            return 'done'
+            yield tasks.sleep(0.2, loop=loop)
+            raise tasks.Return('done')
 
         fut = tasks.Task(foo(), loop=loop)
 
@@ -394,8 +394,8 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def foo():
-            yield from tasks.sleep(0.2, loop=loop)
-            return 'done'
+            yield tasks.sleep(0.2, loop=loop)
+            raise tasks.Return('done')
 
         events.set_event_loop(loop)
         try:
@@ -429,10 +429,10 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def foo():
-            done, pending = yield from tasks.wait([b, a], loop=loop)
+            done, pending = yield tasks.wait([b, a], loop=loop)
             self.assertEqual(done, set([a, b]))
             self.assertEqual(pending, set())
-            return 42
+            raise tasks.Return(42)
 
         res = loop.run_until_complete(tasks.Task(foo(), loop=loop))
         self.assertEqual(res, 42)
@@ -460,10 +460,10 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def foo():
-            done, pending = yield from tasks.wait([b, a])
+            done, pending = yield tasks.wait([b, a])
             self.assertEqual(done, set([a, b]))
             self.assertEqual(pending, set())
-            return 42
+            raise tasks.Return(42)
 
         events.set_event_loop(loop)
         try:
@@ -591,7 +591,7 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def exc():
-            yield from tasks.sleep(0.01, loop=loop)
+            yield tasks.sleep(0.01, loop=loop)
             raise ZeroDivisionError('err')
 
         b = tasks.Task(exc(), loop=loop)
@@ -623,14 +623,14 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def sleeper():
-            yield from tasks.sleep(0.15, loop=loop)
+            yield tasks.sleep(0.15, loop=loop)
             raise ZeroDivisionError('really')
 
         b = tasks.Task(sleeper(), loop=loop)
 
         @tasks.coroutine
         def foo():
-            done, pending = yield from tasks.wait([b, a], loop=loop)
+            done, pending = yield tasks.wait([b, a], loop=loop)
             self.assertEqual(len(done), 2)
             self.assertEqual(pending, set())
             errors = set(f for f in done if f.exception() is not None)
@@ -661,8 +661,8 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def foo():
-            done, pending = yield from tasks.wait([b, a], timeout=0.11,
-                                                  loop=loop)
+            done, pending = yield tasks.wait([b, a], timeout=0.11,
+                                             loop=loop)
             self.assertEqual(done, set([a]))
             self.assertEqual(pending, set([b]))
 
@@ -712,17 +712,16 @@ class TaskTests(unittest.TestCase):
         loop = test_utils.TestLoop(gen)
         self.addCleanup(loop.close)
         completed = set()
-        time_shifted = False
+        non_local = {'time_shifted': False}
 
         @tasks.coroutine
         def sleeper(dt, x):
-            nonlocal time_shifted
-            yield from tasks.sleep(dt, loop=loop)
+            yield tasks.sleep(dt, loop=loop)
             completed.add(x)
-            if not time_shifted and 'a' in completed and 'b' in completed:
-                time_shifted = True
+            if not non_local['time_shifted'] and 'a' in completed and 'b' in completed:
+                non_local['time_shifted'] = True
                 loop.advance_time(0.14)
-            return x
+            raise tasks.Return(x)
 
         a = sleeper(0.01, 'a')
         b = sleeper(0.01, 'b')
@@ -732,8 +731,8 @@ class TaskTests(unittest.TestCase):
         def foo():
             values = []
             for f in tasks.as_completed([b, c, a], loop=loop):
-                values.append((yield from f))
-            return values
+                values.append((yield f))
+            raise tasks.Return(values)
 
         res = loop.run_until_complete(tasks.Task(foo(), loop=loop))
         self.assertAlmostEqual(0.15, loop.time())
@@ -769,11 +768,11 @@ class TaskTests(unittest.TestCase):
             values = []
             for f in tasks.as_completed([a, b], timeout=0.12, loop=loop):
                 try:
-                    v = yield from f
+                    v = yield f
                     values.append((1, v))
                 except futures.TimeoutError as exc:
                     values.append((2, exc))
-            return values
+            raise tasks.Return(values)
 
         res = loop.run_until_complete(tasks.Task(foo(), loop=loop))
         self.assertEqual(len(res), 2, res)
@@ -845,9 +844,9 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def sleeper(dt, arg):
-            yield from tasks.sleep(dt/2, loop=loop)
-            res = yield from tasks.sleep(dt/2, arg, loop=loop)
-            return res
+            yield tasks.sleep(dt/2, loop=loop)
+            res = yield tasks.sleep(dt/2, arg, loop=loop)
+            raise tasks.Return(res)
 
         t = tasks.Task(sleeper(0.1, 'yeah'), loop=loop)
         loop.run_until_complete(t)
@@ -868,22 +867,21 @@ class TaskTests(unittest.TestCase):
         t = tasks.Task(tasks.sleep(10.0, 'yeah', loop=loop),
                        loop=loop)
 
-        handle = None
+        non_local = {'handle': None}
         orig_call_later = loop.call_later
 
         def call_later(self, delay, callback, *args):
-            nonlocal handle
-            handle = orig_call_later(self, delay, callback, *args)
-            return handle
+            non_local['handle'] = orig_call_later(self, delay, callback, *args)
+            return non_local['handle']
 
         loop.call_later = call_later
         test_utils.run_briefly(loop)
 
-        self.assertFalse(handle._cancelled)
+        self.assertFalse(non_local['handle']._cancelled)
 
         t.cancel()
         test_utils.run_briefly(loop)
-        self.assertTrue(handle._cancelled)
+        self.assertTrue(non_local['handle']._cancelled)
 
     def test_task_cancel_sleeping_task(self):
 
@@ -897,24 +895,23 @@ class TaskTests(unittest.TestCase):
         loop = test_utils.TestLoop(gen)
         self.addCleanup(loop.close)
 
-        sleepfut = None
+        non_local = {'sleepfut': None}
 
         @tasks.coroutine
         def sleep(dt):
-            nonlocal sleepfut
-            sleepfut = tasks.sleep(dt, loop=loop)
-            yield from sleepfut
+            non_local['sleepfut'] = tasks.sleep(dt, loop=loop)
+            yield non_local['sleepfut']
 
         @tasks.coroutine
         def doit():
             sleeper = tasks.Task(sleep(5000), loop=loop)
             loop.call_later(0.1, sleeper.cancel)
             try:
-                yield from sleeper
+                yield sleeper
             except futures.CancelledError:
-                return 'cancelled'
+                raise tasks.Return('cancelled')
             else:
-                return 'slept in'
+                raise tasks.Return('slept in')
 
         doer = doit()
         self.assertEqual(loop.run_until_complete(doer), 'cancelled')
@@ -925,7 +922,7 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def coro():
-            yield from fut
+            yield fut
 
         task = tasks.Task(coro(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -955,7 +952,7 @@ class TaskTests(unittest.TestCase):
         def notmuch():
             yield None
             yield 1
-            return 'ko'
+            raise tasks.Return('ko')
 
         self.assertRaises(
             RuntimeError, self.loop.run_until_complete, notmuch())
@@ -973,12 +970,11 @@ class TaskTests(unittest.TestCase):
                 super().add_done_callback(fn)
 
         fut = Fut(loop=self.loop)
-        result = None
+        non_local = {'result': None}
 
         @tasks.coroutine
         def wait_for_future():
-            nonlocal result
-            result = yield from fut
+            non_local['result'] = yield fut
 
         t = tasks.Task(wait_for_future(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -987,9 +983,9 @@ class TaskTests(unittest.TestCase):
         res = object()
         fut.set_result(res)
         test_utils.run_briefly(self.loop)
-        self.assertIs(res, result)
+        self.assertIs(res, non_local['result'])
         self.assertTrue(t.done())
-        self.assertIsNone(t.result())
+        self.assertIsNone(t.non_local['result']())
 
     def test_step_with_baseexception(self):
         @tasks.coroutine
@@ -1014,14 +1010,14 @@ class TaskTests(unittest.TestCase):
 
         @tasks.coroutine
         def sleeper():
-            yield from tasks.sleep(10, loop=loop)
+            yield tasks.sleep(10, loop=loop)
 
         base_exc = BaseException()
 
         @tasks.coroutine
         def notmutch():
             try:
-                yield from sleeper()
+                yield sleeper()
             except futures.CancelledError:
                 raise base_exc
 
@@ -1133,7 +1129,7 @@ class TaskTests(unittest.TestCase):
         @tasks.coroutine
         def coro1(loop):
             self.assertTrue(tasks.Task.current_task(loop=loop) is task1)
-            yield from fut1
+            yield fut1
             self.assertTrue(tasks.Task.current_task(loop=loop) is task1)
             fut2.set_result(True)
 
@@ -1141,7 +1137,7 @@ class TaskTests(unittest.TestCase):
         def coro2(loop):
             self.assertTrue(tasks.Task.current_task(loop=loop) is task2)
             fut1.set_result(True)
-            yield from fut2
+            yield fut2
             self.assertTrue(tasks.Task.current_task(loop=loop) is task2)
 
         task1 = tasks.Task(coro1(self.loop), loop=self.loop)
@@ -1156,54 +1152,50 @@ class TaskTests(unittest.TestCase):
 
     def test_yield_future_passes_cancel(self):
         # Cancelling outer() cancels inner() cancels waiter.
-        proof = 0
+        non_local = {'proof': 0}
         waiter = futures.Future(loop=self.loop)
 
         @tasks.coroutine
         def inner():
-            nonlocal proof
             try:
-                yield from waiter
+                yield waiter
             except futures.CancelledError:
-                proof += 1
+                non_local['proof'] += 1
                 raise
             else:
                 self.fail('got past sleep() in inner()')
 
         @tasks.coroutine
         def outer():
-            nonlocal proof
             try:
-                yield from inner()
+                yield inner()
             except futures.CancelledError:
-                proof += 100  # Expect this path.
+                non_local['proof'] += 100  # Expect this path.
             else:
-                proof += 10
+                non_local['proof'] += 10
 
         f = tasks.async(outer(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         f.cancel()
         self.loop.run_until_complete(f)
-        self.assertEqual(proof, 101)
+        self.assertEqual(non_local['proof'], 101)
         self.assertTrue(waiter.cancelled())
 
     def test_yield_wait_does_not_shield_cancel(self):
         # Cancelling outer() makes wait() return early, leaves inner()
         # running.
-        proof = 0
+        non_local = {'proof': 0}
         waiter = futures.Future(loop=self.loop)
 
         @tasks.coroutine
         def inner():
-            nonlocal proof
-            yield from waiter
-            proof += 1
+            yield waiter
+            non_local['proof'] += 1
 
         @tasks.coroutine
         def outer():
-            nonlocal proof
-            d, p = yield from tasks.wait([inner()], loop=self.loop)
-            proof += 100
+            d, p = yield tasks.wait([inner()], loop=self.loop)
+            non_local['proof'] += 100
 
         f = tasks.async(outer(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -1212,7 +1204,7 @@ class TaskTests(unittest.TestCase):
             futures.CancelledError, self.loop.run_until_complete, f)
         waiter.set_result(None)
         test_utils.run_briefly(self.loop)
-        self.assertEqual(proof, 1)
+        self.assertEqual(non_local['proof'], 1)
 
     def test_shield_result(self):
         inner = futures.Future(loop=self.loop)
@@ -1246,20 +1238,18 @@ class TaskTests(unittest.TestCase):
 
     def test_shield_effect(self):
         # Cancelling outer() does not affect inner().
-        proof = 0
+        non_local = {'proof': 0}
         waiter = futures.Future(loop=self.loop)
 
         @tasks.coroutine
         def inner():
-            nonlocal proof
-            yield from waiter
-            proof += 1
+            yield waiter
+            non_local['proof'] += 1
 
         @tasks.coroutine
         def outer():
-            nonlocal proof
-            yield from tasks.shield(inner(), loop=self.loop)
-            proof += 100
+            yield tasks.shield(inner(), loop=self.loop)
+            non_local['proof'] += 100
 
         f = tasks.async(outer(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -1268,7 +1258,7 @@ class TaskTests(unittest.TestCase):
             self.loop.run_until_complete(f)
         waiter.set_result(None)
         test_utils.run_briefly(self.loop)
-        self.assertEqual(proof, 1)
+        self.assertEqual(non_local['proof'], 1)
 
     def test_shield_gather(self):
         child1 = futures.Future(loop=self.loop)
@@ -1463,19 +1453,20 @@ class FutureGatherTests(GatherTestsBase, unittest.TestCase):
 class CoroutineGatherTests(GatherTestsBase, unittest.TestCase):
 
     def setUp(self):
-        super().setUp()
+        super(CoroutineGatherTests, self).setUp()
         events.set_event_loop(self.one_loop)
 
     def tearDown(self):
         events.set_event_loop(None)
-        super().tearDown()
+        super(CoroutineGatherTests, self).tearDown()
 
     def wrap_futures(self, *futures):
         coros = []
         for fut in futures:
             @tasks.coroutine
             def coro(fut=fut):
-                return (yield from fut)
+                result = (yield fut)
+                raise tasks.Return(result)
             coros.append(coro())
         return coros
 
@@ -1498,44 +1489,42 @@ class CoroutineGatherTests(GatherTestsBase, unittest.TestCase):
 
     def test_cancellation_broadcast(self):
         # Cancelling outer() cancels all children.
-        proof = 0
+        non_local = {'proof': 0}
         waiter = futures.Future(loop=self.one_loop)
 
         @tasks.coroutine
         def inner():
-            nonlocal proof
-            yield from waiter
-            proof += 1
+            yield waiter
+            non_local['proof'] += 1
 
         child1 = tasks.async(inner(), loop=self.one_loop)
         child2 = tasks.async(inner(), loop=self.one_loop)
-        gatherer = None
+        non_local['gatherer'] = None
 
         @tasks.coroutine
         def outer():
-            nonlocal proof, gatherer
-            gatherer = tasks.gather(child1, child2, loop=self.one_loop)
-            yield from gatherer
-            proof += 100
+            non_local['gatherer'] = tasks.gather(child1, child2, loop=self.one_loop)
+            yield non_local['gatherer']
+            non_local['proof'] += 100
 
         f = tasks.async(outer(), loop=self.one_loop)
         test_utils.run_briefly(self.one_loop)
         self.assertTrue(f.cancel())
         with self.assertRaises(futures.CancelledError):
             self.one_loop.run_until_complete(f)
-        self.assertFalse(gatherer.cancel())
+        self.assertFalse(non_local['gatherer'].cancel())
         self.assertTrue(waiter.cancelled())
         self.assertTrue(child1.cancelled())
         self.assertTrue(child2.cancelled())
         test_utils.run_briefly(self.one_loop)
-        self.assertEqual(proof, 0)
+        self.assertEqual(non_local['proof'], 0)
 
     def test_exception_marking(self):
         # Test for the first line marked "Mark exception retrieved."
 
         @tasks.coroutine
         def inner(f):
-            yield from f
+            yield f
             raise RuntimeError('should not be ignored')
 
         a = futures.Future(loop=self.one_loop)
@@ -1543,7 +1532,7 @@ class CoroutineGatherTests(GatherTestsBase, unittest.TestCase):
 
         @tasks.coroutine
         def outer():
-            yield from tasks.gather(inner(a), inner(b), loop=self.one_loop)
+            yield tasks.gather(inner(a), inner(b), loop=self.one_loop)
 
         f = tasks.async(outer(), loop=self.one_loop)
         test_utils.run_briefly(self.one_loop)

@@ -9,13 +9,14 @@ import _winapi
 
 import asyncio
 
-from asyncio import windows_events
+from asyncio import Return
+from asyncio import _overlapped
 from asyncio import futures
 from asyncio import protocols
 from asyncio import streams
-from asyncio import transports
 from asyncio import test_utils
-from asyncio import _overlapped
+from asyncio import transports
+from asyncio import windows_events
 
 
 class UpperProto(protocols.Protocol):
@@ -65,10 +66,10 @@ class ProactorTests(unittest.TestCase):
         ADDRESS = r'\\.\pipe\_test_pipe-%s' % os.getpid()
 
         with self.assertRaises(FileNotFoundError):
-            yield from self.loop.create_pipe_connection(
+            yield self.loop.create_pipe_connection(
                 protocols.Protocol, ADDRESS)
 
-        [server] = yield from self.loop.start_serving_pipe(
+        [server] = yield self.loop.start_serving_pipe(
             UpperProto, ADDRESS)
         self.assertIsInstance(server, windows_events.PipeServer)
 
@@ -76,7 +77,7 @@ class ProactorTests(unittest.TestCase):
         for i in range(5):
             stream_reader = streams.StreamReader(loop=self.loop)
             protocol = streams.StreamReaderProtocol(stream_reader)
-            trans, proto = yield from self.loop.create_pipe_connection(
+            trans, proto = yield self.loop.create_pipe_connection(
                 lambda: protocol, ADDRESS)
             self.assertIsInstance(trans, transports.Transport)
             self.assertEqual(protocol, proto)
@@ -86,17 +87,17 @@ class ProactorTests(unittest.TestCase):
             w.write('lower-{}\n'.format(i).encode())
 
         for i, (r, w) in enumerate(clients):
-            response = yield from r.readline()
+            response = yield r.readline()
             self.assertEqual(response, 'LOWER-{}\n'.format(i).encode())
             w.close()
 
         server.close()
 
         with self.assertRaises(FileNotFoundError):
-            yield from self.loop.create_pipe_connection(
+            yield self.loop.create_pipe_connection(
                 protocols.Protocol, ADDRESS)
 
-        return 'done'
+        raise Return('done')
 
     def test_wait_for_handle(self):
         event = _overlapped.CreateEvent(None, True, False, None)
