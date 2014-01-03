@@ -1,8 +1,9 @@
 """Tests for queues.py"""
 
 import unittest
-import unittest.mock
+import mock
 
+from asyncio import Return
 from asyncio import events
 from asyncio import futures
 from asyncio import locks
@@ -50,7 +51,7 @@ class QueueBasicTests(_QueueTestBase):
             # Start a task that waits to get.
             tasks.Task(q.get(), loop=loop)
             # Let it start waiting.
-            yield from tasks.sleep(0.1, loop=loop)
+            yield tasks.sleep(0.1, loop=loop)
             self.assertTrue('_getters[1]' in fn(q))
             # resume q.get coroutine to finish generator
             q.put_nowait(0)
@@ -64,7 +65,7 @@ class QueueBasicTests(_QueueTestBase):
             # Start a task that waits to put.
             tasks.Task(q.put(2), loop=loop)
             # Let it start waiting.
-            yield from tasks.sleep(0.1, loop=loop)
+            yield tasks.sleep(0.1, loop=loop)
             self.assertTrue('_putters[1]' in fn(q))
             # resume q.put coroutine to finish generator
             q.get_nowait()
@@ -76,7 +77,7 @@ class QueueBasicTests(_QueueTestBase):
         self.assertTrue('_queue=[1]' in fn(q))
 
     def test_ctor_loop(self):
-        loop = unittest.mock.Mock()
+        loop = mock.Mock()
         q = queues.Queue(loop=loop)
         self.assertIs(q._loop, loop)
 
@@ -140,21 +141,21 @@ class QueueBasicTests(_QueueTestBase):
         @tasks.coroutine
         def putter():
             for i in range(3):
-                yield from q.put(i)
+                yield q.put(i)
                 have_been_put.append(i)
-            return True
+            raise Return(True)
 
         @tasks.coroutine
         def test():
             t = tasks.Task(putter(), loop=loop)
-            yield from tasks.sleep(0.01, loop=loop)
+            yield tasks.sleep(0.01, loop=loop)
 
             # The putter is blocked after putting two items.
             self.assertEqual([0, 1], have_been_put)
             self.assertEqual(0, q.get_nowait())
 
             # Let the putter resume and put last item.
-            yield from tasks.sleep(0.01, loop=loop)
+            yield tasks.sleep(0.01, loop=loop)
             self.assertEqual([0, 1, 2], have_been_put)
             self.assertEqual(1, q.get_nowait())
             self.assertEqual(2, q.get_nowait())
@@ -174,7 +175,8 @@ class QueueGetTests(_QueueTestBase):
 
         @tasks.coroutine
         def queue_get():
-            return (yield from q.get())
+            result = (yield q.get())
+            raise Return(result)
 
         res = self.loop.run_until_complete(queue_get())
         self.assertEqual(1, res)
@@ -203,25 +205,24 @@ class QueueGetTests(_QueueTestBase):
 
         q = queues.Queue(loop=loop)
         started = locks.Event(loop=loop)
-        finished = False
+        non_local = {'finished': False}
 
         @tasks.coroutine
         def queue_get():
-            nonlocal finished
             started.set()
-            res = yield from q.get()
-            finished = True
-            return res
+            res = yield q.get()
+            non_local['finished'] = True
+            raise Return(res)
 
         @tasks.coroutine
         def queue_put():
             loop.call_later(0.01, q.put_nowait, 1)
             queue_get_task = tasks.Task(queue_get(), loop=loop)
-            yield from started.wait()
-            self.assertFalse(finished)
-            res = yield from queue_get_task
-            self.assertTrue(finished)
-            return res
+            yield started.wait()
+            self.assertFalse(non_local['finished'])
+            res = yield queue_get_task
+            self.assertTrue(non_local['finished'])
+            raise Return(res)
 
         res = loop.run_until_complete(queue_put())
         self.assertEqual(1, res)
@@ -252,14 +253,16 @@ class QueueGetTests(_QueueTestBase):
 
         @tasks.coroutine
         def queue_get():
-            return (yield from tasks.wait_for(q.get(), 0.051, loop=loop))
+            result = (yield tasks.wait_for(q.get(), 0.051, loop=loop))
+            raise Return(result)
 
         @tasks.coroutine
         def test():
             get_task = tasks.Task(queue_get(), loop=loop)
-            yield from tasks.sleep(0.01, loop=loop)  # let the task start
+            yield tasks.sleep(0.01, loop=loop)  # let the task start
             q.put_nowait(1)
-            return (yield from get_task)
+            result = (yield get_task)
+            raise Return(result)
 
         self.assertEqual(1, loop.run_until_complete(test()))
         self.assertAlmostEqual(0.06, loop.time())
@@ -295,7 +298,7 @@ class QueuePutTests(_QueueTestBase):
         @tasks.coroutine
         def queue_put():
             # No maxsize, won't block.
-            yield from q.put(1)
+            yield q.put(1)
 
         self.loop.run_until_complete(queue_put())
 
@@ -311,24 +314,23 @@ class QueuePutTests(_QueueTestBase):
 
         q = queues.Queue(maxsize=1, loop=loop)
         started = locks.Event(loop=loop)
-        finished = False
+        non_local = {'finished': False}
 
         @tasks.coroutine
         def queue_put():
-            nonlocal finished
             started.set()
-            yield from q.put(1)
-            yield from q.put(2)
-            finished = True
+            yield q.put(1)
+            yield q.put(2)
+            non_local['finished'] = True
 
         @tasks.coroutine
         def queue_get():
             loop.call_later(0.01, q.get_nowait)
             queue_put_task = tasks.Task(queue_put(), loop=loop)
-            yield from started.wait()
-            self.assertFalse(finished)
-            yield from queue_put_task
-            self.assertTrue(finished)
+            yield started.wait()
+            self.assertFalse(non_local['finished'])
+            yield queue_put_task
+            self.assertTrue(non_local['finished'])
 
         loop.run_until_complete(queue_get())
         self.assertAlmostEqual(0.01, loop.time())
@@ -348,12 +350,13 @@ class QueuePutTests(_QueueTestBase):
 
         @tasks.coroutine
         def queue_put():
-            yield from q.put(1)
-            return True
+            yield q.put(1)
+            raise Return(True)
 
         @tasks.coroutine
         def test():
-            return (yield from q.get())
+            result = (yield q.get())
+            raise Return(result)
 
         t = tasks.Task(queue_put(), loop=self.loop)
         self.assertEqual(1, self.loop.run_until_complete(test()))
@@ -415,7 +418,7 @@ class JoinableQueueTests(_QueueTestBase):
         for i in range(100):
             q.put_nowait(i)
 
-        accumulator = 0
+        non_local = {'accumulator': 0}
 
         # Two workers get items from the queue and call task_done after each.
         # Join the queue and assert all items have been processed.
@@ -423,11 +426,9 @@ class JoinableQueueTests(_QueueTestBase):
 
         @tasks.coroutine
         def worker():
-            nonlocal accumulator
-
             while running:
-                item = yield from q.get()
-                accumulator += item
+                item = yield q.get()
+                non_local['accumulator'] += item
                 q.task_done()
 
         @tasks.coroutine
@@ -435,10 +436,10 @@ class JoinableQueueTests(_QueueTestBase):
             for _ in range(2):
                 tasks.Task(worker(), loop=self.loop)
 
-            yield from q.join()
+            yield q.join()
 
         self.loop.run_until_complete(test())
-        self.assertEqual(sum(range(100)), accumulator)
+        self.assertEqual(sum(range(100)), non_local['accumulator'])
 
         # close running generators
         running = False
@@ -453,8 +454,8 @@ class JoinableQueueTests(_QueueTestBase):
 
         @tasks.coroutine
         def join():
-            yield from q.join()
-            yield from q.join()
+            yield q.join()
+            yield q.join()
 
         self.loop.run_until_complete(join())
 

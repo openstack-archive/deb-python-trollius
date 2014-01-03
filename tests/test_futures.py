@@ -1,9 +1,10 @@
 """Tests for futures.py."""
 
 import concurrent.futures
+import thread
 import threading
 import unittest
-import unittest.mock
+import mock
 
 from asyncio import events
 from asyncio import futures
@@ -85,17 +86,17 @@ class FutureTests(unittest.TestCase):
 
         def fixture():
             yield 'A'
-            x = yield from f
+            x = yield f
             yield 'B', x
-            y = yield from f
+            y = yield f
             yield 'C', y
 
         g = fixture()
         self.assertEqual(next(g), 'A')  # yield 'A'.
-        self.assertEqual(next(g), f)  # First yield from f.
+        self.assertEqual(next(g), f)  # First yield f.
         f.set_result(42)
         self.assertEqual(next(g), ('B', 42))  # yield 'B', x.
-        # The second "yield from f" does not yield f.
+        # The second "yield f" does not yield f.
         self.assertEqual(next(g), ('C', 42))  # yield 'C', y.
 
     def test_repr(self):
@@ -162,7 +163,7 @@ class FutureTests(unittest.TestCase):
         fut = futures.Future(loop=self.loop)
 
         def coro():
-            yield from fut
+            yield fut
 
         def test():
             arg1, arg2 = coro()
@@ -170,20 +171,20 @@ class FutureTests(unittest.TestCase):
         self.assertRaises(AssertionError, test)
         fut.cancel()
 
-    @unittest.mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.futures.logger')
     def test_tb_logger_abandoned(self, m_log):
         fut = futures.Future(loop=self.loop)
         del fut
         self.assertFalse(m_log.error.called)
 
-    @unittest.mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.futures.logger')
     def test_tb_logger_result_unretrieved(self, m_log):
         fut = futures.Future(loop=self.loop)
         fut.set_result(42)
         del fut
         self.assertFalse(m_log.error.called)
 
-    @unittest.mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.futures.logger')
     def test_tb_logger_result_retrieved(self, m_log):
         fut = futures.Future(loop=self.loop)
         fut.set_result(42)
@@ -191,7 +192,7 @@ class FutureTests(unittest.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @unittest.mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.futures.logger')
     def test_tb_logger_exception_unretrieved(self, m_log):
         fut = futures.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -199,7 +200,7 @@ class FutureTests(unittest.TestCase):
         test_utils.run_briefly(self.loop)
         self.assertTrue(m_log.error.called)
 
-    @unittest.mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.futures.logger')
     def test_tb_logger_exception_retrieved(self, m_log):
         fut = futures.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -207,7 +208,7 @@ class FutureTests(unittest.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @unittest.mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.futures.logger')
     def test_tb_logger_exception_result_retrieved(self, m_log):
         fut = futures.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -218,24 +219,24 @@ class FutureTests(unittest.TestCase):
     def test_wrap_future(self):
 
         def run(arg):
-            return (arg, threading.get_ident())
+            return (arg, thread.get_ident())
         ex = concurrent.futures.ThreadPoolExecutor(1)
         f1 = ex.submit(run, 'oi')
         f2 = futures.wrap_future(f1, loop=self.loop)
         res, ident = self.loop.run_until_complete(f2)
         self.assertIsInstance(f2, futures.Future)
         self.assertEqual(res, 'oi')
-        self.assertNotEqual(ident, threading.get_ident())
+        self.assertNotEqual(ident, thread.get_ident())
 
     def test_wrap_future_future(self):
         f1 = futures.Future(loop=self.loop)
         f2 = futures.wrap_future(f1)
         self.assertIs(f1, f2)
 
-    @unittest.mock.patch('asyncio.futures.events')
+    @mock.patch('asyncio.futures.events')
     def test_wrap_future_use_global_loop(self, m_events):
         def run(arg):
-            return (arg, threading.get_ident())
+            return (arg, thread.get_ident())
         ex = concurrent.futures.ThreadPoolExecutor(1)
         f1 = ex.submit(run, 'oi')
         f2 = futures.wrap_future(f1)

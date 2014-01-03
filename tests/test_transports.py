@@ -1,7 +1,7 @@
 """Tests for transports.py."""
 
 import unittest
-import unittest.mock
+import mock
 
 from asyncio import transports
 
@@ -22,7 +22,7 @@ class TransportTests(unittest.TestCase):
 
     def test_writelines(self):
         transport = transports.Transport()
-        transport.write = unittest.mock.Mock()
+        transport.write = mock.Mock()
 
         transport.writelines([b'line1',
                               bytearray(b'line2'),

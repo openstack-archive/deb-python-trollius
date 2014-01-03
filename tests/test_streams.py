@@ -2,12 +2,13 @@
 
 import gc
 import unittest
-import unittest.mock
+import mock
 try:
     import ssl
 except ImportError:
     ssl = None
 
+from asyncio import Return
 from asyncio import events
 from asyncio import streams
 from asyncio import tasks
@@ -29,7 +30,7 @@ class StreamReaderTests(unittest.TestCase):
         self.loop.close()
         gc.collect()
 
-    @unittest.mock.patch('asyncio.streams.events')
+    @mock.patch('asyncio.streams.events')
     def test_ctor_global_loop(self, m_events):
         stream = streams.StreamReader()
         self.assertIs(stream._loop, m_events.get_event_loop.return_value)
@@ -334,7 +335,7 @@ class StreamReaderTests(unittest.TestCase):
 
         @tasks.coroutine
         def readline():
-            yield from stream.readline()
+            yield stream.readline()
 
         t1 = tasks.Task(stream.readline(), loop=self.loop)
         t2 = tasks.Task(set_err(), loop=self.loop)
@@ -348,7 +349,7 @@ class StreamReaderTests(unittest.TestCase):
 
         @tasks.coroutine
         def read_a_line():
-            yield from stream.readline()
+            yield stream.readline()
 
         t = tasks.Task(read_a_line(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -369,7 +370,7 @@ class StreamReaderTests(unittest.TestCase):
 
             @tasks.coroutine
             def handle_client(self, client_reader, client_writer):
-                data = yield from client_reader.readline()
+                data = yield client_reader.readline()
                 client_writer.write(data)
 
             def start(self):
@@ -400,14 +401,14 @@ class StreamReaderTests(unittest.TestCase):
 
         @tasks.coroutine
         def client():
-            reader, writer = yield from streams.open_connection(
+            reader, writer = yield streams.open_connection(
                 '127.0.0.1', 12345, loop=self.loop)
             # send a line
             writer.write(b"hello world!\n")
             # read it back
-            msgback = yield from reader.readline()
+            msgback = yield reader.readline()
             writer.close()
-            return msgback
+            raise Return(msgback)
 
         # test the server variant with a coroutine as client handler
         server = MyServer(self.loop)
