@@ -1106,8 +1106,7 @@ class SubprocessTestsMixin(object):
         self.assertEqual(b'Python The Winner', non_local['proto'].data[1])
 
     def test_subprocess_interactive(self):
-        proto = None
-        transp = None
+        non_local = {'proto': None, 'transp': None}
 
         prog = os.path.join(os.path.dirname(__file__), 'echo.py')
 
