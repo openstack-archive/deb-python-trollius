@@ -3,12 +3,12 @@
 import collections
 import contextlib
 import io
+import mock
 import os
 import sys
 import threading
 import time
 import unittest
-import unittest.mock
 from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
 try:
     import ssl
@@ -71,7 +71,7 @@ def run_once(loop):
 
 
 @contextlib.contextmanager
-def run_test_server(*, host='127.0.0.1', port=0, use_ssl=False):
+def run_test_server(host='127.0.0.1', port=0, use_ssl=False):
 
     class SilentWSGIRequestHandler(WSGIRequestHandler):
         def get_stderr(self):
@@ -135,7 +135,7 @@ def make_test_protocol(base):
         if name.startswith('__') and name.endswith('__'):
             # skip magic names
             continue
-        dct[name] = unittest.mock.Mock(return_value=None)
+        dct[name] = mock.Mock(return_value=None)
     return type('TestProtocol', (base,) + base.__bases__, dct)()
 
 
@@ -179,7 +179,7 @@ class TestLoop(base_events.BaseEventLoop):
     """
 
     def __init__(self, gen=None):
-        super().__init__()
+        super(TestLoop, self).__init__()
 
         if gen is None:
             def gen():
@@ -258,7 +258,7 @@ class TestLoop(base_events.BaseEventLoop):
         self.remove_writer_count = collections.defaultdict(int)
 
     def _run_once(self):
-        super()._run_once()
+        super(TestLoop, self)._run_once()
         for when in self._timers:
             advance = self._gen.send(when)
             self.advance_time(advance)
@@ -266,7 +266,7 @@ class TestLoop(base_events.BaseEventLoop):
 
     def call_at(self, when, callback, *args):
         self._timers.append(when)
-        return super().call_at(when, callback, *args)
+        return super(TestLoop, self).call_at(when, callback, *args)
 
     def _process_events(self, event_list):
         return

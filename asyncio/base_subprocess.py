@@ -16,7 +16,7 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
     def __init__(self, loop, protocol, args, shell,
                  stdin, stdout, stderr, bufsize,
                  extra=None, **kwargs):
-        super().__init__(extra)
+        super(BaseSubprocessTransport, self).__init__(extra)
         self._protocol = protocol
         self._loop = loop
 
@@ -75,15 +75,15 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
         proc = self._proc
         loop = self._loop
         if proc.stdin is not None:
-            transp, proto = yield from loop.connect_write_pipe(
+            transp, proto = yield loop.connect_write_pipe(
                 lambda: WriteSubprocessPipeProto(self, STDIN),
                 proc.stdin)
         if proc.stdout is not None:
-            transp, proto = yield from loop.connect_read_pipe(
+            transp, proto = yield loop.connect_read_pipe(
                 lambda: ReadSubprocessPipeProto(self, STDOUT),
                 proc.stdout)
         if proc.stderr is not None:
-            transp, proto = yield from loop.connect_read_pipe(
+            transp, proto = yield loop.connect_read_pipe(
                 lambda: ReadSubprocessPipeProto(self, STDERR),
                 proc.stderr)
         if not self._pipes:

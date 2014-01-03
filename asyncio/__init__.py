@@ -10,6 +10,9 @@ try:
 except ImportError:
     import selectors  # Will also be exported.
 
+# FIXME: The import is imported to hack __builtins__
+import asyncio.backport
+
 if sys.platform == 'win32':
     # Similar thing for _overlapped.
     try:
