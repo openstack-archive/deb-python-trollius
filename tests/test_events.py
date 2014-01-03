@@ -608,7 +608,8 @@ class EventLoopTestsMixin(object):
 
     def _make_ssl_server(self, factory, certfile, keyfile=None):
         sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext.options |= ssl.OP_NO_SSLv2
+        if hasattr(sslcontext, 'options'):
+            sslcontext.options |= ssl.OP_NO_SSLv2
         sslcontext.load_cert_chain(certfile, keyfile)
 
         f = self.loop.create_server(
@@ -678,7 +679,8 @@ class EventLoopTestsMixin(object):
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
         sslcontext_client = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext_client.options |= ssl.OP_NO_SSLv2
+        if hasattr(sslcontext, 'options'):
+            sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
@@ -706,7 +708,8 @@ class EventLoopTestsMixin(object):
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
         sslcontext_client = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext_client.options |= ssl.OP_NO_SSLv2
+        if hasattr(sslcontext, 'options'):
+            sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         sslcontext_client.load_verify_locations(
             cafile=SIGNING_CA)
@@ -737,7 +740,8 @@ class EventLoopTestsMixin(object):
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
         sslcontext_client = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-        sslcontext_client.options |= ssl.OP_NO_SSLv2
+        if hasattr(sslcontext, 'options'):
+            sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         sslcontext_client.load_verify_locations(cafile=SIGNING_CA)
         if hasattr(sslcontext_client, 'check_hostname'):
