@@ -1336,13 +1336,16 @@ class SubprocessTestsMixin(object):
     def test_subprocess_wait_no_same_group(self):
         non_local = {'proto': None}
 
+        def start_new_session():
+            os.setsid()
+
         @tasks.coroutine
         def connect():
             # start the new process in a new session
             transp, non_local['proto'] = yield self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
                 'exit 7', stdin=None, stdout=None, stderr=None,
-                start_new_session=True)
+                preexec_fn=start_new_session)
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
