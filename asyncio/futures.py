@@ -5,10 +5,13 @@ __all__ = ['CancelledError', 'TimeoutError',
            'Future', 'wrap_future',
            ]
 
-import concurrent.futures._base
 import logging
 import sys
 import traceback
+try:
+    import concurrent.futures
+except ImportError:
+    concurrent = None
 
 from . import events
 from .log import logger
@@ -21,10 +24,17 @@ _FINISHED = 'FINISHED'
 
 _PY34 = sys.version_info >= (3, 4)
 
-# TODO: Do we really want to depend on concurrent.futures internals?
-Error = concurrent.futures._base.Error
-CancelledError = concurrent.futures.CancelledError
-TimeoutError = concurrent.futures.TimeoutError
+class Error(Exception):
+    """Base class for all future-related exceptions."""
+    pass
+
+class CancelledError(Error):
+    """The Future was cancelled."""
+    pass
+
+class TimeoutError(Error):
+    """The operation exceeded the given deadline."""
+    pass
 
 STACK_DEBUG = logging.DEBUG - 1  # heavy-duty debugging
 
@@ -334,23 +344,23 @@ class Future(object):
         assert self.done(), "yield wasn't used with future"
         raise Return(self.result())  # May raise too.
 
+if concurrent is not None:
+    def wrap_future(fut, loop=None):
+        """Wrap concurrent.futures.Future object."""
+        if isinstance(fut, Future):
+            return fut
+        assert isinstance(fut, concurrent.futures.Future), \
+            'concurrent.futures.Future is expected, got {!r}'.format(fut)
+        if loop is None:
+            loop = events.get_event_loop()
+        new_future = Future(loop=loop)
 
-def wrap_future(fut, loop=None):
-    """Wrap concurrent.futures.Future object."""
-    if isinstance(fut, Future):
-        return fut
-    assert isinstance(fut, concurrent.futures.Future), \
-        'concurrent.futures.Future is expected, got {!r}'.format(fut)
-    if loop is None:
-        loop = events.get_event_loop()
-    new_future = Future(loop=loop)
+        def _check_cancel_other(f):
+            if f.cancelled():
+                fut.cancel()
 
-    def _check_cancel_other(f):
-        if f.cancelled():
-            fut.cancel()
-
-    new_future.add_done_callback(_check_cancel_other)
-    fut.add_done_callback(
-        lambda future: loop.call_soon_threadsafe(
-            new_future._copy_state, fut))
-    return new_future
+        new_future.add_done_callback(_check_cancel_other)
+        fut.add_done_callback(
+            lambda future: loop.call_soon_threadsafe(
+                new_future._copy_state, fut))
+        return new_future
