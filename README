@@ -1,12 +1,22 @@
-Tulip is the codename for my reference implementation of PEP 3156.
+Trollius is an experimental port of the Tulip project (asyncio module, PEP
+3156) on Python 2.7.
 
-PEP 3156: http://www.python.org/dev/peps/pep-3156/
+* Website: https://bitbucket.org/haypo/trollius
+* Tulip project: http://code.google.com/p/tulip/
+* Copyright/license: Open source, Apache 2.0. Enjoy.
 
-*** This requires Python 3.3 or later! ***
 
-Copyright/license: Open source, Apache 2.0. Enjoy.
+Differences between Trollius and Tulip
+======================================
 
-Master Mercurial repo: http://code.google.com/p/tulip/
+ * Python 2 has no keyword-only parameters
+ * Trollius coroutines use yield wheras Tulip coroutines must use yield-from
+ * Trollius coroutines must use "raise Return(value)", whereas Tulip simply
+   uses "return value" thanks to Python 3.3 improvments
+
+
+Usage
+=====
 
 The actual code lives in the 'asyncio' subdirectory.
 Tests are in the 'tests' subdirectory.
@@ -34,3 +44,16 @@ And coverage as follows:
     C> P runtests.py --coverage
 
 --Guido van Rossum <guido@python.org>
+
+
+Trollius name
+=============
+
+Extract of http://en.wikipedia.org/wiki/Trollius :
+
+Trollius is a genus of about 30 species of plants in the family Ranunculaceae,
+closely related to Ranunculus. The common name of some species is globeflower
+or globe flower. Native to the cool temperate regions of the Northern
+Hemisphere, with the greatest diversity of species in Asia, trollius usually
+grow in heavy, wet clay soils.
+
