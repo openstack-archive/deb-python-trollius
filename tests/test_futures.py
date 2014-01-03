@@ -8,6 +8,7 @@ import mock
 
 from asyncio import events
 from asyncio import futures
+from asyncio import tasks
 from asyncio import test_utils
 
 
@@ -38,10 +39,6 @@ class FutureTests(unittest.TestCase):
             self.assertIs(f._loop, self.loop)
         finally:
             events.set_event_loop(None)
-
-    def test_constructor_positional(self):
-        # Make sure Future does't accept a positional argument
-        self.assertRaises(TypeError, futures.Future, 42)
 
     def test_cancel(self):
         f = futures.Future(loop=self.loop)
@@ -162,6 +159,7 @@ class FutureTests(unittest.TestCase):
     def test_iter(self):
         fut = futures.Future(loop=self.loop)
 
+        @tasks.coroutine
         def coro():
             yield fut
 
