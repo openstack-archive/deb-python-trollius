@@ -5,4 +5,4 @@
 * Remove backport of Python 3.3 exceptions (ex: BlockingIOError), wrap_error()
 * Remove backport of SSLContext
 * See http://code.google.com/p/appengine-ndb-experiment/source/browse/ndb/tasklets.py
-
+* Support Python 3.1 and 3.2: replace thread.get_ident() with threading.get_ident()
