@@ -304,6 +304,7 @@ class QueuePutTests(_QueueTestBase):
 
     def test_blocking_put_wait(self):
 
+        @tasks.coroutine
         def gen():
             when = yield
             self.assertAlmostEqual(0.01, when)
