@@ -21,10 +21,6 @@ import logging
 import socket
 import subprocess
 import time
-try:
-    from time import monotonic as _time
-except ImportError:
-    from time import time as _time
 import os
 import sys
 
@@ -32,6 +28,7 @@ from . import events
 from . import futures
 from . import tasks
 from .log import logger
+from .time_monotonic import time_monotonic
 
 
 __all__ = ['BaseEventLoop', 'Server']
@@ -208,7 +205,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
     def time(self):
         """Return the time according to the event loop's clock."""
-        return _time()
+        return time_monotonic()
 
     def call_later(self, delay, callback, *args):
         """Arrange for a callback to be called at a given time.

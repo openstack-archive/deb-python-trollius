@@ -1,3 +1,5 @@
+* concurrent.futures
+* unix_events, RuntimeError on signal.signal
 * Fix all FIXME in the code
 * Remove backport of Python 3.3 exceptions (ex: BlockingIOError), wrap_error()
 * Remove backport of SSLContext
