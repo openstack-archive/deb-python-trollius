@@ -20,7 +20,8 @@ Differences between Trollius and Tulip
  * Trollius coroutines use yield wheras Tulip coroutines must use yield-from
  * Trollius coroutines must use "raise Return(value)", whereas Tulip simply
    uses "return value" thanks to Python 3.3 improvments
-
+ * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
+   raises NotImplementedError and asyncio.wrap_future() is not available
 
 Usage
 =====

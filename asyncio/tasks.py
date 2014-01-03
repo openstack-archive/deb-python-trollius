@@ -9,7 +9,6 @@ __all__ = ['coroutine', 'Task',
            ]
 
 import collections
-import concurrent.futures
 import functools
 import inspect
 import linecache
@@ -270,9 +269,9 @@ class Task(futures.Future):
 
 # wait() and as_completed() similar to those in PEP 3148.
 
-FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
-FIRST_EXCEPTION = concurrent.futures.FIRST_EXCEPTION
-ALL_COMPLETED = concurrent.futures.ALL_COMPLETED
+FIRST_COMPLETED = 'FIRST_COMPLETED'
+FIRST_EXCEPTION = 'FIRST_EXCEPTION'
+ALL_COMPLETED = 'ALL_COMPLETED'
 
 
 @coroutine
