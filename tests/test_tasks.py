@@ -134,7 +134,7 @@ class TaskTests(unittest.TestCase):
 
         class MyTask(tasks.Task, T):
             def __repr__(self):
-                return super().__repr__()
+                return super(MyTask, self).__repr__()
 
         gen = coro()
         t = MyTask(gen, loop=self.loop)
@@ -963,11 +963,11 @@ class TaskTests(unittest.TestCase):
         class Fut(futures.Future):
             def __init__(self, *args, **kwds):
                 self.cb_added = False
-                super().__init__(*args, **kwds)
+                super(Fut, self).__init__(*args, **kwds)
 
             def add_done_callback(self, fn):
                 self.cb_added = True
-                super().add_done_callback(fn)
+                super(Fut, self).add_done_callback(fn)
 
         fut = Fut(loop=self.loop)
         non_local = {'result': None}

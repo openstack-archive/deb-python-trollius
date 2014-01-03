@@ -72,7 +72,7 @@ class Lock(object):
             self._loop = events.get_event_loop()
 
     def __repr__(self):
-        res = super().__repr__()
+        res = super(Lock, self).__repr__()
         extra = 'locked' if self._locked else 'unlocked'
         if self._waiters:
             extra = '{},waiters:{}'.format(extra, len(self._waiters))

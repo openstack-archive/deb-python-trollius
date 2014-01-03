@@ -349,7 +349,7 @@ if hasattr(select, 'poll'):
             return key
 
         def unregister(self, fileobj):
-            key = super().unregister(fileobj)
+            key = super(PollSelector, self).unregister(fileobj)
             self._poll.unregister(key.fd)
             return key
 

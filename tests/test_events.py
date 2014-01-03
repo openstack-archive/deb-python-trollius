@@ -802,7 +802,7 @@ class EventLoopTestsMixin(object):
 
         class TestMyProto(MyProto):
             def connection_made(self, transport):
-                super().connection_made(transport)
+                super(TestMyProto, self).connection_made(transport)
                 f_proto.set_result(self)
 
         try_count = 0
