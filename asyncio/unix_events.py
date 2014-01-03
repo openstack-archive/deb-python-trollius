@@ -77,7 +77,12 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             signal.signal(sig, self._handle_signal)
             # Set SA_RESTART to limit EINTR occurrences.
             signal.siginterrupt(sig, False)
-        except OSError as exc:
+        except (RuntimeError, OSError) as exc:
+            # On Python 2, signal.signal(signal.SIGKILL, signal.SIG_IGN) raises
+            # RuntimeError(22, 'Invalid argument'). On Python 3,
+            # OSError(22, 'Invalid argument') is raised instead.
+            exc_type, exc_value, tb = sys.exc_info()
+
             del self._signal_handlers[sig]
             if not self._signal_handlers:
                 try:
@@ -85,10 +90,10 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
                 except ValueError as nexc:
                     logger.info('set_wakeup_fd(-1) failed: %s', nexc)
 
-            if exc.errno == errno.EINVAL:
+            if isinstance(exc, RuntimeError) or exc.errno == errno.EINVAL:
                 raise RuntimeError('sig {} cannot be caught'.format(sig))
             else:
-                raise
+                raise exc_type, exc_value, tb
 
     def _handle_signal(self, sig, arg):
         """Internal helper that is the actual signal handler."""
