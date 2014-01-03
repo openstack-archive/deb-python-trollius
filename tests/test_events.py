@@ -32,6 +32,7 @@ from asyncio import selector_events
 from asyncio import tasks
 from asyncio import test_utils
 from asyncio import locks
+from asyncio.time_monotonic import time_monotonic
 
 
 def data_file(filename):
@@ -255,9 +256,9 @@ class EventLoopTestsMixin(object):
             self.loop.stop()
 
         self.loop.call_later(0.1, callback, 'hello world')
-        t0 = time.monotonic()
+        t0 = time_monotonic()
         self.loop.run_forever()
-        t1 = time.monotonic()
+        t1 = time_monotonic()
         self.assertEqual(results, ['hello world'])
         self.assertTrue(0.08 <= t1-t0 <= 0.8, t1-t0)
 
@@ -1043,10 +1044,10 @@ class EventLoopTestsMixin(object):
                 self.loop.stop()
             raise Return(res)
 
-        start = time.monotonic()
+        start = time_monotonic()
         t = tasks.Task(main(), loop=self.loop)
         self.loop.run_forever()
-        elapsed = time.monotonic() - start
+        elapsed = time_monotonic() - start
 
         self.assertLess(elapsed, 0.1)
         self.assertEqual(t.result(), 'cancelled')
@@ -1490,7 +1491,7 @@ class HandleTests(unittest.TestCase):
 class TimerTests(unittest.TestCase):
 
     def test_hash(self):
-        when = time.monotonic()
+        when = time_monotonic()
         h = events.TimerHandle(when, lambda: False, ())
         self.assertEqual(hash(h), hash(when))
 
@@ -1499,7 +1500,7 @@ class TimerTests(unittest.TestCase):
             return args
 
         args = ()
-        when = time.monotonic()
+        when = time_monotonic()
         h = events.TimerHandle(when, callback, args)
         self.assertIs(h._callback, callback)
         self.assertIs(h._args, args)
@@ -1521,7 +1522,7 @@ class TimerTests(unittest.TestCase):
         def callback(*args):
             return args
 
-        when = time.monotonic()
+        when = time_monotonic()
 
         h1 = events.TimerHandle(when, callback, ())
         h2 = events.TimerHandle(when, callback, ())
