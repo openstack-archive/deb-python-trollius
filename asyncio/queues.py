@@ -5,12 +5,12 @@ __all__ = ['Queue', 'PriorityQueue', 'LifoQueue', 'JoinableQueue',
 
 import collections
 import heapq
-import queue
+import Queue as queue
 
 from . import events
 from . import futures
 from . import locks
-from .tasks import coroutine
+from .tasks import coroutine, Return
 
 
 # Re-export queue.Full and .Empty exceptions.
@@ -18,11 +18,11 @@ Full = queue.Full
 Empty = queue.Empty
 
 
-class Queue:
+class Queue(object):
     """A queue, useful for coordinating producer and consumer coroutines.
 
     If maxsize is less than or equal to zero, the queue size is infinite. If it
-    is an integer greater than 0, then "yield from put()" will block when the
+    is an integer greater than 0, then "yield put()" will block when the
     queue reaches maxsize, until an item is removed by get().
 
     Unlike the standard library Queue, you can reliably know this Queue's size
@@ -30,7 +30,7 @@ class Queue:
     interrupted between calling qsize() and doing an operation on the Queue.
     """
 
-    def __init__(self, maxsize=0, *, loop=None):
+    def __init__(self, maxsize=0, loop=None):
         if loop is None:
             self._loop = events.get_event_loop()
         else:
@@ -107,7 +107,7 @@ class Queue:
     def put(self, item):
         """Put an item into the queue.
 
-        If you yield from put(), wait until a free slot is available
+        If you yield put(), wait until a free slot is available
         before adding item.
         """
         self._consume_done_getters()
@@ -126,7 +126,7 @@ class Queue:
             waiter = futures.Future(loop=self._loop)
 
             self._putters.append((item, waiter))
-            yield from waiter
+            yield waiter
 
         else:
             self._put(item)
@@ -157,7 +157,7 @@ class Queue:
     def get(self):
         """Remove and return an item from the queue.
 
-        If you yield from get(), wait until a item is available.
+        If you yield get(), wait until a item is available.
         """
         self._consume_done_putters()
         if self._putters:
@@ -171,15 +171,16 @@ class Queue:
             # ChannelTest.test_wait.
             self._loop.call_soon(putter.set_result, None)
 
-            return self._get()
+            raise Return(self._get())
 
         elif self.qsize():
-            return self._get()
+            raise Return(self._get())
         else:
             waiter = futures.Future(loop=self._loop)
 
             self._getters.append(waiter)
-            return (yield from waiter)
+            result = yield waiter
+            raise Return(result)
 
     def get_nowait(self):
         """Remove and return an item from the queue.
@@ -234,8 +235,8 @@ class LifoQueue(Queue):
 class JoinableQueue(Queue):
     """A subclass of Queue with task_done() and join() methods."""
 
-    def __init__(self, maxsize=0, *, loop=None):
-        super().__init__(maxsize=maxsize, loop=loop)
+    def __init__(self, maxsize=0, loop=None):
+        super(JoinableQueue, self).__init__(maxsize=maxsize, loop=loop)
         self._unfinished_tasks = 0
         self._finished = locks.Event(loop=self._loop)
         self._finished.set()
@@ -247,7 +248,7 @@ class JoinableQueue(Queue):
         return result
 
     def _put(self, item):
-        super()._put(item)
+        super(JoinableQueue, self)._put(item)
         self._unfinished_tasks += 1
         self._finished.clear()
 
@@ -281,4 +282,4 @@ class JoinableQueue(Queue):
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
         if self._unfinished_tasks > 0:
-            yield from self._finished.wait()
+            yield self._finished.wait()

@@ -109,7 +109,7 @@ def pipe(*, duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
 # Wrapper for a pipe handle
 
 
-class PipeHandle:
+class PipeHandle(object):
     """Wrapper for an overlapped pipe handle which is vaguely file-object like.
 
     The IOCP event loop can use these instead of socket objects.
@@ -124,7 +124,7 @@ class PipeHandle:
     def fileno(self):
         return self._handle
 
-    def close(self, *, CloseHandle=_winapi.CloseHandle):
+    def close(self, CloseHandle=_winapi.CloseHandle):
         if self._handle != -1:
             CloseHandle(self._handle)
             self._handle = -1
@@ -169,8 +169,11 @@ class Popen(subprocess.Popen):
         else:
             stderr_wfd = stderr
         try:
-            super().__init__(args, stdin=stdin_rfd, stdout=stdout_wfd,
-                             stderr=stderr_wfd, **kwds)
+            super(Popen, self).__init__(args,
+                                        stdin=stdin_rfd,
+                                        stdout=stdout_wfd,
+                                        stderr=stderr_wfd,
+                                        **kwds)
         except:
             for h in (stdin_wh, stdout_rh, stderr_rh):
                 if h is not None:

@@ -18,6 +18,7 @@ from . import protocols
 from . import selector_events
 from . import tasks
 from . import transports
+from .backport import wrap_error
 from .log import logger
 
 
@@ -42,7 +43,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
     """
 
     def __init__(self, selector=None):
-        super().__init__(selector)
+        super(_UnixSelectorEventLoop, self).__init__(selector)
         self._signal_handlers = {}
 
     def _socketpair(self):
@@ -51,7 +52,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
     def close(self):
         for sig in list(self._signal_handlers):
             self.remove_signal_handler(sig)
-        super().close()
+        super(_UnixSelectorEventLoop, self).close()
 
     def add_signal_handler(self, sig, callback, *args):
         """Add a handler for a signal.  UNIX only.
@@ -162,8 +163,8 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
                                               extra=None, **kwargs)
             watcher.add_child_handler(transp.get_pid(),
                                       self._child_watcher_callback, transp)
-        yield from transp._post_init()
-        return transp
+        yield transp._post_init()
+        raise tasks.Return(transp)
 
     def _child_watcher_callback(self, pid, returncode, transp):
         self.call_soon_threadsafe(transp._process_exited, returncode)
@@ -183,7 +184,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
     max_size = 256 * 1024  # max bytes we read in one eventloop iteration
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
-        super().__init__(extra)
+        super(_UnixReadPipeTransport, self).__init__(extra)
         self._extra['pipe'] = pipe
         self._loop = loop
         self._pipe = pipe
@@ -201,7 +202,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
 
     def _read_ready(self):
         try:
-            data = os.read(self._fileno, self.max_size)
+            data = wrap_error(os.read, self._fileno, self.max_size)
         except (BlockingIOError, InterruptedError):
             pass
         except OSError as exc:
@@ -248,7 +249,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
 class _UnixWritePipeTransport(transports.WriteTransport):
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
-        super().__init__(extra)
+        super(_UnixWritePipeTransport, self).__init__(extra)
         self._extra['pipe'] = pipe
         self._loop = loop
         self._pipe = pipe
@@ -293,7 +294,7 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         if not self._buffer:
             # Attempt to send it right away first.
             try:
-                n = os.write(self._fileno, data)
+                n = wrap_error(os.write, self._fileno, data)
             except (BlockingIOError, InterruptedError):
                 n = 0
             except Exception as exc:
@@ -312,9 +313,9 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         data = b''.join(self._buffer)
         assert data, 'Data should not be empty'
 
-        self._buffer.clear()
+        del self._buffer[:]
         try:
-            n = os.write(self._fileno, data)
+            n = wrap_error(os.write, self._fileno, data)
         except (BlockingIOError, InterruptedError):
             self._buffer.append(data)
         except Exception as exc:
@@ -367,7 +368,7 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         self._closing = True
         if self._buffer:
             self._loop.remove_writer(self._fileno)
-        self._buffer.clear()
+        del self._buffer[:]
         self._loop.remove_reader(self._fileno)
         self._loop.call_soon(self._call_connection_lost, exc)
 
@@ -397,10 +398,13 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             universal_newlines=False, bufsize=bufsize, **kwargs)
         if stdin_w is not None:
             stdin.close()
-            self._proc.stdin = open(stdin_w.detach(), 'rb', buffering=bufsize)
+            # FIXME: use socket.makefile("rb", bufsize)?
+            stdin_dup = os.dup(stdin_w.fileno())
+            stdin_w.close()
+            self._proc.stdin = os.fdopen(stdin_dup, 'rb', bufsize)
 
 
-class AbstractChildWatcher:
+class AbstractChildWatcher(object):
     """Abstract base class for monitoring child processes.
 
     Objects derived from this class monitor a collection of subprocesses and
@@ -530,12 +534,12 @@ class SafeChildWatcher(BaseChildWatcher):
     """
 
     def __init__(self):
-        super().__init__()
+        super(SafeChildWatcher, self).__init__()
         self._callbacks = {}
 
     def close(self):
         self._callbacks.clear()
-        super().close()
+        super(SafeChildWatcher, self).close()
 
     def __enter__(self):
         return self
@@ -602,7 +606,7 @@ class FastChildWatcher(BaseChildWatcher):
     (O(1) each time a child terminates).
     """
     def __init__(self):
-        super().__init__()
+        super(FastChildWatcher, self).__init__()
         self._callbacks = {}
         self._lock = threading.Lock()
         self._zombies = {}
@@ -611,7 +615,7 @@ class FastChildWatcher(BaseChildWatcher):
     def close(self):
         self._callbacks.clear()
         self._zombies.clear()
-        super().close()
+        super(FastChildWatcher, self).close()
 
     def __enter__(self):
         with self._lock:
@@ -664,7 +668,7 @@ class FastChildWatcher(BaseChildWatcher):
         # long as we're able to reap a child.
         while True:
             try:
-                pid, status = os.waitpid(-1, os.WNOHANG)
+                pid, status = wrap_error(os.waitpid, -1, os.WNOHANG)
             except ChildProcessError:
                 # No more child processes exist.
                 return
@@ -697,7 +701,7 @@ class _UnixDefaultEventLoopPolicy(events.BaseDefaultEventLoopPolicy):
     _loop_factory = _UnixSelectorEventLoop
 
     def __init__(self):
-        super().__init__()
+        super(_UnixDefaultEventLoopPolicy, self).__init__()
         self._watcher = None
 
     def _init_watcher(self):
@@ -716,7 +720,7 @@ class _UnixDefaultEventLoopPolicy(events.BaseDefaultEventLoopPolicy):
         the child watcher.
         """
 
-        super().set_event_loop(loop)
+        super(_UnixDefaultEventLoopPolicy, self).set_event_loop(loop)
 
         if self._watcher is not None and \
             isinstance(threading.current_thread(), threading._MainThread):

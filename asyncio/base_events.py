@@ -21,6 +21,10 @@ import logging
 import socket
 import subprocess
 import time
+try:
+    from time import monotonic as _time
+except ImportError:
+    from time import time as _time
 import os
 import sys
 
@@ -82,10 +86,10 @@ class Server(events.AbstractServer):
     @tasks.coroutine
     def wait_closed(self):
         if self.sockets is None or self.waiters is None:
-            return
+            raise tasks.Return()
         waiter = futures.Future(loop=self.loop)
         self.waiters.append(waiter)
-        yield from waiter
+        yield waiter
 
 
 class BaseEventLoop(events.AbstractEventLoop):
@@ -97,12 +101,12 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._internal_fds = 0
         self._running = False
 
-    def _make_socket_transport(self, sock, protocol, waiter=None, *,
+    def _make_socket_transport(self, sock, protocol, waiter=None,
                                extra=None, server=None):
         """Create socket transport."""
         raise NotImplementedError
 
-    def _make_ssl_transport(self, rawsock, protocol, sslcontext, waiter, *,
+    def _make_ssl_transport(self, rawsock, protocol, sslcontext, waiter,
                             server_side=False, server_hostname=None,
                             extra=None, server=None):
         """Create SSL transport."""
@@ -192,7 +196,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         but does not wait for the executor to finish.
         """
         self._ready.clear()
-        self._scheduled.clear()
+        del self._scheduled[:]
         executor = self._default_executor
         if executor is not None:
             self._default_executor = None
@@ -204,7 +208,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
     def time(self):
         """Return the time according to the event loop's clock."""
-        return time.monotonic()
+        return _time()
 
     def call_later(self, delay, callback, *args):
         """Arrange for a callback to be called at a given time.
@@ -269,7 +273,7 @@ class BaseEventLoop(events.AbstractEventLoop):
     def set_default_executor(self, executor):
         self._default_executor = executor
 
-    def getaddrinfo(self, host, port, *,
+    def getaddrinfo(self, host, port,
                     family=0, type=0, proto=0, flags=0):
         return self.run_in_executor(None, socket.getaddrinfo,
                                     host, port, family, type, proto, flags)
@@ -278,7 +282,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         return self.run_in_executor(None, socket.getnameinfo, sockaddr, flags)
 
     @tasks.coroutine
-    def create_connection(self, protocol_factory, host=None, port=None, *,
+    def create_connection(self, protocol_factory, host=None, port=None,
                           ssl=None, family=0, proto=0, flags=0, sock=None,
                           local_addr=None, server_hostname=None):
         """XXX"""
@@ -318,7 +322,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             else:
                 f2 = None
 
-            yield from tasks.wait(fs, loop=self)
+            yield tasks.wait(fs, loop=self)
 
             infos = f1.result()
             if not infos:
@@ -349,7 +353,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                             sock.close()
                             sock = None
                             continue
-                    yield from self.sock_connect(sock, address)
+                    yield self.sock_connect(sock, address)
                 except OSError as exc:
                     if sock is not None:
                         sock.close()
@@ -385,12 +389,12 @@ class BaseEventLoop(events.AbstractEventLoop):
         else:
             transport = self._make_socket_transport(sock, protocol, waiter)
 
-        yield from waiter
-        return transport, protocol
+        yield waiter
+        raise tasks.Return((transport, protocol))
 
     @tasks.coroutine
     def create_datagram_endpoint(self, protocol_factory,
-                                 local_addr=None, remote_addr=None, *,
+                                 local_addr=None, remote_addr=None,
                                  family=0, proto=0, flags=0):
         """Create datagram connection."""
         if not (local_addr or remote_addr):
@@ -405,7 +409,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                     assert isinstance(addr, tuple) and len(addr) == 2, (
                         '2-tuple is expected')
 
-                    infos = yield from self.getaddrinfo(
+                    infos = yield self.getaddrinfo(
                         *addr, family=family, type=socket.SOCK_DGRAM,
                         proto=proto, flags=flags)
                     if not infos:
@@ -441,7 +445,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                 if local_addr:
                     sock.bind(local_address)
                 if remote_addr:
-                    yield from self.sock_connect(sock, remote_address)
+                    yield self.sock_connect(sock, remote_address)
                     r_addr = remote_address
             except OSError as exc:
                 if sock is not None:
@@ -454,11 +458,10 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         protocol = protocol_factory()
         transport = self._make_datagram_transport(sock, protocol, r_addr)
-        return transport, protocol
+        raise tasks.Return((transport, protocol))
 
     @tasks.coroutine
     def create_server(self, protocol_factory, host=None, port=None,
-                      *,
                       family=socket.AF_UNSPEC,
                       flags=socket.AI_PASSIVE,
                       sock=None,
@@ -480,7 +483,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             if host == '':
                 host = None
 
-            infos = yield from self.getaddrinfo(
+            infos = yield self.getaddrinfo(
                 host, port, family=family,
                 type=socket.SOCK_STREAM, proto=0, flags=flags)
             if not infos:
@@ -528,26 +531,26 @@ class BaseEventLoop(events.AbstractEventLoop):
             sock.listen(backlog)
             sock.setblocking(False)
             self._start_serving(protocol_factory, sock, ssl, server)
-        return server
+        raise tasks.Return(server)
 
     @tasks.coroutine
     def connect_read_pipe(self, protocol_factory, pipe):
         protocol = protocol_factory()
         waiter = futures.Future(loop=self)
         transport = self._make_read_pipe_transport(pipe, protocol, waiter)
-        yield from waiter
-        return transport, protocol
+        yield waiter
+        raise tasks.Return((transport, protocol))
 
     @tasks.coroutine
     def connect_write_pipe(self, protocol_factory, pipe):
         protocol = protocol_factory()
         waiter = futures.Future(loop=self)
         transport = self._make_write_pipe_transport(pipe, protocol, waiter)
-        yield from waiter
-        return transport, protocol
+        yield waiter
+        raise tasks.Return((transport, protocol))
 
     @tasks.coroutine
-    def subprocess_shell(self, protocol_factory, cmd, *, stdin=subprocess.PIPE,
+    def subprocess_shell(self, protocol_factory, cmd, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=False, shell=True, bufsize=0,
                          **kwargs):
@@ -555,21 +558,27 @@ class BaseEventLoop(events.AbstractEventLoop):
         assert shell, "shell must be True"
         assert isinstance(cmd, str), cmd
         protocol = protocol_factory()
-        transport = yield from self._make_subprocess_transport(
+        transport = yield self._make_subprocess_transport(
             protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs)
-        return transport, protocol
+        raise tasks.Return((transport, protocol))
 
     @tasks.coroutine
-    def subprocess_exec(self, protocol_factory, *args, stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                        universal_newlines=False, shell=False, bufsize=0,
-                        **kwargs):
+    def subprocess_exec(self, protocol_factory, *args, **kwargs):
+        stdin = kwargs.pop('stdin', subprocess.PIPE)
+        stdout = kwargs.pop('stdout', subprocess.PIPE)
+        stderr = kwargs.pop('stderr', subprocess.PIPE)
+        universal_newlines = kwargs.pop('universal_newlines', False)
+        shell = kwargs.pop('shell', False)
+        bufsize = kwargs.pop('bufsize', 0)
+        if kwargs:
+            raise TypeError("unexpected keyword")
+
         assert not universal_newlines, "universal_newlines must be False"
         assert not shell, "shell must be False"
         protocol = protocol_factory()
-        transport = yield from self._make_subprocess_transport(
+        transport = yield self._make_subprocess_transport(
             protocol, args, False, stdin, stdout, stderr, bufsize, **kwargs)
-        return transport, protocol
+        raise tasks.Return((transport, protocol))
 
     def _add_callback(self, handle):
         """Add a Handle to ready or scheduled."""

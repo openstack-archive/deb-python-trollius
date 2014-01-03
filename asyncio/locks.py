@@ -9,7 +9,7 @@ from . import futures
 from . import tasks
 
 
-class Lock:
+class Lock(object):
     """Primitive lock objects.
 
     A primitive lock is a synchronization primitive that is not owned
@@ -33,14 +33,14 @@ class Lock:
 
     acquire() is a coroutine and should be called with 'yield from'.
 
-    Locks also support the context manager protocol.  '(yield from lock)'
+    Locks also support the context manager protocol.  '(yield lock)'
     should be used as context manager expression.
 
     Usage:
 
         lock = Lock()
         ...
-        yield from lock
+        yield lock
         try:
             ...
         finally:
@@ -50,20 +50,20 @@ class Lock:
 
         lock = Lock()
         ...
-        with (yield from lock):
+        with (yield lock):
              ...
 
     Lock objects can be tested for locking state:
 
         if not lock.locked():
-           yield from lock
+           yield lock
         else:
            # lock is acquired
            ...
 
     """
 
-    def __init__(self, *, loop=None):
+    def __init__(self, loop=None):
         self._waiters = collections.deque()
         self._locked = False
         if loop is not None:
@@ -91,14 +91,14 @@ class Lock:
         """
         if not self._waiters and not self._locked:
             self._locked = True
-            return True
+            raise tasks.Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
-            yield from fut
+            yield fut
             self._locked = True
-            return True
+            raise tasks.Return(True)
         finally:
             self._waiters.remove(fut)
 
@@ -132,12 +132,13 @@ class Lock:
     def __exit__(self, *args):
         self.release()
 
+    @tasks.coroutine
     def __iter__(self):
-        yield from self.acquire()
-        return self
+        yield self.acquire()
+        raise tasks.Return(self)
 
 
-class Event:
+class Event(object):
     """Asynchronous equivalent to threading.Event.
 
     Class implementing event objects. An event manages a flag that can be set
@@ -146,7 +147,7 @@ class Event:
     false.
     """
 
-    def __init__(self, *, loop=None):
+    def __init__(self, loop=None):
         self._waiters = collections.deque()
         self._value = False
         if loop is not None:
@@ -155,7 +156,7 @@ class Event:
             self._loop = events.get_event_loop()
 
     def __repr__(self):
-        res = super().__repr__()
+        res = super(Event, self).__repr__()
         extra = 'set' if self._value else 'unset'
         if self._waiters:
             extra = '{},waiters:{}'.format(extra, len(self._waiters))
@@ -192,18 +193,18 @@ class Event:
         set() to set the flag to true, then return True.
         """
         if self._value:
-            return True
+            raise tasks.Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
-            yield from fut
-            return True
+            yield fut
+            raise tasks.Return(True)
         finally:
             self._waiters.remove(fut)
 
 
-class Condition:
+class Condition(object):
     """Asynchronous equivalent to threading.Condition.
 
     This class implements condition variable objects. A condition variable
@@ -213,7 +214,7 @@ class Condition:
     A new Lock object is created and used as the underlying lock.
     """
 
-    def __init__(self, *, loop=None):
+    def __init__(self, loop=None):
         if loop is not None:
             self._loop = loop
         else:
@@ -230,7 +231,7 @@ class Condition:
         self._waiters = collections.deque()
 
     def __repr__(self):
-        res = super().__repr__()
+        res = super(Condition, self).__repr__()
         extra = 'locked' if self.locked() else 'unlocked'
         if self._waiters:
             extra = '{},waiters:{}'.format(extra, len(self._waiters))
@@ -257,8 +258,8 @@ class Condition:
             fut = futures.Future(loop=self._loop)
             self._waiters.append(fut)
             try:
-                yield from fut
-                return True
+                yield fut
+                raise tasks.Return(True)
             finally:
                 self._waiters.remove(fut)
 
@@ -267,7 +268,7 @@ class Condition:
             raise
         finally:
             if keep_lock:
-                yield from self.acquire()
+                yield self.acquire()
 
     @tasks.coroutine
     def wait_for(self, predicate):
@@ -279,9 +280,9 @@ class Condition:
         """
         result = predicate()
         while not result:
-            yield from self.wait()
+            yield self.wait()
             result = predicate()
-        return result
+        raise tasks.Return(result)
 
     def notify(self, n=1):
         """By default, wake up one coroutine waiting on this condition, if any.
@@ -321,12 +322,13 @@ class Condition:
     def __exit__(self, *args):
         return self._lock.__exit__(*args)
 
+    @tasks.coroutine
     def __iter__(self):
-        yield from self.acquire()
-        return self
+        yield self.acquire()
+        raise tasks.Return(self)
 
 
-class Semaphore:
+class Semaphore(object):
     """A Semaphore implementation.
 
     A semaphore manages an internal counter which is decremented by each
@@ -341,7 +343,7 @@ class Semaphore:
     ValueError is raised.
     """
 
-    def __init__(self, value=1, *, loop=None):
+    def __init__(self, value=1, loop=None):
         if value < 0:
             raise ValueError("Semaphore initial value must be >= 0")
         self._value = value
@@ -353,7 +355,7 @@ class Semaphore:
             self._loop = events.get_event_loop()
 
     def __repr__(self):
-        res = super().__repr__()
+        res = super(Semaphore, self).__repr__()
         extra = 'locked' if self._locked else 'unlocked,value:{}'.format(
             self._value)
         if self._waiters:
@@ -378,16 +380,16 @@ class Semaphore:
             self._value -= 1
             if self._value == 0:
                 self._locked = True
-            return True
+            raise tasks.Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
-            yield from fut
+            yield fut
             self._value -= 1
             if self._value == 0:
                 self._locked = True
-            return True
+            raise tasks.Return(True)
         finally:
             self._waiters.remove(fut)
 
@@ -405,15 +407,16 @@ class Semaphore:
 
     def __enter__(self):
         # TODO: This is questionable.  How do we know the user actually
-        # wrote "with (yield from sema)" instead of "with sema"?
+        # wrote "with (yield sema)" instead of "with sema"?
         return True
 
     def __exit__(self, *args):
         self.release()
 
+    @tasks.coroutine
     def __iter__(self):
-        yield from self.acquire()
-        return self
+        yield self.acquire()
+        raise tasks.Return(self)
 
 
 class BoundedSemaphore(Semaphore):
@@ -423,11 +426,11 @@ class BoundedSemaphore(Semaphore):
     above the initial value.
     """
 
-    def __init__(self, value=1, *, loop=None):
+    def __init__(self, value=1, loop=None):
         self._bound_value = value
-        super().__init__(value, loop=loop)
+        super(BoundedSemaphore, self).__init__(value, loop=loop)
 
     def release(self):
         if self._value >= self._bound_value:
             raise ValueError('BoundedSemaphore released too many times')
-        super().release()
+        super(BoundedSemaphore, self).release()

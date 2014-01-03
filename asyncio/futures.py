@@ -12,6 +12,7 @@ import traceback
 
 from . import events
 from .log import logger
+from .coroutine import coroutine, Return
 
 # States for Future.
 _PENDING = 'PENDING'
@@ -33,7 +34,7 @@ class InvalidStateError(Error):
     # TODO: Show the future, its state, the method, and the required state.
 
 
-class _TracebackLogger:
+class _TracebackLogger(object):
     """Helper to log a traceback upon destruction if not cleared.
 
     This solves a nasty problem with Futures and Tasks that have an
@@ -106,7 +107,7 @@ class _TracebackLogger:
                          ''.join(self.tb))
 
 
-class Future:
+class Future(object):
     """This class is *almost* compatible with concurrent.futures.Future.
 
     Differences:
@@ -131,10 +132,9 @@ class Future:
 
     _blocking = False  # proper use of future (yield vs yield from)
 
-    _log_traceback = False   # Used for Python 3.4 and later
-    _tb_logger = None        # Used for Python 3.3 only
+    _tb_logger = None
 
-    def __init__(self, *, loop=None):
+    def __init__(self, loop=None):
         """Initialize the future.
 
         The optional event_loop argument allows to explicitly set the event
@@ -165,16 +165,6 @@ class Future:
         else:
             res += '<{}>'.format(self._state)
         return res
-
-    if _PY34:
-        def __del__(self):
-            if not self._log_traceback:
-                # set_exception() was not called, or result() or exception()
-                # has consumed the exception
-                return
-            exc = self._exception
-            logger.error('Future/Task exception was never retrieved:',
-                         exc_info=(exc.__class__, exc, exc.__traceback__))
 
     def cancel(self):
         """Cancel the future and schedule callbacks.
@@ -228,7 +218,6 @@ class Future:
             raise CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Result is not ready.')
-        self._log_traceback = False
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
@@ -248,7 +237,6 @@ class Future:
             raise CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Exception is not set.')
-        self._log_traceback = False
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
@@ -302,15 +290,20 @@ class Future:
         if self._state != _PENDING:
             raise InvalidStateError('{}: {!r}'.format(self._state, self))
         self._exception = exception
+
+        # FIXME: delay when the traceback is formatted
+        self._tb_logger = _TracebackLogger(exception)
+        frame = sys._getframe(1)
+        tb = ['Traceback (most recent call last):\n'] + traceback.format_stack(frame)
+        tb.extend(traceback.format_exception_only(type(exception), exception))
+        self._tb_logger.tb = tb
+
+        self._tb_logger.exc = None
         self._state = _FINISHED
         self._schedule_callbacks()
-        if _PY34:
-            self._log_traceback = True
-        else:
-            self._tb_logger = _TracebackLogger(exception)
-            # Arrange for the logger to be activated after all callbacks
-            # have had a chance to call result() or exception().
-            self._loop.call_soon(self._tb_logger.activate)
+        # Arrange for the logger to be activated after all callbacks
+        # have had a chance to call result() or exception().
+        # FIXME: self._loop.call_soon(self._tb_logger.activate)
 
     # Truly internal methods.
 
@@ -333,15 +326,16 @@ class Future:
                 result = other.result()
                 self.set_result(result)
 
+    @coroutine
     def __iter__(self):
         if not self.done():
             self._blocking = True
             yield self  # This tells Task to wait for completion.
-        assert self.done(), "yield from wasn't used with future"
-        return self.result()  # May raise too.
+        assert self.done(), "yield wasn't used with future"
+        raise Return(self.result())  # May raise too.
 
 
-def wrap_future(fut, *, loop=None):
+def wrap_future(fut, loop=None):
     """Wrap concurrent.futures.Future object."""
     if isinstance(fut, Future):
         return fut

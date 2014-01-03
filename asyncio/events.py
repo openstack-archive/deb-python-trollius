@@ -16,7 +16,7 @@ import socket
 from .log import logger
 
 
-class Handle:
+class Handle(object):
     """Object returned by callback registration methods."""
 
     def __init__(self, callback, args):
@@ -53,7 +53,7 @@ class TimerHandle(Handle):
 
     def __init__(self, when, callback, args):
         assert when is not None
-        super().__init__(callback, args)
+        super(TimerHandle, self).__init__(callback, args)
 
         self._when = when
 
@@ -98,7 +98,7 @@ class TimerHandle(Handle):
         return NotImplemented if equal is NotImplemented else not equal
 
 
-class AbstractServer:
+class AbstractServer(object):
     """Abstract server returned by create_server()."""
 
     def close(self):
@@ -110,7 +110,7 @@ class AbstractServer:
         return NotImplemented
 
 
-class AbstractEventLoop:
+class AbstractEventLoop(object):
     """Abstract event loop."""
 
     # Running and stopping the event loop.
@@ -176,18 +176,18 @@ class AbstractEventLoop:
 
     # Network I/O methods returning Futures.
 
-    def getaddrinfo(self, host, port, *, family=0, type=0, proto=0, flags=0):
+    def getaddrinfo(self, host, port, family=0, type=0, proto=0, flags=0):
         raise NotImplementedError
 
     def getnameinfo(self, sockaddr, flags=0):
         raise NotImplementedError
 
-    def create_connection(self, protocol_factory, host=None, port=None, *,
+    def create_connection(self, protocol_factory, host=None, port=None,
                           ssl=None, family=0, proto=0, flags=0, sock=None,
                           local_addr=None, server_hostname=None):
         raise NotImplementedError
 
-    def create_server(self, protocol_factory, host=None, port=None, *,
+    def create_server(self, protocol_factory, host=None, port=None,
                       family=socket.AF_UNSPEC, flags=socket.AI_PASSIVE,
                       sock=None, backlog=100, ssl=None, reuse_address=None):
         """A coroutine which creates a TCP server bound to host and port.
@@ -222,7 +222,7 @@ class AbstractEventLoop:
         raise NotImplementedError
 
     def create_datagram_endpoint(self, protocol_factory,
-                                 local_addr=None, remote_addr=None, *,
+                                 local_addr=None, remote_addr=None,
                                  family=0, proto=0, flags=0):
         raise NotImplementedError
 
@@ -254,13 +254,14 @@ class AbstractEventLoop:
         # close fd in pipe transport then close f and vise versa.
         raise NotImplementedError
 
-    def subprocess_shell(self, protocol_factory, cmd, *, stdin=subprocess.PIPE,
+    def subprocess_shell(self, protocol_factory, cmd, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          **kwargs):
         raise NotImplementedError
 
-    def subprocess_exec(self, protocol_factory, *args, stdin=subprocess.PIPE,
-                        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    def subprocess_exec(self, protocol_factory, *args,
+                        # FIXME: stdin=subprocess.PIPE,
+                        # FIXME: stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                         **kwargs):
         raise NotImplementedError
 
@@ -304,7 +305,7 @@ class AbstractEventLoop:
         raise NotImplementedError
 
 
-class AbstractEventLoopPolicy:
+class AbstractEventLoopPolicy(object):
     """Abstract policy for accessing the event loop."""
 
     def get_event_loop(self):

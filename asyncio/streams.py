@@ -16,7 +16,7 @@ _DEFAULT_LIMIT = 2**16
 
 
 @tasks.coroutine
-def open_connection(host=None, port=None, *,
+def open_connection(host=None, port=None,
                     loop=None, limit=_DEFAULT_LIMIT, **kwds):
     """A wrapper for create_connection() returning a (reader, writer) pair.
 
@@ -39,14 +39,14 @@ def open_connection(host=None, port=None, *,
         loop = events.get_event_loop()
     reader = StreamReader(limit=limit, loop=loop)
     protocol = StreamReaderProtocol(reader)
-    transport, _ = yield from loop.create_connection(
+    transport, _ = yield loop.create_connection(
         lambda: protocol, host, port, **kwds)
     writer = StreamWriter(transport, protocol, reader, loop)
-    return reader, writer
+    raise tasks.Return((reader, writer))
 
 
 @tasks.coroutine
-def start_server(client_connected_cb, host=None, port=None, *,
+def start_server(client_connected_cb, host=None, port=None,
                  loop=None, limit=_DEFAULT_LIMIT, **kwds):
     """Start a socket server, call back for each client connected.
 
@@ -78,7 +78,8 @@ def start_server(client_connected_cb, host=None, port=None, *,
                                         loop=loop)
         return protocol
 
-    return (yield from loop.create_server(factory, host, port, **kwds))
+    result = yield loop.create_server(factory, host, port, **kwds)
+    raise tasks.Return(result)
 
 
 class StreamReaderProtocol(protocols.Protocol):
@@ -145,7 +146,7 @@ class StreamReaderProtocol(protocols.Protocol):
                 waiter.set_result(None)
 
 
-class StreamWriter:
+class StreamWriter(object):
     """Wraps a Transport.
 
     This exposes write(), writelines(), [can_]write_eof(),
@@ -183,13 +184,14 @@ class StreamWriter:
     def get_extra_info(self, name, default=None):
         return self._transport.get_extra_info(name, default)
 
+    @tasks.coroutine
     def drain(self):
         """This method has an unusual return value.
 
         The intended use is to write
 
           w.write(data)
-          yield from w.drain()
+          yield w.drain()
 
         When there's nothing to wait for, drain() returns (), and the
         yield-from continues immediately.  When the transport buffer
@@ -211,7 +213,7 @@ class StreamWriter:
         return waiter
 
 
-class StreamReader:
+class StreamReader(object):
 
     def __init__(self, limit=_DEFAULT_LIMIT, loop=None):
         # The line length limit is  a security feature;
@@ -320,7 +322,7 @@ class StreamReader:
                 assert self._waiter is None
                 self._waiter = futures.Future(loop=self._loop)
                 try:
-                    yield from self._waiter
+                    yield self._waiter
                 finally:
                     self._waiter = None
 
@@ -328,7 +330,7 @@ class StreamReader:
         self._byte_count -= parts_size
         self._maybe_resume_transport()
 
-        return line
+        raise tasks.Return(line)
 
     @tasks.coroutine
     def read(self, n=-1):
@@ -336,14 +338,14 @@ class StreamReader:
             raise self._exception
 
         if not n:
-            return b''
+            raise tasks.Return(b'')
 
         if n < 0:
             while not self._eof:
                 assert not self._waiter
                 self._waiter = futures.Future(loop=self._loop)
                 try:
-                    yield from self._waiter
+                    yield self._waiter
                 finally:
                     self._waiter = None
         else:
@@ -351,7 +353,7 @@ class StreamReader:
                 assert not self._waiter
                 self._waiter = futures.Future(loop=self._loop)
                 try:
-                    yield from self._waiter
+                    yield self._waiter
                 finally:
                     self._waiter = None
 
@@ -360,7 +362,7 @@ class StreamReader:
             self._buffer.clear()
             self._byte_count = 0
             self._maybe_resume_transport()
-            return data
+            raise tasks.Return(data)
 
         parts = []
         parts_bytes = 0
@@ -377,7 +379,7 @@ class StreamReader:
             self._byte_count -= data_bytes
             self._maybe_resume_transport()
 
-        return b''.join(parts)
+        raise tasks.Return(b''.join(parts))
 
     @tasks.coroutine
     def readexactly(self, n):
@@ -385,14 +387,15 @@ class StreamReader:
             raise self._exception
 
         if n <= 0:
-            return b''
+            raise tasks.Return(b'')
 
         while self._byte_count < n and not self._eof:
             assert not self._waiter
             self._waiter = futures.Future(loop=self._loop)
             try:
-                yield from self._waiter
+                yield self._waiter
             finally:
                 self._waiter = None
 
-        return (yield from self.read(n))
+        result = yield self.read(n)
+        raise tasks.Return(result)

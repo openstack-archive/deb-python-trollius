@@ -35,8 +35,8 @@ class _OverlappedFuture(futures.Future):
     Cancelling it will immediately cancel the overlapped operation.
     """
 
-    def __init__(self, ov, *, loop=None):
-        super().__init__(loop=loop)
+    def __init__(self, ov, loop=None):
+        super(_OverlappedFuture, self).__init__(loop=loop)
         self.ov = ov
 
     def cancel(self):
@@ -44,18 +44,18 @@ class _OverlappedFuture(futures.Future):
             self.ov.cancel()
         except OSError:
             pass
-        return super().cancel()
+        return super(_OverlappedFuture, self).cancel()
 
 
 class _WaitHandleFuture(futures.Future):
     """Subclass of Future which represents a wait handle."""
 
-    def __init__(self, wait_handle, *, loop=None):
-        super().__init__(loop=loop)
+    def __init__(self, wait_handle, loop=None):
+        super(_WaitHandleFuture, self).__init__(loop=loop)
         self._wait_handle = wait_handle
 
     def cancel(self):
-        super().cancel()
+        super(_WaitHandleFuture, self).cancel()
         try:
             _overlapped.UnregisterWait(self._wait_handle)
         except OSError as e:
@@ -124,7 +124,7 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
     def __init__(self, proactor=None):
         if proactor is None:
             proactor = IocpProactor()
-        super().__init__(proactor)
+        super(ProactorEventLoop, self).__init__(proactor)
 
     def _socketpair(self):
         return windows_utils.socketpair()
@@ -132,11 +132,11 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
     @tasks.coroutine
     def create_pipe_connection(self, protocol_factory, address):
         f = self._proactor.connect_pipe(address)
-        pipe = yield from f
+        pipe = yield f
         protocol = protocol_factory()
         trans = self._make_duplex_pipe_transport(pipe, protocol,
                                                  extra={'addr': address})
-        return trans, protocol
+        raise tasks.Return((trans, protocol))
 
     @tasks.coroutine
     def start_serving_pipe(self, protocol_factory, address):
@@ -178,14 +178,14 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
         transp = _WindowsSubprocessTransport(self, protocol, args, shell,
                                              stdin, stdout, stderr, bufsize,
                                              extra=None, **kwargs)
-        yield from transp._post_init()
-        return transp
+        yield transp._post_init()
+        raise tasks.Return(transp)
 
     def _subprocess_closed(self, transport):
         pass
 
 
-class IocpProactor:
+class IocpProactor(object):
     """Proactor implementation using IOCP."""
 
     def __init__(self, concurrency=0xffffffff):
