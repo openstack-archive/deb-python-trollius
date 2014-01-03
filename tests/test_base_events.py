@@ -5,7 +5,6 @@ import logging
 import socket
 import unittest
 import mock
-from test_support import find_unused_port, IPV6_ENABLED
 
 from asyncio import Return
 from asyncio import base_events
@@ -15,6 +14,7 @@ from asyncio import futures
 from asyncio import protocols
 from asyncio import tasks
 from asyncio import test_utils
+from asyncio.test_support import find_unused_port, IPV6_ENABLED
 from asyncio.time_monotonic import time_monotonic
 
 
