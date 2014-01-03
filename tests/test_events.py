@@ -20,7 +20,6 @@ import time
 import errno
 import unittest
 import mock
-from test import support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
 
 
 from asyncio import Return
@@ -33,6 +32,7 @@ from asyncio import tasks
 from asyncio import test_utils
 from asyncio import locks
 from asyncio.time_monotonic import time_monotonic
+from asyncio import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
 
 
 def data_file(filename):

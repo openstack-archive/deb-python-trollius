@@ -1,7 +1,7 @@
 """Tests for window_utils"""
 
 import sys
-import test.support
+import asyncio.test_support as support
 import unittest
 import mock
 
@@ -82,7 +82,7 @@ class PipeTests(unittest.TestCase):
 
         # check garbage collection of p closes handle
         del p
-        test.support.gc_collect()
+        support.gc_collect()
         try:
             _winapi.CloseHandle(h)
         except OSError as e:
