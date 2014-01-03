@@ -1562,7 +1562,7 @@ class TimerTests(unittest.TestCase):
 class AbstractEventLoopTests(unittest.TestCase):
 
     def test_not_implemented(self):
-        f = unittest.mock.Mock()
+        f = mock.Mock()
         loop = events.AbstractEventLoop()
         self.assertRaises(
             NotImplementedError, loop.run_forever)
