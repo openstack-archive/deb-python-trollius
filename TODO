@@ -5,6 +5,12 @@
   - test_queues.py
   - test_tasks.py
 
+* Fix examples:
+
+  - cacheclt/cachesrv.py
+  - source1.py: 'StreamWriter' object has no attribute '_writer'
+  - stacks.py: 'exceptions.ZeroDivisionError' object has no attribute '__traceback__'
+
 * as_completed() is a coroutine or not?
 * Move asyncio/coroutine.py in asyncio/tasks.py?
 * Fix coroutine._DEBUG=True

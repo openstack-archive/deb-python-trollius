@@ -8,6 +8,7 @@ in the same process.  It listens on port 1234 on 127.0.0.1, so it will
 fail if this port is currently in use.
 """
 
+from __future__ import print_function
 import sys
 import time
 import random
@@ -61,10 +62,12 @@ class MyServer:
         out one or more lines back to the client with the result.
         """
         while True:
-            data = (yield from client_reader.readline()).decode("utf-8")
+            data = (yield client_reader.readline()).decode("utf-8")
             if not data: # an empty string means the client disconnected
                 break
-            cmd, *args = data.rstrip().split(' ')
+            parts = data.rstrip().split(' ')
+            cmd = parts[0]
+            args = parts[1:]
             if cmd == 'add':
                 arg1 = float(args[0])
                 arg2 = float(args[1])
@@ -83,7 +86,7 @@ class MyServer:
                 print("Bad command {!r}".format(data), file=sys.stderr)
 
             # This enables us to have flow control in our connection.
-            yield from client_writer.drain()
+            yield client_writer.drain()
 
     def start(self, loop):
         """
@@ -119,7 +122,7 @@ def main():
 
     @asyncio.coroutine
     def client():
-        reader, writer = yield from asyncio.streams.open_connection(
+        reader, writer = yield asyncio.streams.open_connection(
             '127.0.0.1', 12345, loop=loop)
 
         def send(msg):
@@ -127,13 +130,13 @@ def main():
             writer.write((msg + '\n').encode("utf-8"))
 
         def recv():
-            msgback = (yield from reader.readline()).decode("utf-8").rstrip()
+            msgback = (yield reader.readline()).decode("utf-8").rstrip()
             print("< " + msgback)
-            return msgback
+            raise asyncio.Return(msgback)
 
         # send a line
         send("add 1 2")
-        msg = yield from recv()
+        msg = yield recv()
 
         Ns = list(range(100, 100000, 10000))
         times = []
@@ -141,10 +144,10 @@ def main():
         for N in Ns:
             t0 = time.time()
             send("repeat {} hello world ".format(N))
-            msg = yield from recv()
+            msg = yield recv()
             assert msg == 'begin'
             while True:
-                msg = (yield from reader.readline()).decode("utf-8").rstrip()
+                msg = (yield reader.readline()).decode("utf-8").rstrip()
                 if msg == 'end':
                     break
             t1 = time.time()
@@ -154,7 +157,7 @@ def main():
             times.append(dt)
 
         writer.close()
-        yield from asyncio.sleep(0.5)
+        yield asyncio.sleep(0.5)
 
     # creates a client and connects to our server
     msg = loop.run_until_complete(client())

@@ -19,6 +19,7 @@ runtests.py --coverage is equivalent of:
 
 # Originally written by Beech Horn (for NDB).
 
+from __future__ import print_function
 import argparse
 import gc
 import logging
