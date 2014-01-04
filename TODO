@@ -1,8 +1,16 @@
+* Fix failing tests:
+
+  - test_futures.py
+  - test_locks.py
+  - test_queues.py
+  - test_tasks.py
+
 * Use backport of concurrent.futures
 * unix_events, RuntimeError on signal.signal:
   test_unix_events.SelectorEventLoopTests.test_add_signal_handler_install_error
 * Fix all FIXME in the code
 * Remove backport of Python 3.3 exceptions (ex: BlockingIOError), wrap_error()
 * Remove backport of SSLContext
-* See http://code.google.com/p/appengine-ndb-experiment/source/browse/ndb/tasklets.py
+* See:
+  http://code.google.com/p/appengine-ndb-experiment/source/browse/ndb/tasklets.py
 * Support Python 3.1 and 3.2: replace thread.get_ident() with threading.get_ident()
