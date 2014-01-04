@@ -24,12 +24,12 @@ https://pypi.python.org/pypi/mock
 Differences between Trollius and Tulip
 ======================================
 
- * Python 2 has no keyword-only parameters
- * Trollius coroutines use yield whereas Tulip coroutines must use yield-from
- * Trollius coroutines must use "raise Return(value)", whereas Tulip simply
-   uses "return value" thanks to Python 3.3 improvments
- * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
-   raises NotImplementedError and asyncio.wrap_future() is not available
+* Python 2 has no keyword-only parameters
+* Trollius coroutines use yield whereas Tulip coroutines must use yield-from
+* Trollius coroutines must use "raise Return(value)", whereas Tulip simply
+  uses "return value" thanks to Python 3.3 improvments
+* If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
+  raises NotImplementedError and asyncio.wrap_future() is not available
 
 Usage
 =====
@@ -72,4 +72,12 @@ closely related to Ranunculus. The common name of some species is globeflower
 or globe flower. Native to the cool temperate regions of the Northern
 Hemisphere, with the greatest diversity of species in Asia, trollius usually
 grow in heavy, wet clay soils.
+
+
+Change log
+==========
+
+2014-01-04: version 0.1
+
+- First public release
 
