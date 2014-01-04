@@ -269,9 +269,16 @@ class Task(futures.Future):
 
 # wait() and as_completed() similar to those in PEP 3148.
 
-FIRST_COMPLETED = 'FIRST_COMPLETED'
-FIRST_EXCEPTION = 'FIRST_EXCEPTION'
-ALL_COMPLETED = 'ALL_COMPLETED'
+try:
+    import concurrent.futures
+except ImportError:
+    FIRST_COMPLETED = 'FIRST_COMPLETED'
+    FIRST_EXCEPTION = 'FIRST_EXCEPTION'
+    ALL_COMPLETED = 'ALL_COMPLETED'
+else:
+    FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
+    FIRST_EXCEPTION = concurrent.futures.FIRST_EXCEPTION
+    ALL_COMPLETED = concurrent.futures.ALL_COMPLETED
 
 
 @coroutine

@@ -24,17 +24,24 @@ _FINISHED = 'FINISHED'
 
 _PY34 = sys.version_info >= (3, 4)
 
-class Error(Exception):
-    """Base class for all future-related exceptions."""
-    pass
+try:
+    import concurrent.futures._base
+except ImportError:
+    class Error(Exception):
+        """Base class for all future-related exceptions."""
+        pass
 
-class CancelledError(Error):
-    """The Future was cancelled."""
-    pass
+    class CancelledError(Error):
+        """The Future was cancelled."""
+        pass
 
-class TimeoutError(Error):
-    """The operation exceeded the given deadline."""
-    pass
+    class TimeoutError(Error):
+        """The operation exceeded the given deadline."""
+        pass
+else:
+    Error = concurrent.futures._base.Error
+    CancelledError = concurrent.futures.CancelledError
+    TimeoutError = concurrent.futures.TimeoutError
 
 STACK_DEBUG = logging.DEBUG - 1  # heavy-duty debugging
 
