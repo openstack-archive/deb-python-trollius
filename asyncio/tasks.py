@@ -217,33 +217,14 @@ class Task(futures.Future):
 
             if isinstance(result, futures.Future):
                 # Yielded Future must come from Future.__iter__().
-                # FIXME
-                if True: #result._blocking:
-                    result._blocking = False
-                    result.add_done_callback(self._wakeup)
-                    self._fut_waiter = result
-                    if self._must_cancel:
-                        if self._fut_waiter.cancel():
-                            self._must_cancel = False
-                else:
-                    # FIXME
-                    self._loop.call_soon(
-                        self._step, None,
-                        RuntimeError(
-                            'yield was used instead of yield from '
-                            'in task {!r} with {!r}'.format(self, result)))
+                result.add_done_callback(self._wakeup)
+                self._fut_waiter = result
+                if self._must_cancel:
+                    if self._fut_waiter.cancel():
+                        self._must_cancel = False
             elif result is None:
                 # Bare yield relinquishes control for one event loop iteration.
                 self._loop.call_soon(self._step)
-            elif inspect.isgenerator(result):
-                # Yielding a generator is just wrong.
-                # FIXME
-                self._loop.call_soon(
-                    self._step, None,
-                    RuntimeError(
-                        'yield was used instead of yield from for '
-                        'generator in task {!r} with {}'.format(
-                            self, result)))
             else:
                 # Yielding something else is an error.
                 self._loop.call_soon(

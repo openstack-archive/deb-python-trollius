@@ -147,8 +147,6 @@ class Future(object):
     _exception = None
     _loop = None
 
-    _blocking = False  # proper use of future (yield vs yield from)
-
     _tb_logger = None
 
     def __init__(self, loop=None):
@@ -346,7 +344,6 @@ class Future(object):
     @coroutine
     def __iter__(self):
         if not self.done():
-            self._blocking = True
             yield self  # This tells Task to wait for completion.
         assert self.done(), "yield wasn't used with future"
         raise Return(self.result())  # May raise too.
