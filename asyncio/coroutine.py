@@ -1,4 +1,6 @@
+import functools
 import inspect
+from .log import logger
 
 # If you set _DEBUG to true, @coroutine will wrap the resulting
 # generator objects in a CoroWrapper instance (defined below).  That
@@ -10,7 +12,6 @@ import inspect
 # is that tracebacks show entries for the CoroWrapper.__next__ method
 # when _DEBUG is true.
 _DEBUG = False
-import functools
 
 
 class Return(StopIteration):
@@ -23,12 +24,6 @@ def create_generator(result):
     if 0:
         yield None
     raise Return(result)
-
-def create_exception_generator(err):
-    # dead code to ensure that create_generator() is a generator
-    if 0:
-        yield None
-    raise err
 
 class CoroWrapper(object):
     """Wrapper for coroutine in _DEBUG mode."""
@@ -73,38 +68,27 @@ def coroutine(func):
     If the coroutine is not yielded from before it is destroyed,
     an error message is logged.
     """
-    if True:
-        # FIXME: dead code
-        if inspect.isgeneratorfunction(func):
-            coro = func
-        else:
-            @functools.wraps(func)
-            def coro(*args, **kw):
-                res = func(*args, **kw)
-                from asyncio import futures
-                if isinstance(res, futures.Future) or inspect.isgenerator(res):
-                    res = yield res
-                raise Return(res)
-
-        wrapper = coro
-
-        wrapper._is_coroutine = True  # For iscoroutinefunction().
-        return wrapper
+    if inspect.isgeneratorfunction(func):
+        coro = func
     else:
-        if not inspect.isgeneratorfunction(func):
-            # FIXME: functools.wrapped
-            def wrapped(*args, **kw):
-                try:
-                    res = func(*args, **kw)
-                except Exception as err:
-                    return create_exception_generator(err)
-                else:
-                    if inspect.isgenerator(res):
-                        return res
-                    else:
-                        return create_generator(res)
-            wrapped._is_coroutine = True  # For iscoroutinefunction().
-            return wrapped
-        else:
-            return func
+        @functools.wraps(func)
+        def coro(*args, **kw):
+            res = func(*args, **kw)
+            from asyncio import futures
+            if isinstance(res, futures.Future) or inspect.isgenerator(res):
+                res = yield res
+            raise Return(res)
+
+    if not _DEBUG:
+        wrapper = coro
+    else:
+        @functools.wraps(func)
+        def wrapper(*args, **kwds):
+            w = CoroWrapper(coro(*args, **kwds), func)
+            w.__name__ = coro.__name__
+            w.__doc__ = coro.__doc__
+            return w
+
+    wrapper._is_coroutine = True  # For iscoroutinefunction().
+    return wrapper
 

@@ -5,6 +5,8 @@
   - test_queues.py
   - test_tasks.py
 
+* Move asyncio/coroutine.py in asyncio/tasks.py?
+* Fix coroutine._DEBUG=True
 * Fix all FIXME in the code
 * Remove backport of Python 3.3 exceptions (ex: BlockingIOError), wrap_error()
 * Remove backport of SSLContext
