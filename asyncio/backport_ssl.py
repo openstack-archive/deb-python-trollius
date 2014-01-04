@@ -1,4 +1,5 @@
 import ssl
+from asyncio.backport import _wrap_error
 
 # SSL constants copied from /usr/include/openssl/ssl.h of Fedora 19
 #define SSL_ERROR_ZERO_RETURN		6
@@ -40,19 +41,16 @@ ssl.SSLWantReadError = SSLWantReadError
 ssl.SSLWantWriteError = SSLWantWriteError
 ssl.SSLContext = SSLContext
 
+_MAP_ERRORS = {
+    ssl.SSL_ERROR_WANT_READ: SSLWantReadError,
+    ssl.SSL_ERROR_WANT_WRITE: SSLWantWriteError,
+    ssl.SSL_ERROR_EOF: SSLEOFError,
+}
+
 def wrap_ssl_error(func, *args, **kw):
     try:
         return func(*args, **kw)
     except ssl.SSLError as err:
-        if not err.args:
-            raise
-        code = err.args[0]
-        # FIXME: keep original traceback
-        if code == ssl.SSL_ERROR_WANT_READ:
-            raise SSLWantReadError(*err.args)
-        elif code == ssl.SSL_ERROR_WANT_WRITE:
-            raise SSLWantWriteError(*err.args)
-        elif code == ssl.SSL_ERROR_EOF:
-            raise SSLEOFError(*err.args)
-        else:
-            raise
+        if err.args:
+            _wrap_error(_MAP_ERRORS, err.args[0], err.args)
+        raise

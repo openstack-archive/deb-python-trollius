@@ -35,9 +35,6 @@ __builtins__['ConnectionResetError'] = ConnectionResetError
 __builtins__['ConnectionRefusedError'] = ConnectionRefusedError
 __builtins__['ConnectionAbortedError'] = ConnectionAbortedError
 
-_BLOCKING_ERRORS = set((
-))
-
 _MAP_ERRNO = {
     errno.ECHILD: ChildProcessError,
     errno.EINTR: InterruptedError,
@@ -50,10 +47,10 @@ _MAP_ERRNO = {
     errno.EPIPE: BrokenPipeError,
 }
 
-def _wrap_errno(number, err_args):
-    if number not in _MAP_ERRNO:
+def _wrap_error(mapping, key, err_args):
+    if key not in mapping:
         return
-    new_err_cls = _MAP_ERRNO[number]
+    new_err_cls = mapping[key]
     new_err = new_err_cls(err_args)
 
     # raise a new exception with the original traceback
@@ -68,9 +65,9 @@ def wrap_error(func, *args, **kw):
     try:
         return func(*args, **kw)
     except (socket.error, IOError, OSError) as err:
-        _wrap_errno(err.errno, err.args)
+        _wrap_error(_MAP_ERRNO, err.errno, err.args)
         raise
     except select.error as err:
-        _wrap_errno(err.args[0], err.args)
+        _wrap_error(_MAP_ERRNO, err.args[0], err.args)
         raise
 
