@@ -31,8 +31,8 @@ else:
 def connect_write_pipe(file):
     loop = asyncio.get_event_loop()
     protocol = protocols.Protocol()
-    transport, _ =  yield from loop.connect_write_pipe(asyncio.Protocol, file)
-    return transport
+    transport, _ =  yield loop.connect_write_pipe(asyncio.Protocol, file)
+    raise asyncio.Return(transport)
 
 #
 # Wrap a readable pipe in a stream
@@ -44,8 +44,8 @@ def connect_read_pipe(file):
     stream_reader = streams.StreamReader(loop=loop)
     def factory():
         return streams.StreamReaderProtocol(stream_reader)
-    transport, _ = yield from loop.connect_read_pipe(factory, file)
-    return stream_reader, transport
+    transport, _ = yield loop.connect_read_pipe(factory, file)
+    raise asyncio.Return((stream_reader, transport))
 
 
 #
@@ -82,9 +82,9 @@ def main(loop):
     p = Popen([sys.executable, '-c', code],
               stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
-    stdin = yield from connect_write_pipe(p.stdin)
-    stdout, stdout_transport = yield from connect_read_pipe(p.stdout)
-    stderr, stderr_transport = yield from connect_read_pipe(p.stderr)
+    stdin = yield connect_write_pipe(p.stdin)
+    stdout, stdout_transport = yield connect_read_pipe(p.stdout)
+    stderr, stderr_transport = yield connect_read_pipe(p.stderr)
 
     # interact with subprocess
     name = {stdout:'OUT', stderr:'ERR'}
@@ -102,7 +102,7 @@ def main(loop):
         # get and print lines from stdout, stderr
         timeout = None
         while registered:
-            done, pending = yield from asyncio.wait(
+            done, pending = yield asyncio.wait(
                 registered, timeout=timeout,
                 return_when=asyncio.FIRST_COMPLETED)
             if not done:

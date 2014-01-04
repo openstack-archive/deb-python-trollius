@@ -3,9 +3,15 @@
 This version adds a Request object.
 """
 
+from __future__ import print_function
 import sys
-import urllib.parse
-from http.client import BadStatusLine
+try:
+    from urllib.parse import urlparse
+    from http.client import BadStatusLine
+except ImportError:
+    # Python 2
+    from urlparse import urlparse
+    from httplib import BadStatusLine
 
 from asyncio import *
 
@@ -15,7 +21,7 @@ class Request:
     def __init__(self, url, verbose=True):
         self.url = url
         self.verbose = verbose
-        self.parts = urllib.parse.urlparse(self.url)
+        self.parts = urlparse(self.url)
         self.scheme = self.parts.scheme
         assert self.scheme in ('http', 'https'), repr(url)
         self.ssl = self.parts.scheme == 'https'
@@ -40,9 +46,9 @@ class Request:
             print('* Connecting to %s:%s using %s' %
                   (self.hostname, self.port, 'ssl' if self.ssl else 'tcp'),
                   file=sys.stderr)
-        self.reader, self.writer = yield from open_connection(self.hostname,
-                                                              self.port,
-                                                              ssl=self.ssl)
+        self.reader, self.writer = yield open_connection(self.hostname,
+                                                         self.port,
+                                                         ssl=self.ssl)
         if self.verbose:
             print('* Connected to %s' %
                   (self.writer.get_extra_info('peername'),),
@@ -67,8 +73,8 @@ class Request:
     @coroutine
     def get_response(self):
         response = Response(self.reader, self.verbose)
-        yield from response.read_headers()
-        return response
+        yield response.read_headers()
+        raise Return(response)
 
 
 class Response:
@@ -83,11 +89,11 @@ class Response:
 
     @coroutine
     def getline(self):
-        return (yield from self.reader.readline()).decode('latin-1').rstrip()
+        raise Return((yield self.reader.readline()).decode('latin-1').rstrip())
 
     @coroutine
     def read_headers(self):
-        status_line = yield from self.getline()
+        status_line = yield self.getline()
         if self.verbose: print('<', status_line, file=sys.stderr)
         status_parts = status_line.split(None, 2)
         if len(status_parts) != 3:
@@ -95,7 +101,7 @@ class Response:
         self.http_version, status, self.reason = status_parts
         self.status = int(status)
         while True:
-            header_line = yield from self.getline()
+            header_line = yield self.getline()
             if not header_line:
                 break
             if self.verbose: print('<', header_line, file=sys.stderr)
@@ -112,20 +118,20 @@ class Response:
                 nbytes = int(value)
                 break
         if nbytes is None:
-            body = yield from self.reader.read()
+            body = yield self.reader.read()
         else:
-            body = yield from self.reader.readexactly(nbytes)
-        return body
+            body = yield self.reader.readexactly(nbytes)
+        raise Return(body)
 
 
 @coroutine
 def fetch(url, verbose=True):
     request = Request(url, verbose)
-    yield from request.connect()
-    yield from request.send_request()
-    response = yield from request.get_response()
-    body = yield from response.read()
-    return body
+    yield request.connect()
+    yield request.send_request()
+    response = yield request.get_response()
+    body = yield response.read()
+    raise Return(body)
 
 
 def main():
@@ -134,7 +140,11 @@ def main():
         body = loop.run_until_complete(fetch(sys.argv[1], '-v' in sys.argv))
     finally:
         loop.close()
-    sys.stdout.buffer.write(body)
+    if hasattr(sys.stdout, 'buffer'):
+        sys.stdout.buffer.write(body)
+    else:
+        # Python 2
+        sys.stdout.write(body)
 
 
 if __name__ == '__main__':
