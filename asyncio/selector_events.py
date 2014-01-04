@@ -706,7 +706,6 @@ class _SelectorSslTransport(_SelectorTransport):
                 self._loop.add_writer(self._sock_fd, self._write_ready)
 
         try:
-            # FIXME: avoid .partial()
             data = wrap_ssl_error(functools.partial(wrap_error, self._sock.recv, self.max_size))
         except (BlockingIOError, InterruptedError, ssl.SSLWantReadError):
             pass

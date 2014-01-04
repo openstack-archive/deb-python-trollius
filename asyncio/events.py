@@ -259,10 +259,7 @@ class AbstractEventLoop(object):
                          **kwargs):
         raise NotImplementedError
 
-    def subprocess_exec(self, protocol_factory, *args,
-                        # FIXME: stdin=subprocess.PIPE,
-                        # FIXME: stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                        **kwargs):
+    def subprocess_exec(self, protocol_factory, *args, **kwargs):
         raise NotImplementedError
 
     # Ready-based callback registration methods.
