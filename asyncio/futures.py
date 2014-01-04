@@ -2,7 +2,7 @@
 
 __all__ = ['CancelledError', 'TimeoutError',
            'InvalidStateError',
-           'Future', 'wrap_future',
+           'Future',
            ]
 
 import logging
@@ -368,3 +368,4 @@ if concurrent is not None:
             lambda future: loop.call_soon_threadsafe(
                 new_future._copy_state, fut))
         return new_future
+    __all__.append('wrap_future')
