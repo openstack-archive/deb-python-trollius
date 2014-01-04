@@ -1,3 +1,6 @@
+* add COPYING file
+* add AUTHORS file and fill author field in setup.py
+  (mention Tulip authors)
 * Fix failing tests:
 
   - test_futures.py
