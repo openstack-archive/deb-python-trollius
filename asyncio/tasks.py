@@ -18,7 +18,6 @@ import weakref
 from . import events
 from . import futures
 from .coroutine import coroutine, CoroWrapper, Return
-from .log import logger
 
 def iscoroutinefunction(func):
     """Return True if func is a decorated coroutine function."""
