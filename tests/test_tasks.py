@@ -1048,37 +1048,6 @@ class TaskTests(unittest.TestCase):
             yield
         self.assertTrue(tasks.iscoroutinefunction(fn2))
 
-    def test_yield_vs_yield_from(self):
-        fut = futures.Future(loop=self.loop)
-
-        @tasks.coroutine
-        def wait_for_future():
-            yield fut
-
-        task = wait_for_future()
-        with self.assertRaises(RuntimeError):
-            self.loop.run_until_complete(task)
-
-        self.assertFalse(fut.done())
-
-    def test_yield_vs_yield_from_generator(self):
-        @tasks.coroutine
-        def coro():
-            yield
-
-        @tasks.coroutine
-        def wait_for_future():
-            gen = coro()
-            try:
-                yield gen
-            finally:
-                gen.close()
-
-        task = wait_for_future()
-        self.assertRaises(
-            RuntimeError,
-            self.loop.run_until_complete, task)
-
     def test_coroutine_non_gen_function(self):
         @tasks.coroutine
         def func():
