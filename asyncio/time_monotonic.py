@@ -58,6 +58,7 @@ elif sys.platform == 'darwin':
     # Mac OS X: use mach_absolute_time() and mach_timebase_info()
     try:
         import ctypes
+        import ctypes.util
         libc_name = ctypes.util.find_library('c')
     except ImportError:
         libc_name = None
@@ -73,7 +74,7 @@ elif sys.platform == 'darwin':
                 ('numer', ctypes.c_uint32),
                 ('denom', ctypes.c_uint32),
             )
-        mach_timebase_info_data_p = POINTER(mach_timebase_info_data_t)
+        mach_timebase_info_data_p = ctypes.POINTER(mach_timebase_info_data_t)
 
         mach_timebase_info = libc.mach_timebase_info
         mach_timebase_info.argtypes = (mach_timebase_info_data_p,)
@@ -83,7 +84,7 @@ elif sys.platform == 'darwin':
             return mach_absolute_time() * time_monotonic.factor
 
         timebase = mach_timebase_info_data_t()
-        mach_timebase_info(byref(timebase))
+        mach_timebase_info(ctypes.byref(timebase))
         time_monotonic.factor = float(timebase.numer) / timebase.denom * 1e-9
         del timebase
 

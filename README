@@ -77,6 +77,10 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Development version
+
+- Fix asyncio.time_monotonic on Mac OS X
+
 2014-01-04: version 0.1
 
 - First public release

@@ -28,7 +28,7 @@ setup(
     name="trollius",
     version="0.1",
 
-    description="Experimental port (asyncio module, PEP 3156) of the Tulip project on Python 2.7",
+    description="Experimental port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
     long_description=open("README").read(),
     url="https://bitbucket.org/haypo/trollius/",
 
