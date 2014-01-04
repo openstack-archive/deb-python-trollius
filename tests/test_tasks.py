@@ -108,7 +108,6 @@ class TaskTests(unittest.TestCase):
     def test_task_repr(self):
         @tasks.coroutine
         def notmuch():
-            yield []
             raise tasks.Return('abc')
 
         t = tasks.Task(notmuch(), loop=self.loop)
@@ -985,7 +984,7 @@ class TaskTests(unittest.TestCase):
         test_utils.run_briefly(self.loop)
         self.assertIs(res, non_local['result'])
         self.assertTrue(t.done())
-        self.assertIsNone(t.non_local['result']())
+        self.assertIsNone(t.result())
 
     def test_step_with_baseexception(self):
         @tasks.coroutine
@@ -1027,7 +1026,11 @@ class TaskTests(unittest.TestCase):
         task.cancel()
         self.assertFalse(task.done())
 
-        self.assertRaises(BaseException, test_utils.run_briefly, loop)
+        def run_briefly(loop):
+            # FIXME: why should it be called twice?
+            test_utils.run_briefly(loop)
+            test_utils.run_briefly(loop)
+        self.assertRaises(BaseException, run_briefly, loop)
 
         self.assertTrue(task.done())
         self.assertFalse(task.cancelled())
