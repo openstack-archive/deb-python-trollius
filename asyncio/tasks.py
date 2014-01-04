@@ -212,8 +212,7 @@ class Task(futures.Future):
             self.set_exception(exc)
             raise
         else:
-            # FIXME
-            if inspect.isgenerator(result):
+            if iscoroutine(result):
                 result = async(result, loop=self._loop)
 
             if isinstance(result, futures.Future):
