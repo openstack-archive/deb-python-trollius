@@ -403,10 +403,15 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             universal_newlines=False, bufsize=bufsize, **kwargs)
         if stdin_w is not None:
             stdin.close()
-            # FIXME: use socket.makefile("rb", bufsize)?
-            stdin_dup = os.dup(stdin_w.fileno())
-            stdin_w.close()
-            self._proc.stdin = os.fdopen(stdin_dup, 'rb', bufsize)
+            if hasattr(stdin_w, 'detach'):
+                stdin_fd = stdin_w.detach()
+                self._proc.stdin = os.fdopen(stdin_fd, 'rb', bufsize)
+            elif hasattr(stdin_w, 'makefile'):
+                self._proc.stdin = stdin_w.makefile('rb', bufsize)
+            else:
+                stdin_dup = os.dup(stdin_w.fileno())
+                stdin_w.close()
+                self._proc.stdin = os.fdopen(stdin_dup, 'rb', bufsize)
 
 
 class AbstractChildWatcher(object):

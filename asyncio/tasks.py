@@ -372,7 +372,6 @@ def _wait(fs, timeout, return_when, loop):
 
 
 # This is *not* a @coroutine!  It is just an iterator (yielding Futures).
-# FIXME: @coroutine
 def as_completed(fs, loop=None, timeout=None):
     """Return an iterator whose values, when waited for, are Futures.
 
