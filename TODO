@@ -5,6 +5,7 @@
   - test_queues.py
   - test_tasks.py
 
+* as_completed() is a coroutine or not?
 * Move asyncio/coroutine.py in asyncio/tasks.py?
 * Fix coroutine._DEBUG=True
 * Fix all FIXME in the code
