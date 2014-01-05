@@ -1,5 +1,6 @@
 # Release procedure:
-#  - run unit tests
+#  - run unit tests without concurrent.futures
+#  - run unit tests with concurrent.futures
 #  - test examples
 #  - update version in setup.py
 #  - set _DEBUG to True in asyncio/coroutine.py

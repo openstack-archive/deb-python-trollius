@@ -13,9 +13,9 @@ The futures project is needed on Python 2 to get a backport of
 concurrent.futures.
 https://pypi.python.org/pypi/futures
 
-The concurrent.futures is optional, it is only required when
-BaseEventLoop.run_in_executor() is used. This method is used by
-BaseEventLoop.getaddrinfo() and BaseEventLoop.getnameinfo().
+If the concurrent.futures module is missing, a synchronous executor is used as
+a fallback. It blocks until the function returns, and so DNS resolution is
+blocking.
 
 Unit tests require the mock module:
 https://pypi.python.org/pypi/mock

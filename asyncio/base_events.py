@@ -15,10 +15,6 @@ to modify the meaning of the API call itself.
 
 
 import collections
-try:
-    import concurrent.futures
-except ImportError:
-    concurrent = None
 import heapq
 import logging
 import socket
@@ -30,15 +26,12 @@ import sys
 from . import events
 from . import futures
 from . import tasks
+from .executor import get_default_executor
 from .log import logger
 from .time_monotonic import time_monotonic
 
 
 __all__ = ['BaseEventLoop', 'Server']
-
-
-# Argument for default thread pool executor creation.
-_MAX_WORKERS = 5
 
 
 class _StopError(BaseException):
@@ -254,22 +247,21 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._write_to_self()
         return handle
 
-    if concurrent is not None:
-        def run_in_executor(self, executor, callback, *args):
-            if isinstance(callback, events.Handle):
-                assert not args
-                assert not isinstance(callback, events.TimerHandle)
-                if callback._cancelled:
-                    f = futures.Future(loop=self)
-                    f.set_result(None)
-                    return f
-                callback, args = callback._callback, callback._args
+    def run_in_executor(self, executor, callback, *args):
+        if isinstance(callback, events.Handle):
+            assert not args
+            assert not isinstance(callback, events.TimerHandle)
+            if callback._cancelled:
+                f = futures.Future(loop=self)
+                f.set_result(None)
+                return f
+            callback, args = callback._callback, callback._args
+        if executor is None:
+            executor = self._default_executor
             if executor is None:
+                self._default_executor = get_default_executor()
                 executor = self._default_executor
-                if executor is None:
-                    executor = concurrent.futures.ThreadPoolExecutor(_MAX_WORKERS)
-                    self._default_executor = executor
-            return futures.wrap_future(executor.submit(callback, *args), loop=self)
+        return futures.wrap_future(executor.submit(callback, *args), loop=self)
 
     def set_default_executor(self, executor):
         self._default_executor = executor

@@ -1,9 +1,6 @@
 """A Future class similar to the one in PEP 3148."""
 
-__all__ = ['CancelledError', 'TimeoutError',
-           'InvalidStateError',
-           'Future',
-           ]
+__all__ = ['InvalidStateError', 'Future']
 
 import logging
 import sys
@@ -14,6 +11,7 @@ except ImportError:
     concurrent = None
 
 from . import events
+from . import executor
 from .log import logger
 from .coroutine import coroutine, Return
 
@@ -24,29 +22,10 @@ _FINISHED = 'FINISHED'
 
 _PY34 = sys.version_info >= (3, 4)
 
-try:
-    import concurrent.futures._base
-except ImportError:
-    class Error(Exception):
-        """Base class for all future-related exceptions."""
-        pass
-
-    class CancelledError(Error):
-        """The Future was cancelled."""
-        pass
-
-    class TimeoutError(Error):
-        """The operation exceeded the given deadline."""
-        pass
-else:
-    Error = concurrent.futures._base.Error
-    CancelledError = concurrent.futures.CancelledError
-    TimeoutError = concurrent.futures.TimeoutError
-
 STACK_DEBUG = logging.DEBUG - 1  # heavy-duty debugging
 
 
-class InvalidStateError(Error):
+class InvalidStateError(executor.Error):
     """The operation is not allowed in this state."""
     # TODO: Show the future, its state, the method, and the required state.
 
@@ -230,7 +209,7 @@ class Future(object):
         the future is done and has an exception set, this exception is raised.
         """
         if self._state == _CANCELLED:
-            raise CancelledError
+            raise executor.CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Result is not ready.')
         if self._tb_logger is not None:
@@ -249,7 +228,7 @@ class Future(object):
         InvalidStateError.
         """
         if self._state == _CANCELLED:
-            raise CancelledError
+            raise executor.CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Exception is not set.')
         if self._tb_logger is not None:
@@ -348,24 +327,23 @@ class Future(object):
         assert self.done(), "yield wasn't used with future"
         raise Return(self.result())  # May raise too.
 
-if concurrent is not None:
-    def wrap_future(fut, loop=None):
-        """Wrap concurrent.futures.Future object."""
-        if isinstance(fut, Future):
-            return fut
-        assert isinstance(fut, concurrent.futures.Future), \
-            'concurrent.futures.Future is expected, got {!r}'.format(fut)
-        if loop is None:
-            loop = events.get_event_loop()
-        new_future = Future(loop=loop)
+def wrap_future(fut, loop=None):
+    """Wrap concurrent.futures.Future object."""
+    if isinstance(fut, Future):
+        return fut
+    assert isinstance(fut, executor.Future), \
+        'concurrent.futures.Future is expected, got {!r}'.format(fut)
+    if loop is None:
+        loop = events.get_event_loop()
+    new_future = Future(loop=loop)
 
-        def _check_cancel_other(f):
-            if f.cancelled():
-                fut.cancel()
+    def _check_cancel_other(f):
+        if f.cancelled():
+            fut.cancel()
 
-        new_future.add_done_callback(_check_cancel_other)
-        fut.add_done_callback(
-            lambda future: loop.call_soon_threadsafe(
-                new_future._copy_state, fut))
-        return new_future
-    __all__.append('wrap_future')
+    new_future.add_done_callback(_check_cancel_other)
+    fut.add_done_callback(
+        lambda future: loop.call_soon_threadsafe(
+            new_future._copy_state, fut))
+    return new_future
+__all__.append('wrap_future')
