@@ -16,6 +16,7 @@ except ImportError:  # pragma: no cover
     ssl = None
 
 from . import tasks
+from . import backport_ssl
 from . import base_events
 from . import events
 from . import selectors
@@ -31,7 +32,7 @@ def dummy_ssl_context():
     if ssl is None:
         return None
     else:
-        return ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        return backport_ssl.SSLContext(ssl.PROTOCOL_SSLv23)
 
 
 def run_briefly(loop):

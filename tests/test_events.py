@@ -39,6 +39,7 @@ from asyncio import locks
 from asyncio.backport import wrap_error
 from asyncio.time_monotonic import time_monotonic
 from asyncio import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
+import asyncio
 
 
 def data_file(filename):
@@ -614,7 +615,7 @@ class EventLoopTestsMixin(object):
         server.close()
 
     def _make_ssl_server(self, factory, certfile, keyfile=None):
-        sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        sslcontext = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if hasattr(sslcontext, 'options'):
             sslcontext.options |= ssl.OP_NO_SSLv2
         sslcontext.load_cert_chain(certfile, keyfile)
@@ -685,7 +686,7 @@ class EventLoopTestsMixin(object):
 
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
-        sslcontext_client = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if hasattr(sslcontext, 'options'):
             sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
@@ -714,7 +715,7 @@ class EventLoopTestsMixin(object):
 
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
-        sslcontext_client = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if hasattr(sslcontext, 'options'):
             sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
@@ -746,7 +747,7 @@ class EventLoopTestsMixin(object):
 
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
-        sslcontext_client = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if hasattr(sslcontext, 'options'):
             sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED

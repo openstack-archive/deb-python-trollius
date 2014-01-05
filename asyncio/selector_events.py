@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover
     ssl = None
 
 from . import base_events
+from . import backport_ssl
 from . import constants
 from . import events
 from . import futures
@@ -594,7 +595,7 @@ class _SelectorSslTransport(_SelectorTransport):
                         check_hostname=bool(server_hostname))
                 else:
                     # Fallback for Python 3.3.
-                    sslcontext = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                    sslcontext = backport_asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
                     sslcontext.options |= ssl.OP_NO_SSLv2
                     sslcontext.set_default_verify_paths()
                     sslcontext.verify_mode = ssl.CERT_REQUIRED

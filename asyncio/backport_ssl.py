@@ -1,6 +1,8 @@
 import ssl
 from asyncio.backport import _wrap_error
 
+__all__ = ["SSLContext"]
+
 # SSL constants copied from /usr/include/openssl/ssl.h of Fedora 19
 #define SSL_ERROR_ZERO_RETURN		6
 #define SSL_ERROR_WANT_ACCEPT		8
@@ -39,7 +41,7 @@ class SSLContext(object):
 # FIXME: Ugly hack to not have to patch various modules
 ssl.SSLWantReadError = SSLWantReadError
 ssl.SSLWantWriteError = SSLWantWriteError
-ssl.SSLContext = SSLContext
+#ssl.SSLContext = SSLContext
 
 _MAP_ERRORS = {
     ssl.SSL_ERROR_WANT_READ: SSLWantReadError,
