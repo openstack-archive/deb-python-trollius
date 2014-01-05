@@ -21,11 +21,15 @@ import time
 import errno
 import unittest
 import mock
-
+try:
+    import concurrent
+except ImportError:
+    concurrent = None
 
 from asyncio import Return
 from asyncio import futures
 from asyncio import events
+from asyncio import executor
 from asyncio import transports
 from asyncio import protocols
 from asyncio import selector_events
@@ -311,6 +315,7 @@ class EventLoopTestsMixin(object):
         self.loop.run_forever()
         self.assertEqual(results, ['hello', 'world'])
 
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_run_in_executor(self):
         def run(arg):
             return (arg, thread.get_ident())
@@ -1042,7 +1047,7 @@ class EventLoopTestsMixin(object):
             try:
                 self.loop.call_soon(f.cancel)
                 yield f
-            except futures.CancelledError:
+            except executor.CancelledError:
                 res = 'cancelled'
             else:
                 res = None
@@ -1057,7 +1062,7 @@ class EventLoopTestsMixin(object):
 
         self.assertLess(elapsed, 0.1)
         self.assertEqual(t.result(), 'cancelled')
-        self.assertRaises(futures.CancelledError, f.result)
+        self.assertRaises(executor.CancelledError, f.result)
         if ov is not None:
             self.assertFalse(ov.pending)
         self.loop._stop_serving(r)

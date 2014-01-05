@@ -9,6 +9,7 @@ import _winapi
 
 from . import events
 from . import base_subprocess
+from . import executor
 from . import futures
 from . import proactor_events
 from . import selector_events
@@ -159,7 +160,7 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
                 if pipe and pipe.fileno() != -1:
                     logger.exception('Pipe accept failed')
                     pipe.close()
-            except futures.CancelledError:
+            except executor.CancelledError:
                 if pipe:
                     pipe.close()
             else:

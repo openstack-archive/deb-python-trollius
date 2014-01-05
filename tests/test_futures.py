@@ -1,11 +1,15 @@
 """Tests for futures.py."""
 
-import concurrent.futures
+try:
+    import concurrent.futures
+except ImportError:
+    concurrent = None
 import thread
 import threading
 import unittest
 import mock
 
+from asyncio import executor
 from asyncio import events
 from asyncio import futures
 from asyncio import tasks
@@ -45,8 +49,8 @@ class FutureTests(unittest.TestCase):
         self.assertTrue(f.cancel())
         self.assertTrue(f.cancelled())
         self.assertTrue(f.done())
-        self.assertRaises(futures.CancelledError, f.result)
-        self.assertRaises(futures.CancelledError, f.exception)
+        self.assertRaises(executor.CancelledError, f.result)
+        self.assertRaises(executor.CancelledError, f.exception)
         self.assertRaises(futures.InvalidStateError, f.set_result, None)
         self.assertRaises(futures.InvalidStateError, f.set_exception, None)
         self.assertFalse(f.cancel())
@@ -214,6 +218,7 @@ class FutureTests(unittest.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future(self):
 
         def run(arg):
@@ -231,6 +236,7 @@ class FutureTests(unittest.TestCase):
         f2 = futures.wrap_future(f1)
         self.assertIs(f1, f2)
 
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     @mock.patch('asyncio.futures.events')
     def test_wrap_future_use_global_loop(self, m_events):
         def run(arg):
@@ -240,6 +246,7 @@ class FutureTests(unittest.TestCase):
         f2 = futures.wrap_future(f1)
         self.assertIs(m_events.get_event_loop.return_value, f2._loop)
 
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel(self):
         f1 = concurrent.futures.Future()
         f2 = futures.wrap_future(f1, loop=self.loop)
@@ -248,6 +255,7 @@ class FutureTests(unittest.TestCase):
         self.assertTrue(f1.cancelled())
         self.assertTrue(f2.cancelled())
 
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel2(self):
         f1 = concurrent.futures.Future()
         f2 = futures.wrap_future(f1, loop=self.loop)

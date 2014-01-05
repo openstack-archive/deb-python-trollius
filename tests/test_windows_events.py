@@ -130,7 +130,7 @@ class ProactorTests(unittest.TestCase):
         f = self.loop._proactor.wait_for_handle(event, 10)
         f.cancel()
         start = self.loop.time()
-        with self.assertRaises(futures.CancelledError):
+        with self.assertRaises(executor.CancelledError):
             self.loop.run_until_complete(f)
         elapsed = self.loop.time() - start
         self.assertTrue(0 <= elapsed < 0.1, elapsed)

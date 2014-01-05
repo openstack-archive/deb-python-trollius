@@ -3,7 +3,6 @@ from __future__ import print_function
 
 __all__ = ['coroutine', 'Task',
            'iscoroutinefunction', 'iscoroutine',
-           'FIRST_COMPLETED', 'FIRST_EXCEPTION', 'ALL_COMPLETED',
            'wait', 'wait_for', 'as_completed', 'sleep', 'async',
            'gather', 'shield', 'Return',
            ]
@@ -16,6 +15,7 @@ import traceback
 import weakref
 
 from . import events
+from . import executor
 from . import futures
 from .coroutine import coroutine, CoroWrapper, Return
 
@@ -185,8 +185,8 @@ class Task(futures.Future):
         assert not self.done(), \
             '_step(): already done: {!r}, {!r}, {!r}'.format(self, value, exc)
         if self._must_cancel:
-            if not isinstance(exc, futures.CancelledError):
-                exc = futures.CancelledError()
+            if not isinstance(exc, executor.CancelledError):
+                exc = executor.CancelledError()
             self._must_cancel = False
         coro = self._coro
         self._fut_waiter = None
@@ -204,7 +204,7 @@ class Task(futures.Future):
             self.set_result(exc.value)
         except StopIteration:
             self.set_result(None)
-        except futures.CancelledError as exc:
+        except executor.CancelledError as exc:
             super(Task, self).cancel()  # I.e., Future.cancel(self).
         except Exception as exc:
             self.set_exception(exc)
@@ -248,20 +248,9 @@ class Task(futures.Future):
 
 # wait() and as_completed() similar to those in PEP 3148.
 
-try:
-    import concurrent.futures
-except ImportError:
-    FIRST_COMPLETED = 'FIRST_COMPLETED'
-    FIRST_EXCEPTION = 'FIRST_EXCEPTION'
-    ALL_COMPLETED = 'ALL_COMPLETED'
-else:
-    FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
-    FIRST_EXCEPTION = concurrent.futures.FIRST_EXCEPTION
-    ALL_COMPLETED = concurrent.futures.ALL_COMPLETED
-
 
 @coroutine
-def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
+def wait(fs, loop=None, timeout=None, return_when=executor.ALL_COMPLETED):
     """Wait for the Futures and coroutines given by fs to complete.
 
     Coroutines will be wrapped in Tasks.
@@ -283,7 +272,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
 
     fs = set(async(f, loop=loop) for f in fs)
 
-    if return_when not in (FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED):
+    if return_when not in (executor.FIRST_COMPLETED, executor.FIRST_EXCEPTION, executor.ALL_COMPLETED):
         raise ValueError('Invalid return_when value: {}'.format(return_when))
     result = yield _wait(fs, timeout, return_when, loop)
     raise Return(result)
@@ -323,7 +312,7 @@ def wait_for(fut, timeout, loop=None):
             raise Return(fut.result())
         else:
             fut.remove_done_callback(cb)
-            raise futures.TimeoutError()
+            raise executor.TimeoutError()
     finally:
         timeout_handle.cancel()
 
@@ -344,8 +333,8 @@ def _wait(fs, timeout, return_when, loop):
     def _on_completion(f):
         non_local['counter'] -= 1
         if (non_local['counter'] <= 0 or
-            return_when == FIRST_COMPLETED or
-            return_when == FIRST_EXCEPTION and (not f.cancelled() and
+            return_when == executor.FIRST_COMPLETED or
+            return_when == executor.FIRST_EXCEPTION and (not f.cancelled() and
                                                 f.exception() is not None)):
             if timeout_handle is not None:
                 timeout_handle.cancel()
@@ -398,9 +387,9 @@ def as_completed(fs, loop=None, timeout=None):
             if deadline is not None:
                 timeout = deadline - loop.time()
                 if timeout < 0:
-                    raise futures.TimeoutError()
+                    raise executor.TimeoutError()
             done, pending = yield _wait(
-                todo, timeout, FIRST_COMPLETED, loop)
+                todo, timeout, executor.FIRST_COMPLETED, loop)
             # Multiple callers might be waiting for the same events
             # and getting the same outcome.  Dedupe by updating todo.
             for f in done:
@@ -508,7 +497,7 @@ def gather(*coros_or_futures, **kw):
                 fut.exception()
             return
         if fut._state == futures._CANCELLED:
-            res = futures.CancelledError()
+            res = executor.CancelledError()
             if not return_exceptions:
                 outer.set_exception(res)
                 return
