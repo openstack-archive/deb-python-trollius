@@ -22,7 +22,6 @@ except ImportError:
                 self._result = callback(*args)
                 self._exception = None
             except Exception as err:
-                raise
                 self._result = None
                 self._exception = err
             self.callbacks = []
