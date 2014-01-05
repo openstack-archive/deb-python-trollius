@@ -16,10 +16,6 @@ The futures project is needed on Python 2 to get a backport of
 concurrent.futures.
 https://pypi.python.org/pypi/futures
 
-If the concurrent.futures module is missing, a synchronous executor is used as
-a fallback. It blocks until the function returns, and so DNS resolution is
-blocking.
-
 Unit tests require the mock module:
 https://pypi.python.org/pypi/mock
 
@@ -27,12 +23,13 @@ https://pypi.python.org/pypi/mock
 Differences between Trollius and Tulip
 ======================================
 
-* Python 2 has no keyword-only parameters
-* Trollius coroutines use yield whereas Tulip coroutines must use yield-from
-* Trollius coroutines must use "raise Return(value)", whereas Tulip simply
-  uses "return value" thanks to Python 3.3 improvments
+* Trollius coroutines use "yield" and "raise Return(value)",
+  whereas Tulip coroutines use "yield from" and "return".
 * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
-  raises NotImplementedError and asyncio.wrap_future() is not available
+  uses a synchronous executor instead of a pool of threads. It blocks until the
+  function returns, and so DNS resolutions are blocking.
+* Python 2 does not support keyword-only parameters.
+
 
 Usage
 =====
