@@ -79,6 +79,8 @@ Change log
 
 Development version
 
+- Don't export backported SSLContext in the ssl module anymore to not confuse
+  libraries testing hasattr(ssl, "SSLContext")
 - Fix asyncio.time_monotonic on Mac OS X
 
 2014-01-04: version 0.1
