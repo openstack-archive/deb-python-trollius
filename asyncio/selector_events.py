@@ -8,6 +8,7 @@ import collections
 import errno
 import functools
 import socket
+import sys
 try:
     import ssl
 except ImportError:  # pragma: no cover
@@ -23,6 +24,28 @@ from . import transports
 from .backport import wrap_error
 from .backport_ssl import wrap_ssl_error
 from .log import logger
+
+PY26 = (sys.version_info < (2, 7))
+PY3 = (sys.version_info >= (3,))
+
+def flatten_bytes(data):
+    if PY3:
+        bytes_types = (bytes, bytearray, memoryview)
+    elif PY26:
+        bytes_types = (bytes, bytearray, buffer)
+    else:
+        bytes_types = (bytes, bytearray, memoryview, buffer)
+    if not isinstance(data, bytes_types):
+        raise TypeError('data argument must be byte-ish (%r)',
+                        type(data))
+    if not data:
+        return b''
+    if not PY3 and isinstance(data, (buffer, bytearray)):
+        return bytes(data)
+    elif not PY26 and isinstance(data, memoryview):
+        return data.tobytes()
+    else:
+        return data
 
 class BaseSelectorEventLoop(base_events.BaseEventLoop):
     """Selector event loop.
@@ -500,15 +523,9 @@ class _SelectorSocketTransport(_SelectorTransport):
                     self.close()
 
     def write(self, data):
-        if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
-                            type(data))
-        if self._eof:
-            raise RuntimeError('Cannot call write() after write_eof()')
+        data = flatten_bytes(data)
         if not data:
             return
-        if isinstance(data, memoryview):
-            data = data.tobytes()
 
         if self._conn_lost:
             if self._conn_lost >= constants.LOG_THRESHOLD_FOR_CONNLOST_WRITES:
@@ -539,8 +556,9 @@ class _SelectorSocketTransport(_SelectorTransport):
     def _write_ready(self):
         assert self._buffer, 'Data should not be empty'
 
+        data = flatten_bytes(self._buffer)
         try:
-            n = wrap_error(self._sock.send, self._buffer)
+            n = wrap_error(self._sock.send, data)
         except (BlockingIOError, InterruptedError):
             pass
         except Exception as exc:
@@ -737,8 +755,9 @@ class _SelectorSslTransport(_SelectorTransport):
                 self._loop.add_reader(self._sock_fd, self._read_ready)
 
         if self._buffer:
+            data = flatten_bytes(self._buffer)
             try:
-                n = wrap_error(self._sock.send, self._buffer)
+                n = wrap_error(self._sock.send, data)
             except (BlockingIOError, InterruptedError,
                     ssl.SSLWantWriteError):
                 n = 0
@@ -763,13 +782,9 @@ class _SelectorSslTransport(_SelectorTransport):
                 self._call_connection_lost(None)
 
     def write(self, data):
-        if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
-                            type(data))
+        data = flatten_bytes(data)
         if not data:
             return
-        if isinstance(data, memoryview):
-            data = data.tobytes()
 
         if self._conn_lost:
             if self._conn_lost >= constants.LOG_THRESHOLD_FOR_CONNLOST_WRITES:
@@ -814,13 +829,9 @@ class _SelectorDatagramTransport(_SelectorTransport):
             self._protocol.datagram_received(data, addr)
 
     def sendto(self, data, addr=None):
-        if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
-                            type(data))
+        data = flatten_bytes(data)
         if not data:
             return
-        if isinstance(data, memoryview):
-            data = data.tobytes()
 
         if self._address and addr not in (None, self._address):
             raise ValueError('Invalid address: must be None or %s' %
