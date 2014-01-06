@@ -32,12 +32,12 @@ class MyClientUdpEchoProtocol:
 
     def connection_made(self, transport):
         self.transport = transport
-        print('sending "{}"'.format(self.message))
+        print('sending "{0}"'.format(self.message))
         self.transport.sendto(self.message.encode())
         print('waiting to receive')
 
     def datagram_received(self, data, addr):
-        print('received "{}"'.format(data.decode()))
+        print('received "{0}"'.format(data.decode()))
         self.transport.close()
 
     def error_received(self, exc):

@@ -228,11 +228,11 @@ class TestLoop(base_events.BaseEventLoop):
             return False
 
     def assert_reader(self, fd, callback, *args):
-        assert fd in self.readers, 'fd {} is not registered'.format(fd)
+        assert fd in self.readers, 'fd {0} is not registered'.format(fd)
         handle = self.readers[fd]
-        assert handle._callback == callback, '{!r} != {!r}'.format(
+        assert handle._callback == callback, '{0!r} != {1!r}'.format(
             handle._callback, callback)
-        assert handle._args == args, '{!r} != {!r}'.format(
+        assert handle._args == args, '{0!r} != {1!r}'.format(
             handle._args, args)
 
     def add_writer(self, fd, callback, *args):
@@ -247,11 +247,11 @@ class TestLoop(base_events.BaseEventLoop):
             return False
 
     def assert_writer(self, fd, callback, *args):
-        assert fd in self.writers, 'fd {} is not registered'.format(fd)
+        assert fd in self.writers, 'fd {0} is not registered'.format(fd)
         handle = self.writers[fd]
-        assert handle._callback == callback, '{!r} != {!r}'.format(
+        assert handle._callback == callback, '{0!r} != {1!r}'.format(
             handle._callback, callback)
-        assert handle._args == args, '{!r} != {!r}'.format(
+        assert handle._args == args, '{0!r} != {1!r}'.format(
             handle._args, args)
 
     def reset_counters(self):

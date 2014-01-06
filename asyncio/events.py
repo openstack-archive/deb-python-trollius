@@ -25,7 +25,7 @@ class Handle(object):
         self._cancelled = False
 
     def __repr__(self):
-        res = 'Handle({}, {})'.format(self._callback, self._args)
+        res = 'Handle({0}, {1})'.format(self._callback, self._args)
         if self._cancelled:
             res += '<cancelled>'
         return res
@@ -58,9 +58,9 @@ class TimerHandle(Handle):
         self._when = when
 
     def __repr__(self):
-        res = 'TimerHandle({}, {}, {})'.format(self._when,
-                                               self._callback,
-                                               self._args)
+        res = 'TimerHandle({0}, {1}, {2})'.format(self._when,
+                                                  self._callback,
+                                                  self._args)
         if self._cancelled:
             res += '<cancelled>'
 
