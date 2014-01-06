@@ -6,7 +6,10 @@ Trollius is an experimental port of the Tulip project (asyncio module, PEP
 * Copyright/license: Open source, Apache 2.0. Enjoy.
 
 WARNING: Trollius code is in the "trollius" branch of the Mercurial repository,
-not in the default branch (which is the Tulip project).
+not in the default branch (which is the Tulip project). Command to download
+the development version of the source code (trollius branch):
+
+    hg clone 'https://bitbucket.org/haypo/trollius#trollius'
 
 
 Dependencies
