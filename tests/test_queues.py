@@ -12,7 +12,7 @@ from asyncio import tasks
 from asyncio import test_utils
 
 
-class _QueueTestBase(unittest.TestCase):
+class _QueueTestBase(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()

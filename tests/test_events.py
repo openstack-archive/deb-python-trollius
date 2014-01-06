@@ -1,4 +1,5 @@
 """Tests for events.py."""
+import logging; logging.basicConfig()
 
 import functools
 import gc
@@ -1367,14 +1368,14 @@ class SubprocessTestsMixin(object):
 if sys.platform == 'win32':
     from asyncio import windows_events
 
-    class SelectEventLoopTests(EventLoopTestsMixin, unittest.TestCase):
+    class SelectEventLoopTests(EventLoopTestsMixin, test_utils.TestCase):
 
         def create_event_loop(self):
             return windows_events.SelectorEventLoop()
 
     class ProactorEventLoopTests(EventLoopTestsMixin,
                                  SubprocessTestsMixin,
-                                 unittest.TestCase):
+                                 test_utils.TestCase):
 
         def create_event_loop(self):
             return windows_events.ProactorEventLoop()
@@ -1427,7 +1428,7 @@ else:
     if hasattr(selectors, 'KqueueSelector'):
         class KqueueEventLoopTests(UnixEventLoopTestsMixin,
                                    SubprocessTestsMixin,
-                                   unittest.TestCase):
+                                   test_utils.TestCase):
 
             def create_event_loop(self):
                 return unix_events.SelectorEventLoop(
@@ -1436,7 +1437,7 @@ else:
     if hasattr(selectors, 'EpollSelector'):
         class EPollEventLoopTests(UnixEventLoopTestsMixin,
                                   SubprocessTestsMixin,
-                                  unittest.TestCase):
+                                  test_utils.TestCase):
 
             def create_event_loop(self):
                 return unix_events.SelectorEventLoop(selectors.EpollSelector())
@@ -1444,7 +1445,7 @@ else:
     if hasattr(selectors, 'PollSelector'):
         class PollEventLoopTests(UnixEventLoopTestsMixin,
                                  SubprocessTestsMixin,
-                                 unittest.TestCase):
+                                 test_utils.TestCase):
 
             def create_event_loop(self):
                 return unix_events.SelectorEventLoop(selectors.PollSelector())
@@ -1452,13 +1453,13 @@ else:
     # Should always exist.
     class SelectEventLoopTests(UnixEventLoopTestsMixin,
                                SubprocessTestsMixin,
-                               unittest.TestCase):
+                               test_utils.TestCase):
 
         def create_event_loop(self):
             return unix_events.SelectorEventLoop(selectors.SelectSelector())
 
 
-class HandleTests(unittest.TestCase):
+class HandleTests(test_utils.TestCase):
 
     def test_handle(self):
         def callback(*args):
@@ -1498,7 +1499,7 @@ class HandleTests(unittest.TestCase):
         self.assertTrue(log.exception.called)
 
 
-class TimerTests(unittest.TestCase):
+class TimerTests(test_utils.TestCase):
 
     def test_hash(self):
         when = time_monotonic()
@@ -1569,7 +1570,7 @@ class TimerTests(unittest.TestCase):
         self.assertIs(NotImplemented, h1.__ne__(h3))
 
 
-class AbstractEventLoopTests(unittest.TestCase):
+class AbstractEventLoopTests(test_utils.TestCase):
 
     def test_not_implemented(self):
         f = mock.Mock()
@@ -1643,7 +1644,7 @@ class AbstractEventLoopTests(unittest.TestCase):
             NotImplementedError, loop.subprocess_exec, f)
 
 
-class ProtocolsAbsTests(unittest.TestCase):
+class ProtocolsAbsTests(test_utils.TestCase):
 
     def test_empty(self):
         f = mock.Mock()
@@ -1667,7 +1668,7 @@ class ProtocolsAbsTests(unittest.TestCase):
         self.assertIsNone(sp.process_exited())
 
 
-class PolicyTests(unittest.TestCase):
+class PolicyTests(test_utils.TestCase):
 
     def create_policy(self):
         if sys.platform == "win32":

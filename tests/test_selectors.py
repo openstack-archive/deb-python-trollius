@@ -4,6 +4,7 @@ import mock
 import unittest
 
 from asyncio import selectors
+from asyncio import test_utils
 
 
 class FakeSelector(selectors._BaseSelectorImpl):
@@ -13,7 +14,7 @@ class FakeSelector(selectors._BaseSelectorImpl):
         raise NotImplementedError
 
 
-class _SelectorMappingTests(unittest.TestCase):
+class _SelectorMappingTests(test_utils.TestCase):
 
     def test_len(self):
         s = FakeSelector()
@@ -60,7 +61,7 @@ class _SelectorMappingTests(unittest.TestCase):
         self.assertEqual(1, counter)
 
 
-class BaseSelectorTests(unittest.TestCase):
+class BaseSelectorTests(test_utils.TestCase):
     def test_fileobj_to_fd(self):
         self.assertEqual(10, selectors._fileobj_to_fd(10))
 

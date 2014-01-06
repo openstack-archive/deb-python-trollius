@@ -39,7 +39,7 @@ def list_to_buffer(l=()):
     return bytearray().join(l)
 
 
-class BaseSelectorEventLoopTests(unittest.TestCase):
+class BaseSelectorEventLoopTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = TestBaseSelectorEventLoop(mock.Mock())
@@ -584,7 +584,7 @@ class BaseSelectorEventLoopTests(unittest.TestCase):
         self.loop.remove_writer.assert_called_with(1)
 
 
-class SelectorTransportTests(unittest.TestCase):
+class SelectorTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -671,7 +671,7 @@ class SelectorTransportTests(unittest.TestCase):
                          pprint.pformat(gc.get_referrers(self.loop)))
 
 
-class SelectorSocketTransportTests(unittest.TestCase):
+class SelectorSocketTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -1036,7 +1036,7 @@ class SelectorSocketTransportTests(unittest.TestCase):
 
 
 @test_utils.skipIf(ssl is None, 'No ssl module')
-class SelectorSslTransportTests(unittest.TestCase):
+class SelectorSslTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -1356,7 +1356,7 @@ class SelectorSslTransportTests(unittest.TestCase):
             server_hostname='localhost')
 
 
-class SelectorSslWithoutSslTransportTests(unittest.TestCase):
+class SelectorSslWithoutSslTransportTests(test_utils.TestCase):
 
     @mock.patch('asyncio.selector_events.ssl', None)
     def test_ssl_transport_requires_ssl_module(self):
@@ -1365,7 +1365,7 @@ class SelectorSslWithoutSslTransportTests(unittest.TestCase):
             transport = _SelectorSslTransport(Mock(), Mock(), Mock(), Mock())
 
 
-class SelectorDatagramTransportTests(unittest.TestCase):
+class SelectorDatagramTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
