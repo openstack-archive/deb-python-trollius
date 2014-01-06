@@ -8,6 +8,7 @@ import collections
 import errno
 import functools
 import socket
+import sys
 try:
     import ssl
 except ImportError:  # pragma: no cover
@@ -24,6 +25,7 @@ from .backport import wrap_error
 from .backport_ssl import wrap_ssl_error
 from .log import logger
 
+PY32 = (sys.version_info >= (3, 2))
 
 class BaseSelectorEventLoop(base_events.BaseEventLoop):
     """Selector event loop.
@@ -595,10 +597,11 @@ class _SelectorSslTransport(_SelectorTransport):
                         check_hostname=bool(server_hostname))
                 else:
                     # Fallback for Python 3.3.
-                    sslcontext = backport_asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-                    sslcontext.options |= ssl.OP_NO_SSLv2
-                    sslcontext.set_default_verify_paths()
-                    sslcontext.verify_mode = ssl.CERT_REQUIRED
+                    sslcontext = backport_ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+                    if PY32:
+                        sslcontext.options |= ssl.OP_NO_SSLv2
+                        sslcontext.set_default_verify_paths()
+                        sslcontext.verify_mode = ssl.CERT_REQUIRED
 
         wrap_kwargs = {
             'server_side': server_side,
