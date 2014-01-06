@@ -49,7 +49,7 @@ class StreamReaderTests(unittest.TestCase):
 
             writer.close()
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
     def test_open_connection_no_loop_ssl(self):
         with test_utils.run_test_server(use_ssl=True) as httpd:
             try:

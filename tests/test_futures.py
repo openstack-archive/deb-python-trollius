@@ -218,7 +218,7 @@ class FutureTests(unittest.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
+    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future(self):
 
         def run(arg):
@@ -236,7 +236,7 @@ class FutureTests(unittest.TestCase):
         f2 = futures.wrap_future(f1)
         self.assertIs(f1, f2)
 
-    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
+    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     @mock.patch('asyncio.futures.events')
     def test_wrap_future_use_global_loop(self, m_events):
         def run(arg):
@@ -246,7 +246,7 @@ class FutureTests(unittest.TestCase):
         f2 = futures.wrap_future(f1)
         self.assertIs(m_events.get_event_loop.return_value, f2._loop)
 
-    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
+    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel(self):
         f1 = concurrent.futures.Future()
         f2 = futures.wrap_future(f1, loop=self.loop)
@@ -255,7 +255,7 @@ class FutureTests(unittest.TestCase):
         self.assertTrue(f1.cancelled())
         self.assertTrue(f2.cancelled())
 
-    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
+    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel2(self):
         f1 = concurrent.futures.Future()
         f2 = futures.wrap_future(f1, loop=self.loop)

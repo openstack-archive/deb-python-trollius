@@ -2,6 +2,7 @@
 
 import collections
 import contextlib
+import functools
 import io
 import mock
 import os
@@ -274,3 +275,24 @@ class TestLoop(base_events.BaseEventLoop):
 
     def _write_to_self(self):
         pass
+
+
+try:
+    skipIf = unittest.skipIf
+    skipUnless = unittest.skipUnless
+except AttributeError:
+    # Python 2.6
+    def skip_wrapper(cond, message, func):
+        def wrapper(*args, **kw):
+            if cond:
+                return func(*args, **kw)
+            else:
+                print("Skip %s: %s" % (func, message))
+        return wrapper
+
+    def skipIf(cond, message):
+        return functools.partial(skip_wrapper, not cond, message)
+
+    def skipUnless(cond, message):
+        return functools.partial(skip_wrapper, cond, message)
+
