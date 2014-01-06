@@ -65,7 +65,7 @@ def start(loop, host, port):
         # TODO: take cert/key from args as well.
         here = os.path.join(os.path.dirname(__file__), '..', 'tests')
         sslctx = SSLContext(ssl.PROTOCOL_SSLv23)
-        if hasattr(sslctx, 'options'):
+        if not BACKPORT_SSL_CONTEXT:
             sslctx.options |= ssl.OP_NO_SSLv2
         sslctx.load_cert_chain(
             certfile=os.path.join(here, 'ssl_cert.pem'),

@@ -616,7 +616,7 @@ class EventLoopTestsMixin(object):
 
     def _make_ssl_server(self, factory, certfile, keyfile=None):
         sslcontext = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-        if hasattr(sslcontext, 'options'):
+        if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext.options |= ssl.OP_NO_SSLv2
         sslcontext.load_cert_chain(certfile, keyfile)
 
@@ -687,7 +687,7 @@ class EventLoopTestsMixin(object):
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-        if hasattr(sslcontext, 'options'):
+        if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         if hasattr(sslcontext_client, 'check_hostname'):
@@ -716,7 +716,7 @@ class EventLoopTestsMixin(object):
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-        if hasattr(sslcontext, 'options'):
+        if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         sslcontext_client.load_verify_locations(
@@ -748,7 +748,7 @@ class EventLoopTestsMixin(object):
         server, host, port = self._make_ssl_server(factory, SIGNED_CERTFILE)
 
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-        if hasattr(sslcontext, 'options'):
+        if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         sslcontext_client.load_verify_locations(cafile=SIGNING_CA)
