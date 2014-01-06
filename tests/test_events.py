@@ -175,7 +175,7 @@ class MySubprocessProtocol(protocols.SubprocessProtocol):
         self.transport = None
         self.connected = futures.Future(loop=loop)
         self.completed = futures.Future(loop=loop)
-        self.disconnects = {fd: futures.Future(loop=loop) for fd in range(3)}
+        self.disconnects = dict((fd, futures.Future(loop=loop)) for fd in range(3))
         self.data = {1: b'', 2: b''}
         self.returncode = None
         self.got_data = {1: locks.Event(loop=loop),

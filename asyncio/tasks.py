@@ -73,7 +73,7 @@ class Task(futures.Future):
         """
         if loop is None:
             loop = events.get_event_loop()
-        return {t for t in cls._all_tasks if t._loop is loop}
+        return set(t for t in cls._all_tasks if t._loop is loop)
 
     def __init__(self, coro, loop=None):
         assert iscoroutine(coro), repr(coro)  # Not a coroutine function!
