@@ -115,7 +115,7 @@ class TaskTests(unittest.TestCase):
         self.assertEqual(repr(t), 'Task(<notmuch>)<PENDING, [Dummy()]>')
         t.cancel()  # Does not take immediate effect!
         self.assertEqual(repr(t), 'Task(<notmuch>)<CANCELLING, [Dummy()]>')
-        self.assertRaises(executor.CancelledError,
+        self.assertRaises(futures.CancelledError,
                           self.loop.run_until_complete, t)
         self.assertEqual(repr(t), 'Task(<notmuch>)<CANCELLED>')
         t = tasks.Task(notmuch(), loop=self.loop)
@@ -175,7 +175,7 @@ class TaskTests(unittest.TestCase):
 
         t = tasks.Task(task(), loop=loop)
         loop.call_soon(t.cancel)
-        with self.assertRaises(executor.CancelledError):
+        with self.assertRaises(futures.CancelledError):
             loop.run_until_complete(t)
         self.assertTrue(t.done())
         self.assertTrue(t.cancelled())
@@ -192,7 +192,7 @@ class TaskTests(unittest.TestCase):
         test_utils.run_briefly(self.loop)  # start coro
         t.cancel()
         self.assertRaises(
-            executor.CancelledError, self.loop.run_until_complete, t)
+            futures.CancelledError, self.loop.run_until_complete, t)
         self.assertTrue(t.done())
         self.assertTrue(t.cancelled())
         self.assertFalse(t.cancel())
@@ -208,7 +208,7 @@ class TaskTests(unittest.TestCase):
         t = tasks.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)  # start task
         f.cancel()
-        with self.assertRaises(executor.CancelledError):
+        with self.assertRaises(futures.CancelledError):
             self.loop.run_until_complete(t)
         self.assertTrue(f.cancelled())
         self.assertTrue(t.cancelled())
@@ -227,7 +227,7 @@ class TaskTests(unittest.TestCase):
         f.cancel()
         t.cancel()
 
-        with self.assertRaises(executor.CancelledError):
+        with self.assertRaises(futures.CancelledError):
             self.loop.run_until_complete(t)
 
         self.assertTrue(t.done())
@@ -243,7 +243,7 @@ class TaskTests(unittest.TestCase):
             yield fut1
             try:
                 yield fut2
-            except executor.CancelledError:
+            except futures.CancelledError:
                 raise tasks.Return(42)
 
         t = tasks.Task(task(), loop=self.loop)
@@ -268,7 +268,7 @@ class TaskTests(unittest.TestCase):
             yield fut1
             try:
                 yield fut2
-            except executor.CancelledError:
+            except futures.CancelledError:
                 pass
             res = yield fut3
             raise tasks.Return(res)
@@ -303,7 +303,7 @@ class TaskTests(unittest.TestCase):
 
         t = tasks.Task(task(), loop=loop)
         self.assertRaises(
-            executor.CancelledError, loop.run_until_complete, t)
+            futures.CancelledError, loop.run_until_complete, t)
         self.assertTrue(t.done())
         self.assertFalse(t._must_cancel)  # White-box test.
         self.assertFalse(t.cancel())
@@ -367,7 +367,7 @@ class TaskTests(unittest.TestCase):
 
         fut = tasks.Task(foo(), loop=loop)
 
-        with self.assertRaises(executor.TimeoutError):
+        with self.assertRaises(futures.TimeoutError):
             loop.run_until_complete(tasks.wait_for(fut, 0.1, loop=loop))
 
         self.assertFalse(fut.done())
@@ -399,7 +399,7 @@ class TaskTests(unittest.TestCase):
         events.set_event_loop(loop)
         try:
             fut = tasks.Task(foo(), loop=loop)
-            with self.assertRaises(executor.TimeoutError):
+            with self.assertRaises(futures.TimeoutError):
                 loop.run_until_complete(tasks.wait_for(fut, 0.01))
         finally:
             events.set_event_loop(None)
@@ -769,7 +769,7 @@ class TaskTests(unittest.TestCase):
                 try:
                     v = yield f
                     values.append((1, v))
-                except executor.TimeoutError as exc:
+                except futures.TimeoutError as exc:
                     values.append((2, exc))
             raise tasks.Return(values)
 
@@ -777,7 +777,7 @@ class TaskTests(unittest.TestCase):
         self.assertEqual(len(res), 2, res)
         self.assertEqual(res[0], (1, 'a'))
         self.assertEqual(res[1][0], 2)
-        self.assertIsInstance(res[1][1], executor.TimeoutError)
+        self.assertIsInstance(res[1][1], futures.TimeoutError)
         self.assertAlmostEqual(0.12, loop.time())
 
         # move forward to close generator
@@ -907,7 +907,7 @@ class TaskTests(unittest.TestCase):
             loop.call_later(0.1, sleeper.cancel)
             try:
                 yield sleeper
-            except executor.CancelledError:
+            except futures.CancelledError:
                 raise tasks.Return('cancelled')
             else:
                 raise tasks.Return('slept in')
@@ -930,7 +930,7 @@ class TaskTests(unittest.TestCase):
         task.cancel()
         test_utils.run_briefly(self.loop)
         self.assertRaises(
-            executor.CancelledError, self.loop.run_until_complete, task)
+            futures.CancelledError, self.loop.run_until_complete, task)
         self.assertIsNone(task._fut_waiter)
         self.assertTrue(fut.cancelled())
 
@@ -1017,7 +1017,7 @@ class TaskTests(unittest.TestCase):
         def notmutch():
             try:
                 yield sleeper()
-            except executor.CancelledError:
+            except futures.CancelledError:
                 raise base_exc
 
         task = tasks.Task(notmutch(), loop=loop)
@@ -1131,7 +1131,7 @@ class TaskTests(unittest.TestCase):
         def inner():
             try:
                 yield waiter
-            except executor.CancelledError:
+            except futures.CancelledError:
                 non_local['proof'] += 1
                 raise
             else:
@@ -1141,7 +1141,7 @@ class TaskTests(unittest.TestCase):
         def outer():
             try:
                 yield inner()
-            except executor.CancelledError:
+            except futures.CancelledError:
                 non_local['proof'] += 100  # Expect this path.
             else:
                 non_local['proof'] += 10
@@ -1173,7 +1173,7 @@ class TaskTests(unittest.TestCase):
         test_utils.run_briefly(self.loop)
         f.cancel()
         self.assertRaises(
-            executor.CancelledError, self.loop.run_until_complete, f)
+            futures.CancelledError, self.loop.run_until_complete, f)
         waiter.set_result(None)
         test_utils.run_briefly(self.loop)
         self.assertEqual(non_local['proof'], 1)
@@ -1226,7 +1226,7 @@ class TaskTests(unittest.TestCase):
         f = tasks.async(outer(), loop=self.loop)
         test_utils.run_briefly(self.loop)
         f.cancel()
-        with self.assertRaises(executor.CancelledError):
+        with self.assertRaises(futures.CancelledError):
             self.loop.run_until_complete(f)
         waiter.set_result(None)
         test_utils.run_briefly(self.loop)
@@ -1256,7 +1256,7 @@ class TaskTests(unittest.TestCase):
         parent.cancel()
         # This should cancel inner1 and inner2 but bot child1 and child2.
         test_utils.run_briefly(self.loop)
-        self.assertIsInstance(parent.exception(), executor.CancelledError)
+        self.assertIsInstance(parent.exception(), futures.CancelledError)
         self.assertTrue(inner1.cancelled())
         self.assertTrue(inner2.cancelled())
         child1.set_result(1)
@@ -1391,7 +1391,7 @@ class FutureGatherTests(GatherTestsBase, unittest.TestCase):
         self.assertTrue(fut.done())
         cb.assert_called_once_with(fut)
         self.assertFalse(fut.cancelled())
-        self.assertIsInstance(fut.exception(), executor.CancelledError)
+        self.assertIsInstance(fut.exception(), futures.CancelledError)
         # Does nothing
         c.set_result(3)
         d.cancel()
@@ -1415,8 +1415,8 @@ class FutureGatherTests(GatherTestsBase, unittest.TestCase):
         rte = RuntimeError()
         f.set_exception(rte)
         res = self.one_loop.run_until_complete(fut)
-        self.assertIsInstance(res[2], executor.CancelledError)
-        self.assertIsInstance(res[4], executor.CancelledError)
+        self.assertIsInstance(res[2], futures.CancelledError)
+        self.assertIsInstance(res[4], futures.CancelledError)
         res[2] = res[4] = None
         self.assertEqual(res, [1, zde, None, 3, None, rte])
         cb.assert_called_once_with(fut)
@@ -1482,7 +1482,7 @@ class CoroutineGatherTests(GatherTestsBase, unittest.TestCase):
         f = tasks.async(outer(), loop=self.one_loop)
         test_utils.run_briefly(self.one_loop)
         self.assertTrue(f.cancel())
-        with self.assertRaises(executor.CancelledError):
+        with self.assertRaises(futures.CancelledError):
             self.one_loop.run_until_complete(f)
         self.assertFalse(non_local['gatherer'].cancel())
         self.assertTrue(waiter.cancelled())

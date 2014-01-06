@@ -8,7 +8,7 @@ import socket
 
 from . import base_events
 from . import constants
-from . import executor
+from . import futures
 from . import transports
 from .log import logger
 
@@ -189,7 +189,7 @@ class _ProactorReadPipeTransport(_ProactorBasePipeTransport,
             self._force_close(exc)
         except OSError as exc:
             self._fatal_error(exc)
-        except executor.CancelledError:
+        except futures.CancelledError:
             if not self._closing:
                 raise
         else:
@@ -428,7 +428,7 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
                 if sock.fileno() != -1:
                     logger.exception('Accept failed')
                     sock.close()
-            except executor.CancelledError:
+            except futures.CancelledError:
                 sock.close()
             else:
                 f.add_done_callback(loop)
