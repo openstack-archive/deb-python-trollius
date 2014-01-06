@@ -107,7 +107,12 @@ class TaskTests(unittest.TestCase):
 
     def test_task_repr(self):
         @tasks.coroutine
+        def noop():
+            pass
+
+        @tasks.coroutine
         def notmuch():
+            yield noop()
             raise tasks.Return('abc')
 
         t = tasks.Task(notmuch(), loop=self.loop)
