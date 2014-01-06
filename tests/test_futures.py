@@ -20,7 +20,7 @@ def _fakefunc(f):
     return f
 
 
-class FutureTests(unittest.TestCase):
+class FutureTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -267,7 +267,7 @@ class FutureTests(unittest.TestCase):
         self.assertTrue(f2.cancelled())
 
 
-class FutureDoneCallbackTests(unittest.TestCase):
+class FutureDoneCallbackTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()

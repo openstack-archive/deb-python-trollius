@@ -296,3 +296,35 @@ except AttributeError:
     def skipUnless(cond, message):
         return functools.partial(skip_wrapper, cond, message)
 
+class TestCase(unittest.TestCase):
+    def assertIsNone(self, value):
+        self.assertTrue(value is None, value)
+
+    def assertIsNotNone(self, value):
+        self.assertTrue(value is not None, value)
+
+    def assertIs(self, a, b):
+        self.assertTrue(a is b,
+                        "%r is not %r" % (a, b))
+
+    def assertIsNot(self, a, b):
+        self.assertTrue(a is not b,
+                        "%r is not %r" % (a, b))
+
+    def assertIn(self, obj, container):
+        self.assertTrue(obj in container,
+                        "%r not in %r" % (obj, container))
+
+    def assertIsInstance(self, obj, obj_type):
+        self.assertTrue(isinstance(obj, obj_type),
+                        "%r is not an instance of %r" % (obj, obj_type))
+
+    def assertGreater(self, a, b):
+        self.assertTrue(a > b, "%r > %r" % (a, b))
+
+    def assertGreaterEqual(self, a, b):
+        self.assertTrue(a >= b, "%r >= %r" % (a, b))
+
+    def assertLess(self, a, b):
+        self.assertTrue(a < b, "%r < %r" % (a, b))
+

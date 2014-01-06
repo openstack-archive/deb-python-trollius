@@ -15,7 +15,7 @@ from asyncio import tasks
 from asyncio import test_utils
 
 
-class StreamReaderTests(unittest.TestCase):
+class StreamReaderTests(test_utils.TestCase):
 
     DATA = b'line1\nline2\nline3\n'
 

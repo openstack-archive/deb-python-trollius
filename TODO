@@ -1,3 +1,9 @@
+* Port on Python 2.6:
+
+  - OrderedDict
+  - TypeError: failUnlessRaises() takes at least 3 arguments (2 given)
+  - TestCase.addCleanup()
+
 * write unit test for create_connection(ssl=True)
 * add COPYING file
 * add AUTHORS file and fill author field in setup.py

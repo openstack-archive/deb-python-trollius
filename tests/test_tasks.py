@@ -20,7 +20,7 @@ class Dummy:
         pass
 
 
-class TaskTests(unittest.TestCase):
+class TaskTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -1343,7 +1343,7 @@ class GatherTestsBase:
         self.assertEqual(fut.result(), [3, 1, exc, exc2])
 
 
-class FutureGatherTests(GatherTestsBase, unittest.TestCase):
+class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
 
     def wrap_futures(self, *futures):
         return futures
@@ -1427,7 +1427,7 @@ class FutureGatherTests(GatherTestsBase, unittest.TestCase):
         cb.assert_called_once_with(fut)
 
 
-class CoroutineGatherTests(GatherTestsBase, unittest.TestCase):
+class CoroutineGatherTests(GatherTestsBase, test_utils.TestCase):
 
     def setUp(self):
         super(CoroutineGatherTests, self).setUp()
