@@ -152,19 +152,19 @@ class Future(object):
         res = self.__class__.__name__
         if self._state == _FINISHED:
             if self._exception is not None:
-                res += '<exception={!r}>'.format(self._exception)
+                res += '<exception={0!r}>'.format(self._exception)
             else:
-                res += '<result={!r}>'.format(self._result)
+                res += '<result={0!r}>'.format(self._result)
         elif self._callbacks:
             size = len(self._callbacks)
             if size > 2:
-                res += '<{}, [{}, <{} more>, {}]>'.format(
+                res += '<{0}, [{1}, <{2} more>, {3}]>'.format(
                     self._state, self._callbacks[0],
                     size-2, self._callbacks[-1])
             else:
-                res += '<{}, {}>'.format(self._state, self._callbacks)
+                res += '<{0}, {1}>'.format(self._state, self._callbacks)
         else:
-            res += '<{}>'.format(self._state)
+            res += '<{0}>'.format(self._state)
         return res
 
     def cancel(self):
@@ -277,7 +277,7 @@ class Future(object):
         InvalidStateError.
         """
         if self._state != _PENDING:
-            raise InvalidStateError('{}: {!r}'.format(self._state, self))
+            raise InvalidStateError('{0}: {1!r}'.format(self._state, self))
         self._result = result
         self._state = _FINISHED
         self._schedule_callbacks()
@@ -289,7 +289,7 @@ class Future(object):
         InvalidStateError.
         """
         if self._state != _PENDING:
-            raise InvalidStateError('{}: {!r}'.format(self._state, self))
+            raise InvalidStateError('{0}: {1!r}'.format(self._state, self))
         self._exception = exception
 
         # FIXME: delay when the traceback is formatted
@@ -339,7 +339,7 @@ def wrap_future(fut, loop=None):
     if isinstance(fut, Future):
         return fut
     assert isinstance(fut, executor.Future), \
-        'concurrent.futures.Future is expected, got {!r}'.format(fut)
+        'concurrent.futures.Future is expected, got {0!r}'.format(fut)
     if loop is None:
         loop = events.get_event_loop()
     new_future = Future(loop=loop)

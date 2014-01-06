@@ -91,7 +91,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
                     logger.info('set_wakeup_fd(-1) failed: %s', nexc)
 
             if isinstance(exc, RuntimeError) or exc.errno == errno.EINVAL:
-                raise RuntimeError('sig {} cannot be caught'.format(sig))
+                raise RuntimeError('sig {0} cannot be caught'.format(sig))
             else:
                 raise exc_type, exc_value, tb
 
@@ -125,7 +125,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             signal.signal(sig, handler)
         except OSError as exc:
             if exc.errno == errno.EINVAL:
-                raise RuntimeError('sig {} cannot be caught'.format(sig))
+                raise RuntimeError('sig {0} cannot be caught'.format(sig))
             else:
                 raise
 
@@ -144,11 +144,11 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         Raise RuntimeError if there is a problem setting up the handler.
         """
         if not isinstance(sig, int):
-            raise TypeError('sig must be an int, not {!r}'.format(sig))
+            raise TypeError('sig must be an int, not {0!r}'.format(sig))
 
         if not (1 <= sig < signal.NSIG):
             raise ValueError(
-                'sig {} out of range(1, {})'.format(sig, signal.NSIG))
+                'sig {0} out of range(1, {1})'.format(sig, signal.NSIG))
 
     def _make_read_pipe_transport(self, pipe, protocol, waiter=None,
                                   extra=None):

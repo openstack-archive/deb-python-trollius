@@ -75,8 +75,8 @@ class Lock(object):
         res = super(Lock, self).__repr__()
         extra = 'locked' if self._locked else 'unlocked'
         if self._waiters:
-            extra = '{},waiters:{}'.format(extra, len(self._waiters))
-        return '<{} [{}]>'.format(res[1:-1], extra)
+            extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
+        return '<{0} [{1}]>'.format(res[1:-1], extra)
 
     def locked(self):
         """Return True if lock is acquired."""
@@ -159,8 +159,8 @@ class Event(object):
         res = super(Event, self).__repr__()
         extra = 'set' if self._value else 'unset'
         if self._waiters:
-            extra = '{},waiters:{}'.format(extra, len(self._waiters))
-        return '<{} [{}]>'.format(res[1:-1], extra)
+            extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
+        return '<{0} [{1}]>'.format(res[1:-1], extra)
 
     def is_set(self):
         """Return True if and only if the internal flag is true."""
@@ -234,8 +234,8 @@ class Condition(object):
         res = super(Condition, self).__repr__()
         extra = 'locked' if self.locked() else 'unlocked'
         if self._waiters:
-            extra = '{},waiters:{}'.format(extra, len(self._waiters))
-        return '<{} [{}]>'.format(res[1:-1], extra)
+            extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
+        return '<{0} [{1}]>'.format(res[1:-1], extra)
 
     @tasks.coroutine
     def wait(self):
@@ -356,11 +356,11 @@ class Semaphore(object):
 
     def __repr__(self):
         res = super(Semaphore, self).__repr__()
-        extra = 'locked' if self._locked else 'unlocked,value:{}'.format(
+        extra = 'locked' if self._locked else 'unlocked,value:{0}'.format(
             self._value)
         if self._waiters:
-            extra = '{},waiters:{}'.format(extra, len(self._waiters))
-        return '<{} [{}]>'.format(res[1:-1], extra)
+            extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
+        return '<{0} [{1}]>'.format(res[1:-1], extra)
 
     def locked(self):
         """Returns True if semaphore can not be acquired immediately."""
