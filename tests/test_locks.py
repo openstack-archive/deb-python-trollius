@@ -6,6 +6,7 @@ import re
 
 from asyncio import Return
 from asyncio import events
+from asyncio import executor
 from asyncio import futures
 from asyncio import locks
 from asyncio import tasks
@@ -136,7 +137,7 @@ class LockTests(unittest.TestCase):
         task = tasks.Task(lock.acquire(), loop=self.loop)
         self.loop.call_soon(task.cancel)
         self.assertRaises(
-            executor.CancelledError,
+            futures.CancelledError,
             self.loop.run_until_complete, task)
         self.assertFalse(lock._waiters)
 
@@ -318,7 +319,7 @@ class EventTests(unittest.TestCase):
         wait = tasks.Task(ev.wait(), loop=self.loop)
         self.loop.call_soon(wait.cancel)
         self.assertRaises(
-            executor.CancelledError,
+            futures.CancelledError,
             self.loop.run_until_complete, wait)
         self.assertFalse(ev._waiters)
 
@@ -460,7 +461,7 @@ class ConditionTests(unittest.TestCase):
         wait = tasks.Task(cond.wait(), loop=self.loop)
         self.loop.call_soon(wait.cancel)
         self.assertRaises(
-            executor.CancelledError,
+            futures.CancelledError,
             self.loop.run_until_complete, wait)
         self.assertFalse(cond._waiters)
         self.assertTrue(cond.locked())
@@ -805,7 +806,7 @@ class SemaphoreTests(unittest.TestCase):
         acquire = tasks.Task(sem.acquire(), loop=self.loop)
         self.loop.call_soon(acquire.cancel)
         self.assertRaises(
-            executor.CancelledError,
+            futures.CancelledError,
             self.loop.run_until_complete, acquire)
         self.assertFalse(sem._waiters)
 

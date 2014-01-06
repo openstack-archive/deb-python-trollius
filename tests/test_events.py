@@ -1048,7 +1048,7 @@ class EventLoopTestsMixin(object):
             try:
                 self.loop.call_soon(f.cancel)
                 yield f
-            except executor.CancelledError:
+            except futures.CancelledError:
                 res = 'cancelled'
             else:
                 res = None
@@ -1063,7 +1063,7 @@ class EventLoopTestsMixin(object):
 
         self.assertLess(elapsed, 0.1)
         self.assertEqual(t.result(), 'cancelled')
-        self.assertRaises(executor.CancelledError, f.result)
+        self.assertRaises(futures.CancelledError, f.result)
         if ov is not None:
             self.assertFalse(ov.pending)
         self.loop._stop_serving(r)

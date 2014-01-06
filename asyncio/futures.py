@@ -1,6 +1,9 @@
 """A Future class similar to the one in PEP 3148."""
 
-__all__ = ['InvalidStateError', 'Future']
+__all__ = ['CancelledError', 'TimeoutError',
+           'InvalidStateError',
+           'Future', 'wrap_future',
+           ]
 
 import logging
 import sys
@@ -22,10 +25,14 @@ _FINISHED = 'FINISHED'
 
 _PY34 = sys.version_info >= (3, 4)
 
+Error = executor.Error
+CancelledError = executor.CancelledError
+TimeoutError = executor.TimeoutError
+
 STACK_DEBUG = logging.DEBUG - 1  # heavy-duty debugging
 
 
-class InvalidStateError(executor.Error):
+class InvalidStateError(Error):
     """The operation is not allowed in this state."""
     # TODO: Show the future, its state, the method, and the required state.
 
@@ -209,7 +216,7 @@ class Future(object):
         the future is done and has an exception set, this exception is raised.
         """
         if self._state == _CANCELLED:
-            raise executor.CancelledError
+            raise CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Result is not ready.')
         if self._tb_logger is not None:
@@ -228,7 +235,7 @@ class Future(object):
         InvalidStateError.
         """
         if self._state == _CANCELLED:
-            raise executor.CancelledError
+            raise CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Exception is not set.')
         if self._tb_logger is not None:
@@ -346,4 +353,3 @@ def wrap_future(fut, loop=None):
         lambda future: loop.call_soon_threadsafe(
             new_future._copy_state, fut))
     return new_future
-__all__.append('wrap_future')
