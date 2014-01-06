@@ -50,7 +50,7 @@ class BaseSelectorEventLoopTests(unittest.TestCase):
         self.assertIsInstance(
             self.loop._make_socket_transport(m, m), _SelectorSocketTransport)
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
     def test_make_ssl_transport(self):
         m = mock.Mock()
         self.loop.add_reader = mock.Mock()
@@ -1035,7 +1035,7 @@ class SelectorSocketTransportTests(unittest.TestCase):
         tr.close()
 
 
-@unittest.skipIf(ssl is None, 'No ssl module')
+@test_utils.skipIf(ssl is None, 'No ssl module')
 class SelectorSslTransportTests(unittest.TestCase):
 
     def setUp(self):
@@ -1346,7 +1346,7 @@ class SelectorSslTransportTests(unittest.TestCase):
         self.assertEqual(tr._conn_lost, 1)
         self.assertEqual(1, self.loop.remove_reader_count[1])
 
-    @unittest.skipIf(ssl is None or not HAS_SNI, 'No SNI support')
+    @test_utils.skipIf(ssl is None or not HAS_SNI, 'No SNI support')
     def test_server_hostname(self):
         _SelectorSslTransport(
             self.loop, self.sock, self.protocol, self.sslcontext,

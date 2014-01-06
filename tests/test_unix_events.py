@@ -24,7 +24,7 @@ from asyncio import test_utils
 from asyncio import unix_events
 
 
-@unittest.skipUnless(signal, 'Signals are not supported')
+@test_utils.skipUnless(signal, 'Signals are not supported')
 class SelectorEventLoopTests(unittest.TestCase):
 
     def setUp(self):
