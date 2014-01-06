@@ -13,7 +13,11 @@ import functools
 import inspect
 import linecache
 import traceback
-import weakref
+try:
+    from weakref import WeakSet
+except ImportError:
+    # Python 2.6
+    from .py27_weakrefset import WeakSet
 
 from . import events
 from . import executor
@@ -43,7 +47,7 @@ class Task(futures.Future):
     # must be _wakeup().
 
     # Weak set containing all tasks alive.
-    _all_tasks = weakref.WeakSet()
+    _all_tasks = WeakSet()
 
     # Dictionary containing tasks that are currently active in
     # all running event loops.  {EventLoop: Task}
