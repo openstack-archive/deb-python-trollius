@@ -1,7 +1,9 @@
 
 __all__ = [
-    'CloseHandle', 'CreateNamedPipe',
+    'CloseHandle', 'CreateNamedPipe', 'CreateFile', 'ConnectNamedPipe',
     'NULL',
+    'GENERIC_READ', 'GENERIC_WRITE', 'OPEN_EXISTING',
+    'PIPE_ACCESS_INBOUND',
     'PIPE_ACCESS_DUPLEX', 'PIPE_TYPE_MESSAGE', 'PIPE_READMODE_MESSAGE',
     'PIPE_WAIT', 'PIPE_UNLIMITED_INSTANCES', 'NMPWAIT_WAIT_FOREVER',
     'FILE_FLAG_OVERLAPPED', 'FILE_FLAG_FIRST_PIPE_INSTANCE',
@@ -9,8 +11,10 @@ __all__ = [
 
 try:
     from _winapi import (
-        CloseHandle, CreateNamedPipe,
+        CloseHandle, CreateNamedPipe, CreateFile, ConnectNamedPipe,
         NULL,
+        GENERIC_READ, GENERIC_WRITE, OPEN_EXISTING,
+        PIPE_ACCESS_INBOUND,
         PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE, PIPE_READMODE_MESSAGE,
         PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, NMPWAIT_WAIT_FOREVER,
         FILE_FLAG_OVERLAPPED, FILE_FLAG_FIRST_PIPE_INSTANCE,
@@ -19,8 +23,15 @@ except ImportError:
     from _multiprocessing import win32
     CloseHandle = win32.CloseHandle
     CreateNamedPipe = win32.CreateNamedPipe
+    CreateFile = win32.CreateFile
+    ConnectNamedPipe = win32.ConnectNamedPipe
     NULL = win32.NULL
 
+    GENERIC_READ = win32.GENERIC_READ
+    GENERIC_WRITE = win32.GENERIC_WRITE
+    OPEN_EXISTING = win32.OPEN_EXISTING
+
+    PIPE_ACCESS_INBOUND = win32.PIPE_ACCESS_INBOUND
     PIPE_ACCESS_DUPLEX = win32.PIPE_ACCESS_DUPLEX
     PIPE_READMODE_MESSAGE = win32.PIPE_READMODE_MESSAGE
     PIPE_TYPE_MESSAGE = win32.PIPE_TYPE_MESSAGE
