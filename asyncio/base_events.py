@@ -22,6 +22,11 @@ import subprocess
 import time
 import os
 import sys
+try:
+    from collections import OrderedDict
+except ImportError:
+    # Python 2.6: use ordereddict backport
+    from ordereddict import OrderedDict
 
 from . import events
 from . import futures
@@ -396,7 +401,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             addr_pairs_info = (((family, proto), (None, None)),)
         else:
             # join addresss by (family, protocol)
-            addr_infos = collections.OrderedDict()
+            addr_infos = OrderedDict()
             for idx, addr in ((0, local_addr), (1, remote_addr)):
                 if addr is not None:
                     assert isinstance(addr, tuple) and len(addr) == 2, (

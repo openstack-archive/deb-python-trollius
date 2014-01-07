@@ -11,12 +11,18 @@
 #  - python setup.py register sdist bdist_wheel upload
 
 import os
+import sys
 try:
     from setuptools import setup, Extension
+    SETUPTOOLS = True
 except ImportError:
+    SETUPTOOLS = False
     # Use distutils.core as a fallback.
     # We won't be able to build the Wheel file on Windows.
     from distutils.core import setup, Extension
+
+with open("README") as fp:
+    long_description = fp.read()
 
 extensions = []
 if os.name == 'nt':
@@ -25,19 +31,30 @@ if os.name == 'nt':
     )
     extensions.append(ext)
 
-setup(
-    name="trollius",
-    version="0.1.1",
+requirements = []
+if sys.version < (2, 7):
+    requirements.append('ordereddict')
+if sys.version < (3,):
+    requirements.append('futures')
 
-    description="Experimental port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
-    long_description=open("README").read(),
-    url="https://bitbucket.org/haypo/trollius/",
+install_options = {
+    "name": "trollius",
+    "version": "0.1.1",
 
-    classifiers=[
+    "description": "Experimental port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
+    "long_description": long_description,
+    "url": "https://bitbucket.org/haypo/trollius/",
+
+    "classifiers": [
         "Programming Language :: Python",
+        "License :: OSI Approved :: Apache Software License",
     ],
 
-    packages=["asyncio"],
+    "packages": ["asyncio"],
 
-    ext_modules=extensions,
-)
+    "ext_modules": extensions,
+}
+if SETUPTOOLS:
+    install_options['install_requires'] = requirements
+
+setup(**install_options)
