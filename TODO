@@ -5,7 +5,7 @@ Unsorted "TODO" tasks:
 * add COPYING file
 * add AUTHORS file and fill author field in setup.py
   (mention Tulip authors)
-* Fix failing tests:
+* Fix tests failing on Linux:
 
   - test_locks.py
   - test_queues.py
@@ -24,10 +24,8 @@ Unsorted "TODO" tasks:
   - stacks.py: 'exceptions.ZeroDivisionError' object has no attribute '__traceback__'
 
 * as_completed() is a coroutine or not?
-* Move asyncio/coroutine.py in asyncio/tasks.py?
-* Fix coroutine._DEBUG=True
+* Move asyncio/coroutine.py in asyncio/tasks.py? Fix coroutine._DEBUG=True
 * Fix all FIXME in the code
 * Remove backport of Python 3.3 exceptions (ex: BlockingIOError), wrap_error()
 * See:
   http://code.google.com/p/appengine-ndb-experiment/source/browse/ndb/tasklets.py
-* Support Python 3.1 and 3.2: replace thread.get_ident() with threading.get_ident()
