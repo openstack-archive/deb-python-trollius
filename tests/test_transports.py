@@ -3,10 +3,11 @@
 import unittest
 import mock
 
+from asyncio import test_utils
 from asyncio import transports
 
 
-class TransportTests(unittest.TestCase):
+class TransportTests(test_utils.TestCase):
 
     def test_ctor_extra_is_none(self):
         transport = transports.Transport()

@@ -339,7 +339,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                                 exc = OSError(
                                     exc.errno, 'error while '
                                     'attempting to bind on address '
-                                    '{!r}: {}'.format(
+                                    '{0!r}: {1}'.format(
                                         laddr, exc.strerror.lower()))
                                 exceptions.append(exc)
                         else:
@@ -363,7 +363,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                         raise exceptions[0]
                     # Raise a combined exception so the user can see all
                     # the various error messages.
-                    raise OSError('Multiple exceptions: {}'.format(
+                    raise OSError('Multiple exceptions: {0}'.format(
                         ', '.join(str(exc) for exc in exceptions)))
 
         elif sock is None:
@@ -615,7 +615,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         t0 = self.time()
         event_list = self._selector.select(timeout)
         t1 = self.time()
-        argstr = '' if timeout is None else ' {:.3f}'.format(timeout)
+        argstr = '' if timeout is None else ' {0:.3f}'.format(timeout)
         if t1-t0 >= 1:
             level = logging.INFO
         else:

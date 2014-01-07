@@ -58,7 +58,7 @@ class PipeTests(unittest.TestCase):
             self.assertEqual(ov2.error, 0)
 
             ov2.WriteFile(h2, b"hello")
-            self.assertIn(ov2.error, {0, _winapi.ERROR_IO_PENDING})
+            self.assertIn(ov2.error, set((0, _winapi.ERROR_IO_PENDING)))
 
             res = _winapi.WaitForMultipleObjects([ov2.event], False, 100)
             self.assertEqual(res, _winapi.WAIT_OBJECT_0)
@@ -66,7 +66,7 @@ class PipeTests(unittest.TestCase):
             self.assertFalse(ov1.pending)
             self.assertEqual(ov1.error, ERROR_IO_INCOMPLETE)
             self.assertFalse(ov2.pending)
-            self.assertIn(ov2.error, {0, _winapi.ERROR_IO_PENDING})
+            self.assertIn(ov2.error, set((0, _winapi.ERROR_IO_PENDING)))
             self.assertEqual(ov1.getresult(), b"hello")
         finally:
             _winapi.CloseHandle(h1)

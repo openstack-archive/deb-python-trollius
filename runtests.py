@@ -81,20 +81,20 @@ def load_modules(basedir, suffix='.py'):
         modpath = os.path.join(dir, '__init__.py')
         if os.path.isfile(modpath):
             mod = os.path.split(dir)[-1]
-            files.append(('{}{}'.format(prefix, mod), modpath))
+            files.append(('{0}{1}'.format(prefix, mod), modpath))
 
-            prefix = '{}{}.'.format(prefix, mod)
+            prefix = '{0}{1}.'.format(prefix, mod)
 
         for name in os.listdir(dir):
             path = os.path.join(dir, name)
 
             if os.path.isdir(path):
-                files.extend(list_dir('{}{}.'.format(prefix, name), path))
+                files.extend(list_dir('{0}{1}.'.format(prefix, name), path))
             else:
                 if (name != '__init__.py' and
                     name.endswith(suffix) and
                     not name.startswith(('.', '_'))):
-                    files.append(('{}{}'.format(prefix, name[:-3]), path))
+                    files.append(('{0}{1}'.format(prefix, name[:-3]), path))
 
         return files
 
@@ -108,7 +108,7 @@ def load_modules(basedir, suffix='.py'):
         except SyntaxError:
             raise
         except Exception as err:
-            print("Skipping '{}': {}".format(modname, err), file=sys.stderr)
+            print("Skipping '{0}': {1}".format(modname, err), file=sys.stderr)
 
     return mods
 
@@ -185,7 +185,7 @@ class TestRunner(unittest.TextTestRunner):
     def run(self, test):
         result = super().run(test)
         if result.leaks:
-            self.stream.writeln("{} tests leaks:".format(len(result.leaks)))
+            self.stream.writeln("{0} tests leaks:".format(len(result.leaks)))
             for name, leaks in result.leaks:
                 self.stream.writeln(' '*4 + name + ':')
                 for leak in leaks:
@@ -214,7 +214,7 @@ def runtests():
 
     testsdir = os.path.abspath(args.testsdir)
     if not os.path.isdir(testsdir):
-        print("Tests directory is not found: {}\n".format(testsdir))
+        print("Tests directory is not found: {0}\n".format(testsdir))
         ARGS.print_help()
         return
 
@@ -272,7 +272,7 @@ def runtests():
             cov.report(show_missing=False)
             here = os.path.dirname(os.path.abspath(__file__))
             print("\nFor html report:")
-            print("open file://{}/htmlcov/index.html".format(here))
+            print("open file://{0}/htmlcov/index.html".format(here))
 
 
 if __name__ == '__main__':

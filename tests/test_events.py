@@ -1,4 +1,5 @@
 """Tests for events.py."""
+import logging; logging.basicConfig()
 
 import functools
 import gc
@@ -175,7 +176,7 @@ class MySubprocessProtocol(protocols.SubprocessProtocol):
         self.transport = None
         self.connected = futures.Future(loop=loop)
         self.completed = futures.Future(loop=loop)
-        self.disconnects = {fd: futures.Future(loop=loop) for fd in range(3)}
+        self.disconnects = dict((fd, futures.Future(loop=loop)) for fd in range(3))
         self.data = {1: b'', 2: b''}
         self.returncode = None
         self.got_data = {1: locks.Event(loop=loop),
@@ -316,7 +317,7 @@ class EventLoopTestsMixin(object):
         self.loop.run_forever()
         self.assertEqual(results, ['hello', 'world'])
 
-    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
+    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_run_in_executor(self):
         def run(arg):
             return (arg, thread.get_ident())
@@ -420,7 +421,7 @@ class EventLoopTestsMixin(object):
         conn.close()
         listener.close()
 
-    @unittest.skipUnless(hasattr(signal, 'SIGKILL'), 'No SIGKILL')
+    @test_utils.skipUnless(hasattr(signal, 'SIGKILL'), 'No SIGKILL')
     def test_add_signal_handler(self):
         non_local = {'caught': 0}
 
@@ -463,7 +464,7 @@ class EventLoopTestsMixin(object):
         # Removing again returns False.
         self.assertFalse(self.loop.remove_signal_handler(signal.SIGINT))
 
-    @unittest.skipUnless(hasattr(signal, 'SIGALRM'), 'No SIGALRM')
+    @test_utils.skipUnless(hasattr(signal, 'SIGALRM'), 'No SIGALRM')
     def test_signal_handling_while_selecting(self):
         # Test with a signal actually arriving during a select() call.
         non_local = {'caught': 0}
@@ -478,7 +479,7 @@ class EventLoopTestsMixin(object):
         self.loop.run_forever()
         self.assertEqual(non_local['caught'], 1)
 
-    @unittest.skipUnless(hasattr(signal, 'SIGALRM'), 'No SIGALRM')
+    @test_utils.skipUnless(hasattr(signal, 'SIGALRM'), 'No SIGALRM')
     def test_signal_handling_args(self):
         some_args = (42,)
         non_local = {'caught': 0}
@@ -533,7 +534,7 @@ class EventLoopTestsMixin(object):
             self.assertGreater(pr.nbytes, 0)
             tr.close()
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
     def test_create_ssl_connection(self):
         with test_utils.run_test_server(use_ssl=True) as httpd:
             f = self.loop.create_connection(
@@ -629,7 +630,7 @@ class EventLoopTestsMixin(object):
         self.assertEqual(host, '127.0.0.1')
         return server, host, port
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
     def test_create_server_ssl(self):
         non_local = {'proto': None}
 
@@ -675,8 +676,8 @@ class EventLoopTestsMixin(object):
         # stop serving
         server.close()
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
-    @unittest.skipUnless(HAS_SNI, 'No SNI support in ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     def test_create_server_ssl_verify_failed(self):
         non_local = {'proto': None}
 
@@ -704,8 +705,8 @@ class EventLoopTestsMixin(object):
         self.assertIsNone(non_local['proto'].transport)
         server.close()
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
-    @unittest.skipUnless(HAS_SNI, 'No SNI support in ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     def test_create_server_ssl_match_failed(self):
         non_local = {'proto': None}
 
@@ -736,8 +737,8 @@ class EventLoopTestsMixin(object):
         non_local['proto'].transport.close()
         server.close()
 
-    @unittest.skipIf(ssl is None, 'No ssl module')
-    @unittest.skipUnless(HAS_SNI, 'No SNI support in ssl module')
+    @test_utils.skipIf(ssl is None, 'No ssl module')
+    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     def test_create_server_ssl_verified(self):
         non_local = {'proto': None}
 
@@ -808,7 +809,7 @@ class EventLoopTestsMixin(object):
 
         server.close()
 
-    @unittest.skipUnless(support.IPV6_ENABLED, 'IPv6 not supported or enabled')
+    @test_utils.skipUnless(support.IPV6_ENABLED, 'IPv6 not supported or enabled')
     def test_create_server_dual_stack(self):
         f_proto = futures.Future(loop=self.loop)
 
@@ -921,7 +922,7 @@ class EventLoopTestsMixin(object):
         self.assertIsNone(loop._csock)
         self.assertIsNone(loop._ssock)
 
-    @unittest.skipUnless(sys.platform != 'win32',
+    @test_utils.skipUnless(sys.platform != 'win32',
                          "Don't support pipes for Windows")
     def test_read_pipe(self):
         non_local = {'proto': None}
@@ -959,7 +960,7 @@ class EventLoopTestsMixin(object):
         # extra info is available
         self.assertIsNotNone(non_local['proto'].transport.get_extra_info('pipe'))
 
-    @unittest.skipUnless(sys.platform != 'win32',
+    @test_utils.skipUnless(sys.platform != 'win32',
                          "Don't support pipes for Windows")
     def test_write_pipe(self):
         non_local = {'proto': None, 'transport': None}
@@ -1002,7 +1003,7 @@ class EventLoopTestsMixin(object):
         self.loop.run_until_complete(non_local['proto'].done)
         self.assertEqual('CLOSED', non_local['proto'].state)
 
-    @unittest.skipUnless(sys.platform != 'win32',
+    @test_utils.skipUnless(sys.platform != 'win32',
                          "Don't support pipes for Windows")
     def test_write_pipe_disconnect_on_close(self):
         non_local = {'proto': None, 'transport': None}
@@ -1234,7 +1235,7 @@ class SubprocessTestsMixin(object):
         self.loop.run_until_complete(non_local['proto'].completed)
         self.check_terminated(non_local['proto'].returncode)
 
-    @unittest.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
+    @test_utils.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
     def test_subprocess_send_signal(self):
         non_local = {'proto': None, 'transp': None}
 
@@ -1367,14 +1368,14 @@ class SubprocessTestsMixin(object):
 if sys.platform == 'win32':
     from asyncio import windows_events
 
-    class SelectEventLoopTests(EventLoopTestsMixin, unittest.TestCase):
+    class SelectEventLoopTests(EventLoopTestsMixin, test_utils.TestCase):
 
         def create_event_loop(self):
             return windows_events.SelectorEventLoop()
 
     class ProactorEventLoopTests(EventLoopTestsMixin,
                                  SubprocessTestsMixin,
-                                 unittest.TestCase):
+                                 test_utils.TestCase):
 
         def create_event_loop(self):
             return windows_events.ProactorEventLoop()
@@ -1427,7 +1428,7 @@ else:
     if hasattr(selectors, 'KqueueSelector'):
         class KqueueEventLoopTests(UnixEventLoopTestsMixin,
                                    SubprocessTestsMixin,
-                                   unittest.TestCase):
+                                   test_utils.TestCase):
 
             def create_event_loop(self):
                 return unix_events.SelectorEventLoop(
@@ -1436,7 +1437,7 @@ else:
     if hasattr(selectors, 'EpollSelector'):
         class EPollEventLoopTests(UnixEventLoopTestsMixin,
                                   SubprocessTestsMixin,
-                                  unittest.TestCase):
+                                  test_utils.TestCase):
 
             def create_event_loop(self):
                 return unix_events.SelectorEventLoop(selectors.EpollSelector())
@@ -1444,7 +1445,7 @@ else:
     if hasattr(selectors, 'PollSelector'):
         class PollEventLoopTests(UnixEventLoopTestsMixin,
                                  SubprocessTestsMixin,
-                                 unittest.TestCase):
+                                 test_utils.TestCase):
 
             def create_event_loop(self):
                 return unix_events.SelectorEventLoop(selectors.PollSelector())
@@ -1452,13 +1453,13 @@ else:
     # Should always exist.
     class SelectEventLoopTests(UnixEventLoopTestsMixin,
                                SubprocessTestsMixin,
-                               unittest.TestCase):
+                               test_utils.TestCase):
 
         def create_event_loop(self):
             return unix_events.SelectorEventLoop(selectors.SelectSelector())
 
 
-class HandleTests(unittest.TestCase):
+class HandleTests(test_utils.TestCase):
 
     def test_handle(self):
         def callback(*args):
@@ -1498,7 +1499,7 @@ class HandleTests(unittest.TestCase):
         self.assertTrue(log.exception.called)
 
 
-class TimerTests(unittest.TestCase):
+class TimerTests(test_utils.TestCase):
 
     def test_hash(self):
         when = time_monotonic()
@@ -1569,7 +1570,7 @@ class TimerTests(unittest.TestCase):
         self.assertIs(NotImplemented, h1.__ne__(h3))
 
 
-class AbstractEventLoopTests(unittest.TestCase):
+class AbstractEventLoopTests(test_utils.TestCase):
 
     def test_not_implemented(self):
         f = mock.Mock()
@@ -1643,7 +1644,7 @@ class AbstractEventLoopTests(unittest.TestCase):
             NotImplementedError, loop.subprocess_exec, f)
 
 
-class ProtocolsAbsTests(unittest.TestCase):
+class ProtocolsAbsTests(test_utils.TestCase):
 
     def test_empty(self):
         f = mock.Mock()
@@ -1667,7 +1668,7 @@ class ProtocolsAbsTests(unittest.TestCase):
         self.assertIsNone(sp.process_exited())
 
 
-class PolicyTests(unittest.TestCase):
+class PolicyTests(test_utils.TestCase):
 
     def create_policy(self):
         if sys.platform == "win32":

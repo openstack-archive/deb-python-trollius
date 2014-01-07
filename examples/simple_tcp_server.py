@@ -75,7 +75,7 @@ class MyServer:
                 msg = args[1]
                 client_writer.write("begin\n".encode("utf-8"))
                 for idx in range(times):
-                    client_writer.write("{}. {}\n".format(idx+1, msg)
+                    client_writer.write("{0}. {1}\n".format(idx+1, msg)
                                         .encode("utf-8"))
                 client_writer.write("end\n".encode("utf-8"))
             else:

@@ -22,7 +22,7 @@ STR_RGX_REPR = (
 RGX_REPR = re.compile(STR_RGX_REPR)
 
 
-class LockTests(unittest.TestCase):
+class LockTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -227,7 +227,7 @@ class LockTests(unittest.TestCase):
                 '"yield from" should be used as context manager expression')
 
 
-class EventTests(unittest.TestCase):
+class EventTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -363,7 +363,7 @@ class EventTests(unittest.TestCase):
         self.assertTrue(t.result())
 
 
-class ConditionTests(unittest.TestCase):
+class ConditionTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -664,7 +664,7 @@ class ConditionTests(unittest.TestCase):
                 '"yield from" should be used as context manager expression')
 
 
-class SemaphoreTests(unittest.TestCase):
+class SemaphoreTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()

@@ -78,7 +78,7 @@ class MyServer:
                 msg = args[1]
                 client_writer.write("begin\n".encode("utf-8"))
                 for idx in range(times):
-                    client_writer.write("{}. {}\n".format(
+                    client_writer.write("{0}. {1}\n".format(
                         idx+1, msg + 'x'*random.randint(10, 50))
                                         .encode("utf-8"))
                 client_writer.write("end\n".encode("utf-8"))
@@ -143,7 +143,7 @@ def main():
 
         for N in Ns:
             t0 = time.time()
-            send("repeat {} hello world ".format(N))
+            send("repeat {0} hello world ".format(N))
             msg = yield recv()
             assert msg == 'begin'
             while True:
@@ -152,7 +152,7 @@ def main():
                     break
             t1 = time.time()
             dt = t1 - t0
-            print("Time taken: {:.3f} seconds ({:.6f} per repetition)"
+            print("Time taken: {0:.3f} seconds ({1:.6f} per repetition)"
                   .format(dt, dt/N))
             times.append(dt)
 

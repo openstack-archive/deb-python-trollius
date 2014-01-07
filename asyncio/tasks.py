@@ -13,7 +13,11 @@ import functools
 import inspect
 import linecache
 import traceback
-import weakref
+try:
+    from weakref import WeakSet
+except ImportError:
+    # Python 2.6
+    from .py27_weakrefset import WeakSet
 
 from . import events
 from . import executor
@@ -43,7 +47,7 @@ class Task(futures.Future):
     # must be _wakeup().
 
     # Weak set containing all tasks alive.
-    _all_tasks = weakref.WeakSet()
+    _all_tasks = WeakSet()
 
     # Dictionary containing tasks that are currently active in
     # all running event loops.  {EventLoop: Task}
@@ -69,7 +73,7 @@ class Task(futures.Future):
         """
         if loop is None:
             loop = events.get_event_loop()
-        return {t for t in cls._all_tasks if t._loop is loop}
+        return set(t for t in cls._all_tasks if t._loop is loop)
 
     def __init__(self, coro, loop=None):
         assert iscoroutine(coro), repr(coro)  # Not a coroutine function!
@@ -89,7 +93,7 @@ class Task(futures.Future):
         i = res.find('<')
         if i < 0:
             i = len(res)
-        res = res[:i] + '(<{}>)'.format(self._coro.__name__) + res[i:]
+        res = res[:i] + '(<{0}>)'.format(self._coro.__name__) + res[i:]
         return res
 
     def get_stack(self, limit=None):
@@ -184,7 +188,7 @@ class Task(futures.Future):
 
     def _step(self, value=None, exc=None):
         assert not self.done(), \
-            '_step(): already done: {!r}, {!r}, {!r}'.format(self, value, exc)
+            '_step(): already done: {0!r}, {1!r}, {2!r}'.format(self, value, exc)
         if self._must_cancel:
             if not isinstance(exc, futures.CancelledError):
                 exc = futures.CancelledError()
@@ -231,7 +235,7 @@ class Task(futures.Future):
                 self._loop.call_soon(
                     self._step, None,
                     RuntimeError(
-                        'Task got bad yield: {!r}'.format(result)))
+                        'Task got bad yield: {0!r}'.format(result)))
         finally:
             self.__class__._current_tasks.pop(self._loop)
         self = None
@@ -279,7 +283,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
     fs = set(async(f, loop=loop) for f in fs)
 
     if return_when not in (FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED):
-        raise ValueError('Invalid return_when value: {}'.format(return_when))
+        raise ValueError('Invalid return_when value: {0}'.format(return_when))
     result = yield _wait(fs, timeout, return_when, loop)
     raise Return(result)
 
