@@ -10,7 +10,9 @@ from collections import namedtuple, Mapping
 import functools
 import select
 import sys
-from asyncio.backport import wrap_error
+
+from . import backport
+from .backport import wrap_error
 
 
 # generic events, that must be mapped to implementation-specific ones
@@ -312,7 +314,7 @@ class SelectSelector(_BaseSelectorImpl):
         try:
             r, w, _ = wrap_error(self._select,
                                  self._readers, self._writers, [], timeout)
-        except InterruptedError:
+        except backport.InterruptedError:
             return ready
         r = set(r)
         w = set(w)
@@ -358,7 +360,7 @@ if hasattr(select, 'poll'):
             ready = []
             try:
                 fd_event_list = wrap_error(self._poll.poll, timeout)
-            except InterruptedError:
+            except backport.InterruptedError:
                 return ready
             for fd, event in fd_event_list:
                 events = 0
@@ -411,7 +413,7 @@ if hasattr(select, 'epoll'):
             ready = []
             try:
                 fd_event_list = wrap_error(self._epoll.poll, timeout, max_ev)
-            except InterruptedError:
+            except backport.InterruptedError:
                 return ready
             for fd, event in fd_event_list:
                 events = 0
@@ -482,7 +484,7 @@ if hasattr(select, 'kqueue'):
             try:
                 kev_list = wrap_error(self._kqueue.control,
                                       None, max_ev, timeout)
-            except InterruptedError:
+            except backport.InterruptedError:
                 return ready
             for kev in kev_list:
                 fd = kev.ident

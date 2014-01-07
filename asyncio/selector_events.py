@@ -15,6 +15,7 @@ except ImportError:  # pragma: no cover
     ssl = None
 
 from . import base_events
+from . import backport
 from . import backport_ssl
 from . import constants
 from . import events
@@ -107,13 +108,13 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
     def _read_from_self(self):
         try:
             wrap_error(self._ssock.recv, 1)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             pass
 
     def _write_to_self(self):
         try:
             wrap_error(self._csock.send, b'x')
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             pass
 
     def _start_serving(self, protocol_factory, sock,
@@ -126,7 +127,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
         try:
             conn, addr = wrap_error(sock.accept)
             conn.setblocking(False)
-        except (BlockingIOError, InterruptedError, ConnectionAbortedError):
+        except (backport.BlockingIOError, backport.InterruptedError, backport.ConnectionAbortedError):
             pass  # False alarm.
         except OSError as exc:
             # There's nowhere to send the error, so just log it.
@@ -243,7 +244,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             return
         try:
             data = wrap_error(sock.recv, n)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             self.add_reader(fd, self._sock_recv, fut, True, sock, n)
         except Exception as exc:
             fut.set_exception(exc)
@@ -269,7 +270,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
         try:
             n = wrap_error(sock.send, data)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             n = 0
         except Exception as exc:
             fut.set_exception(exc)
@@ -316,7 +317,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
                         # Jump to the except clause below.
                         raise OSError(err, 'Connect call failed %s' % (address,))
                 wrap_error(wrap)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             self.add_writer(fd, self._sock_connect, fut, True, sock, address)
         except Exception as exc:
             fut.set_exception(exc)
@@ -338,7 +339,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
         try:
             conn, address = wrap_error(sock.accept)
             conn.setblocking(False)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             self.add_reader(fd, self._sock_accept, fut, True, sock)
         except Exception as exc:
             fut.set_exception(exc)
@@ -406,7 +407,7 @@ class _SelectorTransport(transports.Transport):
 
     def _fatal_error(self, exc):
         # Should be called from exception handler only.
-        if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+        if not isinstance(exc, (backport.BrokenPipeError, backport.ConnectionResetError)):
             logger.exception('Fatal error for %s', self)
         self._force_close(exc)
 
@@ -505,7 +506,7 @@ class _SelectorSocketTransport(_SelectorTransport):
     def _read_ready(self):
         try:
             data = wrap_error(self._sock.recv, self.max_size)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             pass
         except Exception as exc:
             self._fatal_error(exc)
@@ -537,7 +538,7 @@ class _SelectorSocketTransport(_SelectorTransport):
             # Optimization: try to send now.
             try:
                 n = wrap_error(self._sock.send, data)
-            except (BlockingIOError, InterruptedError):
+            except (backport.BlockingIOError, backport.InterruptedError):
                 pass
             except Exception as exc:
                 self._fatal_error(exc)
@@ -559,7 +560,7 @@ class _SelectorSocketTransport(_SelectorTransport):
         data = flatten_bytes(self._buffer)
         try:
             n = wrap_error(self._sock.send, data)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             pass
         except Exception as exc:
             self._loop.remove_writer(self._sock_fd)
@@ -726,7 +727,7 @@ class _SelectorSslTransport(_SelectorTransport):
 
         try:
             data = wrap_ssl_error(functools.partial(wrap_error, self._sock.recv, self.max_size))
-        except (BlockingIOError, InterruptedError, ssl.SSLWantReadError):
+        except (backport.BlockingIOError, backport.InterruptedError, ssl.SSLWantReadError):
             pass
         except ssl.SSLWantWriteError:
             self._read_wants_write = True
@@ -758,7 +759,7 @@ class _SelectorSslTransport(_SelectorTransport):
             data = flatten_bytes(self._buffer)
             try:
                 n = wrap_error(self._sock.send, data)
-            except (BlockingIOError, InterruptedError,
+            except (backport.BlockingIOError, backport.InterruptedError,
                     ssl.SSLWantWriteError):
                 n = 0
             except ssl.SSLWantReadError:
@@ -819,7 +820,7 @@ class _SelectorDatagramTransport(_SelectorTransport):
     def _read_ready(self):
         try:
             data, addr = wrap_error(self._sock.recvfrom, self.max_size)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             pass
         except OSError as exc:
             self._protocol.error_received(exc)
@@ -851,7 +852,7 @@ class _SelectorDatagramTransport(_SelectorTransport):
                 else:
                     wrap_error(self._sock.sendto, data, addr)
                 return
-            except (BlockingIOError, InterruptedError):
+            except (backport.BlockingIOError, backport.InterruptedError):
                 self._loop.add_writer(self._sock_fd, self._sendto_ready)
             except OSError as exc:
                 self._protocol.error_received(exc)
@@ -872,7 +873,7 @@ class _SelectorDatagramTransport(_SelectorTransport):
                     wrap_error(self._sock.send, data)
                 else:
                     wrap_error(self._sock.sendto, data, addr)
-            except (BlockingIOError, InterruptedError):
+            except (backport.BlockingIOError, backport.InterruptedError):
                 self._buffer.appendleft((data, addr))  # Try again later.
                 break
             except OSError as exc:

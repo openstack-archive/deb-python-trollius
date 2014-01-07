@@ -16,7 +16,7 @@ import mock
 if sys.platform == 'win32':
     raise unittest.SkipTest('UNIX only')
 
-
+from asyncio import backport
 from asyncio import events
 from asyncio import futures
 from asyncio import protocols
@@ -261,7 +261,7 @@ class UnixReadPipeTransportTests(test_utils.TestCase):
     def test__read_ready_blocked(self, m_read):
         tr = unix_events._UnixReadPipeTransport(
             self.loop, self.pipe, self.protocol)
-        m_read.side_effect = BlockingIOError
+        m_read.side_effect = backport.BlockingIOError
         tr._read_ready()
 
         m_read.assert_called_with(5, tr.max_size)
@@ -452,7 +452,7 @@ class UnixWritePipeTransportTests(test_utils.TestCase):
         tr = unix_events._UnixWritePipeTransport(
             self.loop, self.pipe, self.protocol)
 
-        m_write.side_effect = BlockingIOError()
+        m_write.side_effect = backport.BlockingIOError()
         tr.write(b'data')
         m_write.assert_called_with(5, b'data')
         self.loop.assert_writer(5, tr._write_ready)
@@ -537,7 +537,7 @@ class UnixWritePipeTransportTests(test_utils.TestCase):
 
         self.loop.add_writer(5, tr._write_ready)
         tr._buffer = [b'da', b'ta']
-        m_write.side_effect = BlockingIOError()
+        m_write.side_effect = backport.BlockingIOError()
         tr._write_ready()
         m_write.assert_called_with(5, b'data')
         self.loop.assert_writer(5, tr._write_ready)
@@ -742,7 +742,7 @@ class ChildWatcherTestsMixin:
         if self.running:
             return 0, 0
         else:
-            raise ChildProcessError()
+            raise backport.ChildProcessError()
 
     def add_zombie(self, pid, returncode):
         self.zombies[pid] = returncode + 32768

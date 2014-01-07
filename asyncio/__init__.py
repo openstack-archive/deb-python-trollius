@@ -22,6 +22,7 @@ if sys.platform == 'win32':
 
 # This relies on each of the submodules having an __all__ variable.
 from .futures import *
+from .backport import *
 from .backport_ssl import *
 from .events import *
 from .locks import *
@@ -37,6 +38,7 @@ else:
 
 
 __all__ = (futures.__all__ +
+           backport.__all__ +
            backport_ssl.__all__ +
            events.__all__ +
            locks.__all__ +

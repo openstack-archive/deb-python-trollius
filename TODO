@@ -26,6 +26,6 @@ Unsorted "TODO" tasks:
 * as_completed() is a coroutine or not?
 * Move asyncio/coroutine.py in asyncio/tasks.py? Fix coroutine._DEBUG=True
 * Fix all FIXME in the code
-* Remove backport of Python 3.3 exceptions (ex: BlockingIOError), wrap_error()
+* Remove backport of Python 3.3 SSL exceptions (ex: SSLWantWriteError)
 * See:
   http://code.google.com/p/appengine-ndb-experiment/source/browse/ndb/tasklets.py

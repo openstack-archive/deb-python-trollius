@@ -7,6 +7,7 @@ import weakref
 import struct
 import _winapi
 
+from . import backport
 from . import events
 from . import base_subprocess
 from . import futures
@@ -220,7 +221,7 @@ class IocpProactor(object):
                 return ov.getresult()
             except OSError as exc:
                 if exc.winerror == _overlapped.ERROR_NETNAME_DELETED:
-                    raise ConnectionResetError(*exc.args)
+                    raise backport.ConnectionResetError(*exc.args)
                 else:
                     raise
 
@@ -239,7 +240,7 @@ class IocpProactor(object):
                 return ov.getresult()
             except OSError as exc:
                 if exc.winerror == _overlapped.ERROR_NETNAME_DELETED:
-                    raise ConnectionResetError(*exc.args)
+                    raise backport.ConnectionResetError(*exc.args)
                 else:
                     raise
 
@@ -306,7 +307,7 @@ class IocpProactor(object):
             if err == _overlapped.ERROR_SEM_TIMEOUT:
                 # Connection did not succeed within time limit.
                 msg = _overlapped.FormatMessage(err)
-                raise ConnectionRefusedError(0, msg, None, err)
+                raise backport.ConnectionRefusedError(0, msg, None, err)
             elif err != 0:
                 msg = _overlapped.FormatMessage(err)
                 raise OSError(0, msg, None, err)

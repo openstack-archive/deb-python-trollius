@@ -7,6 +7,7 @@ import unittest
 import mock
 
 from asyncio import Return
+from asyncio import backport
 from asyncio import base_events
 from asyncio import constants
 from asyncio import events
@@ -661,7 +662,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def test_accept_connection_retry(self):
         sock = mock.Mock()
-        sock.accept.side_effect = BlockingIOError()
+        sock.accept.side_effect = backport.BlockingIOError()
 
         self.loop._accept_connection(MyProto, sock)
         self.assertFalse(sock.close.called)
