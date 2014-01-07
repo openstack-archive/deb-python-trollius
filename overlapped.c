@@ -81,7 +81,7 @@ SetFromWindowsErr(DWORD err)
 
     if (err == 0)
         err = GetLastError();
-    #ifdef PYTHON3
+#ifdef PYTHON3
     switch (err) {
         case ERROR_CONNECTION_REFUSED:
             exception_type = PyExc_ConnectionRefusedError;
@@ -92,9 +92,9 @@ SetFromWindowsErr(DWORD err)
         default:
             exception_type = PyExc_OSError;
     }
-    #else
+#else
     exception_type = PyExc_OSError;
-    #endif
+#endif
     return PyErr_SetExcFromWindowsErr(exception_type, err);
 }
 
@@ -1376,11 +1376,11 @@ _init_overlapped(void)
     if (PyType_Ready(&OverlappedType) < 0)
         return NULL;
 
-    #ifdef PYTHON3
+#ifdef PYTHON3
     m = PyModule_Create(&overlapped_module);
-    #else
+#else
     m = Py_InitModule("_overlapped", overlapped_functions);
-    #endif
+#endif
     if (PyModule_AddObject(m, "Overlapped", (PyObject *)&OverlappedType) < 0)
         return NULL;
 
