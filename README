@@ -83,6 +83,12 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Development version:
+
+- Basic Windows support: fix compilation of the _overlapped module and add a
+  asyncio._winapi module (written in pure Python). Patch written by Marc
+  Schlaich.
+
 2014-01-06: version 0.1.1
 
 - Fix asyncio.time_monotonic on Mac OS X
