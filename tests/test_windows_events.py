@@ -5,12 +5,11 @@ import unittest
 if sys.platform != 'win32':
     raise unittest.SkipTest('Windows only')
 
-import _winapi
-
 import asyncio
 
 from asyncio import Return
 from asyncio import _overlapped
+from asyncio import _winapi
 from asyncio import futures
 from asyncio import protocols
 from asyncio import streams
