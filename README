@@ -39,13 +39,16 @@ Differences between Trollius and Tulip
 
 * Trollius coroutines use "yield" and "raise Return(value)",
   whereas Tulip coroutines use "yield from" and "return".
-* If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
-  uses a synchronous executor instead of a pool of threads. It blocks until the
-  function returns, and so DNS resolutions are blocking.
 * On Python 2.7, asyncio.SSLContext has less features than the ssl.SSLContext
   of Python 3.3: no options, verify_mode cannot be modified (fixed to
   CERT_NONE), no set_default_verify_paths() method, etc.
+* Lock syntax of Tulip "yield from lock" is not supported in
+  Trollius. "yield lock.acquire() try: ... finally: lock.release()" should be
+  used instead
 * Python 2 does not support keyword-only parameters.
+* If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
+  uses a synchronous executor instead of a pool of threads. It blocks until the
+  function returns, and so DNS resolutions are blocking.
 
 
 Usage
