@@ -7,7 +7,6 @@ Unsorted "TODO" tasks:
   (mention Tulip authors)
 * Fix failing tests:
 
-  - test_futures.py
   - test_locks.py
   - test_queues.py
   - test_tasks.py
@@ -17,7 +16,6 @@ Unsorted "TODO" tasks:
   - test_events.py
   - test_windows_events.py
   - segfault in windows_utils.pipe
-  - re-enable tests in test_windows_utils.py
 
 * Fix examples:
 
