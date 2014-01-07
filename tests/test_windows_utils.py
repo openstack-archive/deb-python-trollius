@@ -8,10 +8,9 @@ import mock
 if sys.platform != 'win32':
     raise unittest.SkipTest('Windows only')
 
-import _winapi
-
 from asyncio import windows_utils
 from asyncio import _overlapped
+from asyncio import _winapi
 
 
 class WinsocketpairTests(unittest.TestCase):
@@ -34,7 +33,7 @@ class WinsocketpairTests(unittest.TestCase):
         self.assertRaises(OSError, windows_utils.socketpair)
 
 
-class PipeTests(unittest.TestCase):
+class _PipeTests(unittest.TestCase):
 
     def test_pipe_overlapped(self):
         h1, h2 = windows_utils.pipe(overlapped=(True, True))
@@ -91,7 +90,7 @@ class PipeTests(unittest.TestCase):
             raise RuntimeError('expected ERROR_INVALID_HANDLE')
 
 
-class PopenTests(unittest.TestCase):
+class _PopenTests(unittest.TestCase):
 
     def test_popen(self):
         command = r"""if 1:
