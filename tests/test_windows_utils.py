@@ -33,7 +33,7 @@ class WinsocketpairTests(unittest.TestCase):
         self.assertRaises(OSError, windows_utils.socketpair)
 
 
-class _PipeTests(unittest.TestCase):
+class PipeTests(unittest.TestCase):
 
     def test_pipe_overlapped(self):
         h1, h2 = windows_utils.pipe(overlapped=(True, True))
@@ -90,7 +90,7 @@ class _PipeTests(unittest.TestCase):
             raise RuntimeError('expected ERROR_INVALID_HANDLE')
 
 
-class _PopenTests(unittest.TestCase):
+class PopenTests(unittest.TestCase):
 
     def test_popen(self):
         command = r"""if 1:
