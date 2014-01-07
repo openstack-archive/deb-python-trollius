@@ -9,6 +9,13 @@
   - test_queues.py
   - test_tasks.py
 
+* Windows:
+
+  - test_events.py
+  - test_windows_events.py
+  - segfault in windows_utils.pipe
+  - re-enable tests in test_windows_utils.py
+
 * Fix examples:
 
   - cacheclt/cachesrv.py

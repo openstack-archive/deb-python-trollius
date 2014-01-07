@@ -15,6 +15,8 @@ import subprocess
 import tempfile
 import _winapi
 
+from .backport import wrap_error
+
 
 __all__ = ['socketpair', 'pipe', 'Popen', 'PIPE', 'PipeHandle']
 
@@ -45,7 +47,7 @@ def socketpair(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0):
     csock = socket.socket(family, type, proto)
     csock.setblocking(False)
     try:
-        csock.connect((addr, port))
+        wrap_error(csock.connect, (addr, port))
     except (BlockingIOError, InterruptedError):
         pass
     except Exception:
@@ -61,7 +63,7 @@ def socketpair(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0):
 # Replacement for os.pipe() using handles instead of fds
 
 
-def pipe(*, duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
+def pipe(duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
     """Like os.pipe() but with overlapped support and using handles not fds."""
     address = tempfile.mktemp(prefix=r'\\.\pipe\python-pipe-%d-%d-' %
                               (os.getpid(), next(_mmap_counter)))
@@ -95,7 +97,7 @@ def pipe(*, duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
             address, access, 0, _winapi.NULL, _winapi.OPEN_EXISTING,
             flags_and_attribs, _winapi.NULL)
 
-        ov = _winapi.ConnectNamedPipe(h1, overlapped=True)
+        ov = _winapi.ConnectNamedPipe(h1, True)
         ov.GetOverlappedResult(True)
         return h1, h2
     except:
