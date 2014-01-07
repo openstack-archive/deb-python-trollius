@@ -31,6 +31,18 @@
 
 #define T_HANDLE T_POINTER
 
+#if PY_MAJOR_VERSION >= 3
+#  define PYTHON3
+#endif
+
+#ifndef Py_MIN
+#  define Py_MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+#endif
+
+#ifndef Py_MAX
+#  define Py_MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+#endif
+
 enum {TYPE_NONE, TYPE_NOT_STARTED, TYPE_READ, TYPE_WRITE, TYPE_ACCEPT,
       TYPE_CONNECT, TYPE_DISCONNECT, TYPE_CONNECT_NAMED_PIPE,
       TYPE_WAIT_NAMED_PIPE_AND_CONNECT};
@@ -69,6 +81,7 @@ SetFromWindowsErr(DWORD err)
 
     if (err == 0)
         err = GetLastError();
+    #ifdef PYTHON3
     switch (err) {
         case ERROR_CONNECTION_REFUSED:
             exception_type = PyExc_ConnectionRefusedError;
@@ -79,6 +92,9 @@ SetFromWindowsErr(DWORD err)
         default:
             exception_type = PyExc_OSError;
     }
+    #else
+    exception_type = PyExc_OSError;
+    #endif
     return PyErr_SetExcFromWindowsErr(exception_type, err);
 }
 
@@ -1326,6 +1342,7 @@ static PyMethodDef overlapped_functions[] = {
     {NULL}
 };
 
+#ifdef PYTHON3
 static struct PyModuleDef overlapped_module = {
     PyModuleDef_HEAD_INIT,
     "_overlapped",
@@ -1337,12 +1354,13 @@ static struct PyModuleDef overlapped_module = {
     NULL,
     NULL
 };
+#endif
 
 #define WINAPI_CONSTANT(fmt, con) \
     PyDict_SetItemString(d, #con, Py_BuildValue(fmt, con))
 
-PyMODINIT_FUNC
-PyInit__overlapped(void)
+PyObject*
+_init_overlapped(void)
 {
     PyObject *m, *d;
 
@@ -1358,7 +1376,11 @@ PyInit__overlapped(void)
     if (PyType_Ready(&OverlappedType) < 0)
         return NULL;
 
+    #ifdef PYTHON3
     m = PyModule_Create(&overlapped_module);
+    #else
+    m = Py_InitModule("_overlapped", overlapped_functions);
+    #endif
     if (PyModule_AddObject(m, "Overlapped", (PyObject *)&OverlappedType) < 0)
         return NULL;
 
@@ -1376,3 +1398,17 @@ PyInit__overlapped(void)
 
     return m;
 }
+
+#ifdef PYTHON3
+PyMODINIT_FUNC
+PyInit__overlapped(void)
+{
+    return _init_overlapped();
+}
+#else
+PyMODINIT_FUNC
+init_overlapped(void)
+{
+    _init_overlapped();
+}
+#endif
