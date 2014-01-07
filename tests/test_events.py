@@ -1,5 +1,4 @@
 """Tests for events.py."""
-import logging; logging.basicConfig()
 
 import functools
 import gc
