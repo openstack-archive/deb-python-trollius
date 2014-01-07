@@ -1,8 +1,32 @@
 
-__all__ = ['CloseHandle']
+__all__ = [
+    'CloseHandle', 'CreateNamedPipe',
+    'NULL',
+    'PIPE_ACCESS_DUPLEX', 'PIPE_TYPE_MESSAGE', 'PIPE_READMODE_MESSAGE',
+    'PIPE_WAIT', 'PIPE_UNLIMITED_INSTANCES', 'NMPWAIT_WAIT_FOREVER',
+    'FILE_FLAG_OVERLAPPED', 'FILE_FLAG_FIRST_PIPE_INSTANCE',
+    ]
 
 try:
-    from _winapi import CloseHandle
+    from _winapi import (
+        CloseHandle, CreateNamedPipe,
+        NULL,
+        PIPE_ACCESS_DUPLEX, PIPE_TYPE_MESSAGE, PIPE_READMODE_MESSAGE,
+        PIPE_WAIT, PIPE_UNLIMITED_INSTANCES, NMPWAIT_WAIT_FOREVER,
+        FILE_FLAG_OVERLAPPED, FILE_FLAG_FIRST_PIPE_INSTANCE,
+    )
 except ImportError:
     from _multiprocessing import win32
     CloseHandle = win32.CloseHandle
+    CreateNamedPipe = win32.CreateNamedPipe
+    NULL = win32.NULL
+
+    PIPE_ACCESS_DUPLEX = win32.PIPE_ACCESS_DUPLEX
+    PIPE_READMODE_MESSAGE = win32.PIPE_READMODE_MESSAGE
+    PIPE_TYPE_MESSAGE = win32.PIPE_TYPE_MESSAGE
+    PIPE_WAIT = win32.PIPE_WAIT
+    PIPE_UNLIMITED_INSTANCES = win32.PIPE_UNLIMITED_INSTANCES
+    NMPWAIT_WAIT_FOREVER = win32.NMPWAIT_WAIT_FOREVER
+
+    FILE_FLAG_OVERLAPPED = 0x40000000
+    FILE_FLAG_FIRST_PIPE_INSTANCE = 0x00080000
