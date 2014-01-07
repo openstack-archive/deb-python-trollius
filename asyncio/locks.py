@@ -132,11 +132,6 @@ class Lock(object):
     def __exit__(self, *args):
         self.release()
 
-    @tasks.coroutine
-    def __iter__(self):
-        yield self.acquire()
-        raise tasks.Return(self)
-
 
 class Event(object):
     """Asynchronous equivalent to threading.Event.
@@ -322,11 +317,6 @@ class Condition(object):
     def __exit__(self, *args):
         return self._lock.__exit__(*args)
 
-    @tasks.coroutine
-    def __iter__(self):
-        yield self.acquire()
-        raise tasks.Return(self)
-
 
 class Semaphore(object):
     """A Semaphore implementation.
@@ -412,11 +402,6 @@ class Semaphore(object):
 
     def __exit__(self, *args):
         self.release()
-
-    @tasks.coroutine
-    def __iter__(self):
-        yield self.acquire()
-        raise tasks.Return(self)
 
 
 class BoundedSemaphore(Semaphore):
