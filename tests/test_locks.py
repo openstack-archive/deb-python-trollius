@@ -54,7 +54,7 @@ class LockTests(test_utils.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            yield lock
+            yield lock.acquire()
 
         self.loop.run_until_complete(acquire_lock())
         self.assertTrue(repr(lock).endswith('[locked]>'))
@@ -65,8 +65,8 @@ class LockTests(test_utils.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            result = (yield lock)
-            raise Return(result)
+            yield lock.acquire()
+            raise Return(lock)
 
         res = self.loop.run_until_complete(acquire_lock())
 
@@ -207,8 +207,8 @@ class LockTests(test_utils.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            result = (yield lock)
-            raise Return(result)
+            yield lock.acquire()
+            raise Return(lock)
 
         with self.loop.run_until_complete(acquire_lock()):
             self.assertTrue(lock.locked())
@@ -560,14 +560,18 @@ class ConditionTests(test_utils.TestCase):
         self.loop.run_until_complete(cond.acquire())
         cond.notify(1)
         cond.release()
-        test_utils.run_briefly(self.loop)
+        # each coroutine requires 2 runs of the event loop
+        for _ in xrange(2):
+            test_utils.run_briefly(self.loop)
         self.assertEqual([1], result)
 
         self.loop.run_until_complete(cond.acquire())
         cond.notify(1)
         cond.notify(2048)
         cond.release()
-        test_utils.run_briefly(self.loop)
+        # each coroutine requires 2 runs of the event loop
+        for _ in xrange(4):
+            test_utils.run_briefly(self.loop)
         self.assertEqual([1, 2, 3], result)
 
         self.assertTrue(t1.done())
@@ -607,7 +611,9 @@ class ConditionTests(test_utils.TestCase):
         self.loop.run_until_complete(cond.acquire())
         cond.notify_all()
         cond.release()
-        test_utils.run_briefly(self.loop)
+        # each coroutine requires 2 runs of the event loop
+        for _ in xrange(4):
+            test_utils.run_briefly(self.loop)
         self.assertEqual([1, 2], result)
 
         self.assertTrue(t1.done())
@@ -644,8 +650,8 @@ class ConditionTests(test_utils.TestCase):
 
         @tasks.coroutine
         def acquire_cond():
-            result = (yield cond)
-            raise Return(result)
+            yield cond.acquire()
+            raise Return(cond)
 
         with self.loop.run_until_complete(acquire_cond()):
             self.assertTrue(cond.locked())
@@ -717,8 +723,8 @@ class SemaphoreTests(test_utils.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            result = (yield sem)
-            raise Return(result)
+            yield sem.acquire()
+            raise Return(sem)
 
         res = self.loop.run_until_complete(acquire_lock())
 
@@ -769,7 +775,9 @@ class SemaphoreTests(test_utils.TestCase):
         t2 = tasks.Task(c2(result), loop=self.loop)
         t3 = tasks.Task(c3(result), loop=self.loop)
 
-        test_utils.run_briefly(self.loop)
+        # each coroutine requires 2 runs of the event loop
+        for _ in xrange(2):
+            test_utils.run_briefly(self.loop)
         self.assertEqual([1], result)
         self.assertTrue(sem.locked())
         self.assertEqual(2, len(sem._waiters))
@@ -828,8 +836,8 @@ class SemaphoreTests(test_utils.TestCase):
 
         @tasks.coroutine
         def acquire_lock():
-            result = (yield sem)
-            raise Return(result)
+            yield sem.acquire()
+            raise Return(sem)
 
         with self.loop.run_until_complete(acquire_lock()):
             self.assertFalse(sem.locked())
