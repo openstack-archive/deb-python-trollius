@@ -327,12 +327,6 @@ class Future(object):
                 result = other.result()
                 self.set_result(result)
 
-    @coroutine
-    def __iter__(self):
-        if not self.done():
-            yield self  # This tells Task to wait for completion.
-        assert self.done(), "yield wasn't used with future"
-        raise Return(self.result())  # May raise too.
 
 def wrap_future(fut, loop=None):
     """Wrap concurrent.futures.Future object."""

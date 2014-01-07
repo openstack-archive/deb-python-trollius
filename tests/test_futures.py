@@ -82,24 +82,6 @@ class FutureTests(test_utils.TestCase):
         self.assertRaises(futures.InvalidStateError, f.set_exception, None)
         self.assertFalse(f.cancel())
 
-    def test_yield_from_twice(self):
-        f = futures.Future(loop=self.loop)
-
-        def fixture():
-            yield 'A'
-            x = yield f
-            yield 'B', x
-            y = yield f
-            yield 'C', y
-
-        g = fixture()
-        self.assertEqual(next(g), 'A')  # yield 'A'.
-        self.assertEqual(next(g), f)  # First yield f.
-        f.set_result(42)
-        self.assertEqual(next(g), ('B', 42))  # yield 'B', x.
-        # The second "yield f" does not yield f.
-        self.assertEqual(next(g), ('C', 42))  # yield 'C', y.
-
     def test_repr(self):
         f_pending = futures.Future(loop=self.loop)
         self.assertEqual(repr(f_pending), 'Future<PENDING>')
@@ -159,19 +141,6 @@ class FutureTests(test_utils.TestCase):
         newf_cancelled = futures.Future(loop=self.loop)
         newf_cancelled._copy_state(f_cancelled)
         self.assertTrue(newf_cancelled.cancelled())
-
-    def test_iter(self):
-        fut = futures.Future(loop=self.loop)
-
-        @tasks.coroutine
-        def coro():
-            yield fut
-
-        def test():
-            arg1, arg2 = coro()
-
-        self.assertRaises(AssertionError, test)
-        fut.cancel()
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_abandoned(self, m_log):
