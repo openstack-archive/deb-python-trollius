@@ -11,6 +11,7 @@ import sys
 import threading
 
 
+from . import backport
 from . import base_subprocess
 from . import constants
 from . import events
@@ -208,7 +209,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
     def _read_ready(self):
         try:
             data = wrap_error(os.read, self._fileno, self.max_size)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             pass
         except OSError as exc:
             self._fatal_error(exc)
@@ -300,7 +301,7 @@ class _UnixWritePipeTransport(transports.WriteTransport):
             # Attempt to send it right away first.
             try:
                 n = wrap_error(os.write, self._fileno, data)
-            except (BlockingIOError, InterruptedError):
+            except (backport.BlockingIOError, backport.InterruptedError):
                 n = 0
             except Exception as exc:
                 self._conn_lost += 1
@@ -321,7 +322,7 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         del self._buffer[:]
         try:
             n = wrap_error(os.write, self._fileno, data)
-        except (BlockingIOError, InterruptedError):
+        except (backport.BlockingIOError, backport.InterruptedError):
             self._buffer.append(data)
         except Exception as exc:
             self._conn_lost += 1
@@ -580,7 +581,7 @@ class SafeChildWatcher(BaseChildWatcher):
 
         try:
             pid, status = os.waitpid(expected_pid, os.WNOHANG)
-        except ChildProcessError:
+        except backport.ChildProcessError:
             # The child process is already reaped
             # (may happen if waitpid() is called elsewhere).
             pid = expected_pid
@@ -679,7 +680,7 @@ class FastChildWatcher(BaseChildWatcher):
         while True:
             try:
                 pid, status = wrap_error(os.waitpid, -1, os.WNOHANG)
-            except ChildProcessError:
+            except backport.ChildProcessError:
                 # No more child processes exist.
                 return
             else:

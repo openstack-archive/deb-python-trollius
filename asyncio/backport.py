@@ -1,50 +1,56 @@
+__all__ = ['BlockingIOError']
+
 import errno
 import select
 import socket
 import sys
 
-class InterruptedError(OSError):
-    pass
+PY33 = (sys.version_info >= (3, 3))
 
-class BlockingIOError(OSError):
-    pass
+if PY33:
+    import builtins
+    BlockingIOError = builtins.BlockingIOError
+    BrokenPipeError = builtins.BrokenPipeError
+    ChildProcessError = builtins.ChildProcessError
+    ConnectionRefusedError = builtins.ConnectionRefusedError
+    ConnectionResetError = builtins.ConnectionResetError
+    InterruptedError = builtins.InterruptedError
+    ConnectionAbortedError = builtins.ConnectionAbortedError
+else:
+    # Python < 3.3
+    class BlockingIOError(OSError):
+        pass
 
-class ChildProcessError(OSError):
-    pass
+    class BrokenPipeError(OSError):
+        pass
 
-class BrokenPipeError(OSError):
-    # EPIPE, ESHUTDOWN
-    pass
+    class ChildProcessError(OSError):
+        pass
 
-class ConnectionResetError(OSError):
-    # ECONNRESET
-    pass
+    class ConnectionRefusedError(OSError):
+        pass
 
-class ConnectionRefusedError(OSError):
-    pass
+    class InterruptedError(OSError):
+        pass
 
-class ConnectionAbortedError(OSError):
-    pass
+    class ConnectionResetError(OSError):
+        pass
 
-# FIXME: Ugly hack to not have to patch various modules
-__builtins__['InterruptedError'] = InterruptedError
-__builtins__['BlockingIOError'] = BlockingIOError
-__builtins__['ChildProcessError'] = ChildProcessError
-__builtins__['BrokenPipeError'] = BrokenPipeError
-__builtins__['ConnectionResetError'] = ConnectionResetError
-__builtins__['ConnectionRefusedError'] = ConnectionRefusedError
-__builtins__['ConnectionAbortedError'] = ConnectionAbortedError
+    class ConnectionAbortedError(OSError):
+        pass
 
 _MAP_ERRNO = {
-    errno.ECHILD: ChildProcessError,
-    errno.EINTR: InterruptedError,
     errno.EAGAIN: BlockingIOError,
     errno.EALREADY: BlockingIOError,
-    errno.EINPROGRESS: BlockingIOError,
-    errno.EWOULDBLOCK: BlockingIOError,
-    errno.ECONNREFUSED: ConnectionRefusedError,
+    errno.ECHILD: ChildProcessError,
     errno.ECONNABORTED: ConnectionAbortedError,
+    errno.ECONNREFUSED: ConnectionRefusedError,
+    errno.ECONNRESET: ConnectionResetError,
+    errno.EINPROGRESS: BlockingIOError,
+    errno.EINTR: InterruptedError,
     errno.EPIPE: BrokenPipeError,
+    errno.ESHUTDOWN: BrokenPipeError,
+    errno.EWOULDBLOCK: BlockingIOError,
 }
 
 if sys.version_info >= (3,):

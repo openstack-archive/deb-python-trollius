@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import _winapi
 
+from . import backport
 from .backport import wrap_error
 
 
@@ -48,7 +49,7 @@ def socketpair(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0):
     csock.setblocking(False)
     try:
         wrap_error(csock.connect, (addr, port))
-    except (BlockingIOError, InterruptedError):
+    except (backport.BlockingIOError, backport.InterruptedError):
         pass
     except Exception:
         lsock.close()

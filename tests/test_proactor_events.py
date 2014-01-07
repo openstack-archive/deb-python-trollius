@@ -5,6 +5,7 @@ import unittest
 import mock
 
 import asyncio
+from asyncio import backport
 from asyncio.proactor_events import BaseProactorEventLoop
 from asyncio.proactor_events import _ProactorSocketTransport
 from asyncio.proactor_events import _ProactorWritePipeTransport
@@ -64,7 +65,7 @@ class ProactorSocketTransportTests(unittest.TestCase):
         self.assertTrue(tr.close.called)
 
     def test_loop_reading_aborted(self):
-        err = self.loop._proactor.recv.side_effect = ConnectionAbortedError()
+        err = self.loop._proactor.recv.side_effect = backport.ConnectionAbortedError()
 
         tr = _ProactorSocketTransport(self.loop, self.sock, self.protocol)
         tr._fatal_error = mock.Mock()
@@ -72,7 +73,7 @@ class ProactorSocketTransportTests(unittest.TestCase):
         tr._fatal_error.assert_called_with(err)
 
     def test_loop_reading_aborted_closing(self):
-        self.loop._proactor.recv.side_effect = ConnectionAbortedError()
+        self.loop._proactor.recv.side_effect = backport.ConnectionAbortedError()
 
         tr = _ProactorSocketTransport(self.loop, self.sock, self.protocol)
         tr._closing = True
@@ -81,7 +82,7 @@ class ProactorSocketTransportTests(unittest.TestCase):
         self.assertFalse(tr._fatal_error.called)
 
     def test_loop_reading_aborted_is_fatal(self):
-        self.loop._proactor.recv.side_effect = ConnectionAbortedError()
+        self.loop._proactor.recv.side_effect = backport.ConnectionAbortedError()
         tr = _ProactorSocketTransport(self.loop, self.sock, self.protocol)
         tr._closing = False
         tr._fatal_error = mock.Mock()
@@ -89,7 +90,7 @@ class ProactorSocketTransportTests(unittest.TestCase):
         self.assertTrue(tr._fatal_error.called)
 
     def test_loop_reading_conn_reset_lost(self):
-        err = self.loop._proactor.recv.side_effect = ConnectionResetError()
+        err = self.loop._proactor.recv.side_effect = backport.ConnectionResetError()
 
         tr = _ProactorSocketTransport(self.loop, self.sock, self.protocol)
         tr._closing = False
