@@ -561,7 +561,7 @@ class ConditionTests(test_utils.TestCase):
         cond.notify(1)
         cond.release()
         # each coroutine requires 2 runs of the event loop
-        for _ in xrange(2):
+        for _ in range(2):
             test_utils.run_briefly(self.loop)
         self.assertEqual([1], result)
 
@@ -570,7 +570,7 @@ class ConditionTests(test_utils.TestCase):
         cond.notify(2048)
         cond.release()
         # each coroutine requires 2 runs of the event loop
-        for _ in xrange(4):
+        for _ in range(4):
             test_utils.run_briefly(self.loop)
         self.assertEqual([1, 2, 3], result)
 
@@ -612,7 +612,7 @@ class ConditionTests(test_utils.TestCase):
         cond.notify_all()
         cond.release()
         # each coroutine requires 2 runs of the event loop
-        for _ in xrange(4):
+        for _ in range(4):
             test_utils.run_briefly(self.loop)
         self.assertEqual([1, 2], result)
 
@@ -776,7 +776,7 @@ class SemaphoreTests(test_utils.TestCase):
         t3 = tasks.Task(c3(result), loop=self.loop)
 
         # each coroutine requires 2 runs of the event loop
-        for _ in xrange(2):
+        for _ in range(2):
             test_utils.run_briefly(self.loop)
         self.assertEqual([1], result)
         self.assertTrue(sem.locked())

@@ -26,6 +26,11 @@ from asyncio.selector_events import _SelectorSslTransport
 from asyncio.selector_events import _SelectorSocketTransport
 from asyncio.selector_events import _SelectorDatagramTransport
 
+if sys.version_info >= (3,):
+    UNICODE_STR = 'unicode'
+else:
+    UNICODE_STR = unicode('unicode')
+
 
 class TestBaseSelectorEventLoop(BaseSelectorEventLoop):
 
@@ -1141,7 +1146,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
 
     def test_write_str(self):
         transport = self._make_one()
-        self.assertRaises(TypeError, transport.write, u'unicode')
+        self.assertRaises(TypeError, transport.write, UNICODE_STR)
 
     def test_write_closing(self):
         transport = self._make_one()
@@ -1551,7 +1556,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
     def test_sendto_str(self):
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol)
-        self.assertRaises(TypeError, transport.sendto, u'unicode', ())
+        self.assertRaises(TypeError, transport.sendto, UNICODE_STR, ())
 
     def test_sendto_connected_addr(self):
         transport = _SelectorDatagramTransport(

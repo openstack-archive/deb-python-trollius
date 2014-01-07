@@ -18,7 +18,7 @@ from . import protocols
 from . import selector_events
 from . import tasks
 from . import transports
-from .backport import wrap_error
+from .backport import reraise, wrap_error
 from .log import logger
 
 
@@ -93,7 +93,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             if isinstance(exc, RuntimeError) or exc.errno == errno.EINVAL:
                 raise RuntimeError('sig {0} cannot be caught'.format(sig))
             else:
-                raise exc_type, exc_value, tb
+                reraise(exc_type, exc_value, tb)
 
     def _handle_signal(self, sig, arg):
         """Internal helper that is the actual signal handler."""
