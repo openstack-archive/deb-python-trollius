@@ -1,6 +1,7 @@
 """Tests for unix_events.py."""
 
 import collections
+import contextlib
 import gc
 import errno
 import io
@@ -25,7 +26,7 @@ from asyncio import unix_events
 
 
 @test_utils.skipUnless(signal, 'Signals are not supported')
-class SelectorEventLoopTests(unittest.TestCase):
+class SelectorEventLoopTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = unix_events.SelectorEventLoop()
@@ -201,7 +202,7 @@ class SelectorEventLoopTests(unittest.TestCase):
         m_signal.set_wakeup_fd.assert_called_once_with(-1)
 
 
-class UnixReadPipeTransportTests(unittest.TestCase):
+class UnixReadPipeTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -364,7 +365,7 @@ class UnixReadPipeTransportTests(unittest.TestCase):
                          pprint.pformat(gc.get_referrers(self.loop)))
 
 
-class UnixWritePipeTransportTests(unittest.TestCase):
+class UnixWritePipeTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -678,7 +679,7 @@ class UnixWritePipeTransportTests(unittest.TestCase):
         self.assertFalse(self.protocol.connection_lost.called)
 
 
-class AbstractChildWatcherTests(unittest.TestCase):
+class AbstractChildWatcherTests(test_utils.TestCase):
 
     def test_not_implemented(self):
         f = mock.Mock()
@@ -697,7 +698,7 @@ class AbstractChildWatcherTests(unittest.TestCase):
             NotImplementedError, watcher.__exit__, f, f, f)
 
 
-class BaseChildWatcherTests(unittest.TestCase):
+class BaseChildWatcherTests(test_utils.TestCase):
 
     def test_not_implemented(self):
         f = mock.Mock()
@@ -771,11 +772,14 @@ class ChildWatcherTestsMixin:
                 return mock.patch(target, wraps=wrapper,
                                            new_callable=mock.Mock)
 
-            with patch('os.WTERMSIG', self.WTERMSIG) as m_WTERMSIG, \
-                 patch('os.WEXITSTATUS', self.WEXITSTATUS) as m_WEXITSTATUS, \
-                 patch('os.WIFSIGNALED', self.WIFSIGNALED) as m_WIFSIGNALED, \
-                 patch('os.WIFEXITED', self.WIFEXITED) as m_WIFEXITED, \
-                 patch('os.waitpid', self.waitpid) as m_waitpid:
+            m_waitpid = patch('os.waitpid', self.waitpid)
+            m_WIFEXITED = patch('os.WIFEXITED', self.WIFEXITED)
+            m_WIFSIGNALED = patch('os.WIFSIGNALED', self.WIFSIGNALED)
+            m_WEXITSTATUS = patch('os.WEXITSTATUS', self.WEXITSTATUS)
+            m_WTERMSIG = patch('os.WTERMSIG', self.WTERMSIG)
+
+            with contextlib.nested(m_waitpid, m_WIFEXITED, m_WIFSIGNALED,
+                                   m_WEXITSTATUS, m_WTERMSIG):
                 func(self, WaitPidMocks(m_waitpid,
                                         m_WIFEXITED, m_WIFSIGNALED,
                                         m_WEXITSTATUS, m_WTERMSIG,
@@ -1253,17 +1257,18 @@ class ChildWatcherTestsMixin:
         callback1 = mock.Mock()
         callback2 = mock.Mock()
 
-        with self.ignore_warnings, self.watcher:
-            self.running = True
-            # child 1 terminates
-            self.add_zombie(591, 7)
-            # an unknown child terminates
-            self.add_zombie(593, 17)
+        with self.ignore_warnings:
+            with self.watcher:
+                self.running = True
+                # child 1 terminates
+                self.add_zombie(591, 7)
+                # an unknown child terminates
+                self.add_zombie(593, 17)
 
-            self.watcher._sig_chld()
+                self.watcher._sig_chld()
 
-            self.watcher.add_child_handler(591, callback1)
-            self.watcher.add_child_handler(592, callback2)
+                self.watcher.add_child_handler(591, callback1)
+                self.watcher.add_child_handler(592, callback2)
 
         callback1.assert_called_once_with(591, 7)
         self.assertFalse(callback2.called)
@@ -1280,20 +1285,19 @@ class ChildWatcherTestsMixin:
         # attach a new loop
         old_loop = self.loop
         self.loop = test_utils.TestLoop()
+        patch = mock.patch.object
 
-        with mock.patch.object(
-                old_loop,
-                "remove_signal_handler") as m_old_remove_signal_handler, \
-             mock.patch.object(
-                self.loop,
-                "add_signal_handler") as m_new_add_signal_handler:
+        with patch(old_loop,
+                   "remove_signal_handler") as m_old_remove_signal_handler:
+             with patch(self.loop,
+                        "add_signal_handler") as m_new_add_signal_handler:
 
-            self.watcher.attach_loop(self.loop)
+                self.watcher.attach_loop(self.loop)
 
-            m_old_remove_signal_handler.assert_called_once_with(
-                signal.SIGCHLD)
-            m_new_add_signal_handler.assert_called_once_with(
-                signal.SIGCHLD, self.watcher._sig_chld)
+                m_old_remove_signal_handler.assert_called_once_with(
+                    signal.SIGCHLD)
+                m_new_add_signal_handler.assert_called_once_with(
+                    signal.SIGCHLD, self.watcher._sig_chld)
 
         # child terminates
         self.running = False
@@ -1396,17 +1400,17 @@ class ChildWatcherTestsMixin:
                     self.assertFalse(self.watcher._zombies)
 
 
-class SafeChildWatcherTests (ChildWatcherTestsMixin, unittest.TestCase):
+class SafeChildWatcherTests (ChildWatcherTestsMixin, test_utils.TestCase):
     def create_watcher(self):
         return unix_events.SafeChildWatcher()
 
 
-class FastChildWatcherTests (ChildWatcherTestsMixin, unittest.TestCase):
+class FastChildWatcherTests (ChildWatcherTestsMixin, test_utils.TestCase):
     def create_watcher(self):
         return unix_events.FastChildWatcher()
 
 
-class PolicyTests(unittest.TestCase):
+class PolicyTests(test_utils.TestCase):
 
     def create_policy(self):
         return unix_events.DefaultEventLoopPolicy()
