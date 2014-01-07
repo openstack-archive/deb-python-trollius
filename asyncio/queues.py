@@ -5,7 +5,11 @@ __all__ = ['Queue', 'PriorityQueue', 'LifoQueue', 'JoinableQueue',
 
 import collections
 import heapq
-import Queue as queue
+try:
+    import queue
+except ImportError:
+    # Python 2
+    import Queue as queue
 
 from . import events
 from . import futures

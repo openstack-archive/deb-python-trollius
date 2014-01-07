@@ -47,6 +47,16 @@ _MAP_ERRNO = {
     errno.EPIPE: BrokenPipeError,
 }
 
+if sys.version_info >= (3,):
+    def reraise(tp, value, tb=None):
+        if value.__traceback__ is not tb:
+            raise value.with_traceback(tb)
+        raise value
+else:
+    exec("""def reraise(tp, value, tb=None):
+    raise tp, value, tb
+""")
+
 def _wrap_error(mapping, key, err_args):
     if key not in mapping:
         return
@@ -55,7 +65,7 @@ def _wrap_error(mapping, key, err_args):
 
     # raise a new exception with the original traceback
     traceback = sys.exc_info()[2]
-    raise new_err_cls, new_err, traceback
+    reraise(new_err_cls, new_err, traceback)
 
 def wrap_error(func, *args, **kw):
     """

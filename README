@@ -101,6 +101,7 @@ Development version:
   Schlaich.
 - Experimental Python 2.6 support which requires an extra dependency:
   ordereddict (and unittest2 for unit tests)
+- Experimental Python 3.2 support
 
 2014-01-06: version 0.1.1
 

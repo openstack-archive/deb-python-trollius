@@ -15,7 +15,6 @@ else:
     HAS_SNI = getattr(ssl, 'HAS_SNI', False)
 import subprocess
 import sys
-import thread
 import threading
 import time
 import errno
@@ -319,11 +318,11 @@ class EventLoopTestsMixin(object):
     @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_run_in_executor(self):
         def run(arg):
-            return (arg, thread.get_ident())
+            return (arg, threading.current_thread().ident)
         f2 = self.loop.run_in_executor(None, run, 'yo')
         res, thread_id = self.loop.run_until_complete(f2)
         self.assertEqual(res, 'yo')
-        self.assertNotEqual(thread_id, thread.get_ident())
+        self.assertNotEqual(thread_id, threading.current_thread().ident)
 
     def test_reader_callback(self):
         r, w = test_utils.socketpair()

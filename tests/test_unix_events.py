@@ -1,7 +1,6 @@
 """Tests for unix_events.py."""
 
 import collections
-import contextlib
 import gc
 import errno
 import io
@@ -778,12 +777,20 @@ class ChildWatcherTestsMixin:
             m_WEXITSTATUS = patch('os.WEXITSTATUS', self.WEXITSTATUS)
             m_WTERMSIG = patch('os.WTERMSIG', self.WTERMSIG)
 
-            with contextlib.nested(m_waitpid, m_WIFEXITED, m_WIFSIGNALED,
-                                   m_WEXITSTATUS, m_WTERMSIG):
+            patches = (m_waitpid, m_WIFEXITED, m_WIFSIGNALED,
+                       m_WEXITSTATUS, m_WTERMSIG)
+
+            for obj in patches:
+                obj.__enter__()
+            try:
                 func(self, WaitPidMocks(m_waitpid,
                                         m_WIFEXITED, m_WIFSIGNALED,
                                         m_WEXITSTATUS, m_WTERMSIG,
                                         ))
+            finally:
+                for obj in patches:
+                    obj.__exit__(None, None, None)
+
         return wrapped_func
 
     @waitpid_mocks

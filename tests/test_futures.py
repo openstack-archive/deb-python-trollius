@@ -4,7 +4,6 @@ try:
     import concurrent.futures
 except ImportError:
     concurrent = None
-import thread
 import threading
 import unittest
 import mock
@@ -18,6 +17,9 @@ from asyncio import test_utils
 
 def _fakefunc(f):
     return f
+
+def get_thread_ident():
+    return threading.current_thread().ident
 
 
 class FutureTests(test_utils.TestCase):
@@ -191,14 +193,14 @@ class FutureTests(test_utils.TestCase):
     def test_wrap_future(self):
 
         def run(arg):
-            return (arg, thread.get_ident())
+            return (arg, get_thread_ident())
         ex = concurrent.futures.ThreadPoolExecutor(1)
         f1 = ex.submit(run, 'oi')
         f2 = futures.wrap_future(f1, loop=self.loop)
         res, ident = self.loop.run_until_complete(f2)
         self.assertIsInstance(f2, futures.Future)
         self.assertEqual(res, 'oi')
-        self.assertNotEqual(ident, thread.get_ident())
+        self.assertNotEqual(ident, get_thread_ident())
 
     def test_wrap_future_future(self):
         f1 = futures.Future(loop=self.loop)
@@ -209,7 +211,7 @@ class FutureTests(test_utils.TestCase):
     @mock.patch('asyncio.futures.events')
     def test_wrap_future_use_global_loop(self, m_events):
         def run(arg):
-            return (arg, thread.get_ident())
+            return (arg, get_thread_ident())
         ex = concurrent.futures.ThreadPoolExecutor(1)
         f1 = ex.submit(run, 'oi')
         f2 = futures.wrap_future(f1)
