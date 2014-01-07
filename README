@@ -12,15 +12,26 @@ the development version of the source code (trollius branch):
     hg clone 'https://bitbucket.org/haypo/trollius#trollius'
 
 
-Dependencies
-============
+Runtime Dependencies
+====================
 
 The futures project is needed on Python 2 to get a backport of
 concurrent.futures.
 https://pypi.python.org/pypi/futures
 
+Python 2.6 requires also ordereddict:
+https://pypi.python.org/pypi/ordereddict
+
+
+Test Dependencies
+=================
+
 Unit tests require the mock module:
 https://pypi.python.org/pypi/mock
+
+Python 2.6 requires also unittest2:
+https://pypi.python.org/pypi/unittest2
+
 
 
 Differences between Trollius and Tulip
@@ -88,6 +99,8 @@ Development version:
 - Basic Windows support: fix compilation of the _overlapped module and add a
   asyncio._winapi module (written in pure Python). Patch written by Marc
   Schlaich.
+- Experimental Python 2.6 support which requires an extra dependency:
+  ordereddict (and unittest2 for unit tests)
 
 2014-01-06: version 0.1.1
 

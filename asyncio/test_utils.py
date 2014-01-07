@@ -9,7 +9,6 @@ import os
 import sys
 import threading
 import time
-import unittest
 from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
 try:
     import ssl
@@ -278,53 +277,13 @@ class TestLoop(base_events.BaseEventLoop):
 
 
 try:
+    import unittest
     skipIf = unittest.skipIf
     skipUnless = unittest.skipUnless
+    TestCase = unittest.TestCase
 except AttributeError:
-    # Python 2.6
-    def skip_wrapper(cond, message, func):
-        def wrapper(*args, **kw):
-            if cond:
-                return func(*args, **kw)
-            else:
-                print("Skip %s: %s" % (func, message))
-        return wrapper
-
-    def skipIf(cond, message):
-        return functools.partial(skip_wrapper, not cond, message)
-
-    def skipUnless(cond, message):
-        return functools.partial(skip_wrapper, cond, message)
-
-class TestCase(unittest.TestCase):
-    def assertIsNone(self, value):
-        self.assertTrue(value is None, value)
-
-    def assertIsNotNone(self, value):
-        self.assertTrue(value is not None, value)
-
-    def assertIs(self, a, b):
-        self.assertTrue(a is b,
-                        "%r is not %r" % (a, b))
-
-    def assertIsNot(self, a, b):
-        self.assertTrue(a is not b,
-                        "%r is not %r" % (a, b))
-
-    def assertIn(self, obj, container):
-        self.assertTrue(obj in container,
-                        "%r not in %r" % (obj, container))
-
-    def assertIsInstance(self, obj, obj_type):
-        self.assertTrue(isinstance(obj, obj_type),
-                        "%r is not an instance of %r" % (obj, obj_type))
-
-    def assertGreater(self, a, b):
-        self.assertTrue(a > b, "%r > %r" % (a, b))
-
-    def assertGreaterEqual(self, a, b):
-        self.assertTrue(a >= b, "%r >= %r" % (a, b))
-
-    def assertLess(self, a, b):
-        self.assertTrue(a < b, "%r < %r" % (a, b))
-
+    # Python 2.6: use the backported unittest module called "unittest2"
+    import unittest2
+    skipIf = unittest2.skipIf
+    skipUnless = unittest2.skipUnless
+    TestCase = unittest2.TestCase
