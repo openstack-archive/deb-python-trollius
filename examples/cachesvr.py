@@ -166,7 +166,7 @@ class Cache:
                 break
             response_b = json.dumps(response).encode('utf8') + b'\r\n'
             byte_count = len(response_b)
-            framing_s = 'response {} {}\r\n'.format(request_id, byte_count)
+            framing_s = 'response {0} {1}\r\n'.format(request_id, byte_count)
             writer.write(framing_s.encode('ascii'))
             yield from asyncio.sleep(args.resp_sleep*random.random(),
                                      loop=self.loop)

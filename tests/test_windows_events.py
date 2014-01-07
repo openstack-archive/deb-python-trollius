@@ -83,11 +83,11 @@ class ProactorTests(unittest.TestCase):
             clients.append((stream_reader, trans))
 
         for i, (r, w) in enumerate(clients):
-            w.write('lower-{}\n'.format(i).encode())
+            w.write('lower-{0}\n'.format(i).encode())
 
         for i, (r, w) in enumerate(clients):
             response = yield r.readline()
-            self.assertEqual(response, 'LOWER-{}\n'.format(i).encode())
+            self.assertEqual(response, 'LOWER-{0}\n'.format(i).encode())
             w.close()
 
         server.close()

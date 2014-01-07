@@ -18,7 +18,7 @@ from asyncio.test_support import find_unused_port, IPV6_ENABLED
 from asyncio.time_monotonic import time_monotonic
 
 
-class BaseEventLoopTests(unittest.TestCase):
+class BaseEventLoopTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = base_events.BaseEventLoop()
@@ -294,7 +294,7 @@ class MyDatagramProto(protocols.DatagramProtocol):
             self.done.set_result(None)
 
 
-class BaseEventLoopWithSelectorTests(unittest.TestCase):
+class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = events.new_event_loop()
@@ -619,7 +619,7 @@ class BaseEventLoopWithSelectorTests(unittest.TestCase):
         self.assertRaises(
             OSError, self.loop.run_until_complete, coro)
 
-    @unittest.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
+    @test_utils.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
     def test_create_datagram_endpoint_no_matching_family(self):
         coro = self.loop.create_datagram_endpoint(
             protocols.DatagramProtocol,

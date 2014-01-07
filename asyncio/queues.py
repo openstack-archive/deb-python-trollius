@@ -53,20 +53,20 @@ class Queue(object):
         self._queue.append(item)
 
     def __repr__(self):
-        return '<{} at {:#x} {}>'.format(
+        return '<{0} at {1:#x} {2}>'.format(
             type(self).__name__, id(self), self._format())
 
     def __str__(self):
-        return '<{} {}>'.format(type(self).__name__, self._format())
+        return '<{0} {1}>'.format(type(self).__name__, self._format())
 
     def _format(self):
-        result = 'maxsize={!r}'.format(self._maxsize)
+        result = 'maxsize={0!r}'.format(self._maxsize)
         if getattr(self, '_queue', None):
-            result += ' _queue={!r}'.format(list(self._queue))
+            result += ' _queue={0!r}'.format(list(self._queue))
         if self._getters:
-            result += ' _getters[{}]'.format(len(self._getters))
+            result += ' _getters[{0}]'.format(len(self._getters))
         if self._putters:
-            result += ' _putters[{}]'.format(len(self._putters))
+            result += ' _putters[{0}]'.format(len(self._putters))
         return result
 
     def _consume_done_getters(self):
@@ -244,7 +244,7 @@ class JoinableQueue(Queue):
     def _format(self):
         result = Queue._format(self)
         if self._unfinished_tasks:
-            result += ' tasks={}'.format(self._unfinished_tasks)
+            result += ' tasks={0}'.format(self._unfinished_tasks)
         return result
 
     def _put(self, item):

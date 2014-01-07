@@ -20,7 +20,7 @@ class Dummy:
         pass
 
 
-class TaskTests(unittest.TestCase):
+class TaskTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -508,8 +508,8 @@ class TaskTests(unittest.TestCase):
             loop=loop)
 
         done, pending = loop.run_until_complete(task)
-        self.assertEqual({b}, done)
-        self.assertEqual({a}, pending)
+        self.assertEqual(set((b,)), done)
+        self.assertEqual(set((a,)), pending)
         self.assertFalse(a.done())
         self.assertTrue(b.done())
         self.assertIsNone(b.result())
@@ -540,7 +540,7 @@ class TaskTests(unittest.TestCase):
             loop=self.loop)
 
         done, pending = self.loop.run_until_complete(task)
-        self.assertEqual({a, b}, done)
+        self.assertEqual(set((a, b)), done)
         self.assertTrue(a.done())
         self.assertIsNone(a.result())
         self.assertTrue(b.done())
@@ -570,8 +570,8 @@ class TaskTests(unittest.TestCase):
             loop=loop)
 
         done, pending = loop.run_until_complete(task)
-        self.assertEqual({b}, done)
-        self.assertEqual({a}, pending)
+        self.assertEqual(set((b,)), done)
+        self.assertEqual(set((a,)), pending)
         self.assertAlmostEqual(0, loop.time())
 
         # move forward to close generator
@@ -603,8 +603,8 @@ class TaskTests(unittest.TestCase):
                           loop=loop)
 
         done, pending = loop.run_until_complete(task)
-        self.assertEqual({b}, done)
-        self.assertEqual({a}, pending)
+        self.assertEqual(set((b,)), done)
+        self.assertEqual(set((a,)), pending)
         self.assertAlmostEqual(0.01, loop.time())
 
         # move forward to close generator
@@ -801,7 +801,7 @@ class TaskTests(unittest.TestCase):
 
         a = tasks.sleep(0.05, 'a', loop=loop)
         b = tasks.sleep(0.10, 'b', loop=loop)
-        fs = {a, b}
+        fs = set((a, b))
         futs = list(tasks.as_completed(fs, loop=loop))
         self.assertEqual(len(futs), 2)
 
@@ -827,12 +827,12 @@ class TaskTests(unittest.TestCase):
 
         a = tasks.sleep(0.05, 'a', loop=loop)
         b = tasks.sleep(0.05, 'b', loop=loop)
-        fs = {a, b}
+        fs = set((a, b))
         futs = list(tasks.as_completed(fs, loop=loop))
         self.assertEqual(len(futs), 2)
         waiter = tasks.wait(futs, loop=loop)
         done, pending = loop.run_until_complete(waiter)
-        self.assertEqual(set(f.result() for f in done), {'a', 'b'})
+        self.assertEqual(set(f.result() for f in done), set(('a', 'b')))
 
     def test_sleep(self):
 
@@ -1343,7 +1343,7 @@ class GatherTestsBase:
         self.assertEqual(fut.result(), [3, 1, exc, exc2])
 
 
-class FutureGatherTests(GatherTestsBase, unittest.TestCase):
+class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
 
     def wrap_futures(self, *futures):
         return futures
@@ -1427,7 +1427,7 @@ class FutureGatherTests(GatherTestsBase, unittest.TestCase):
         cb.assert_called_once_with(fut)
 
 
-class CoroutineGatherTests(GatherTestsBase, unittest.TestCase):
+class CoroutineGatherTests(GatherTestsBase, test_utils.TestCase):
 
     def setUp(self):
         super(CoroutineGatherTests, self).setUp()

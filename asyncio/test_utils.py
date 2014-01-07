@@ -2,6 +2,7 @@
 
 import collections
 import contextlib
+import functools
 import io
 import mock
 import os
@@ -228,11 +229,11 @@ class TestLoop(base_events.BaseEventLoop):
             return False
 
     def assert_reader(self, fd, callback, *args):
-        assert fd in self.readers, 'fd {} is not registered'.format(fd)
+        assert fd in self.readers, 'fd {0} is not registered'.format(fd)
         handle = self.readers[fd]
-        assert handle._callback == callback, '{!r} != {!r}'.format(
+        assert handle._callback == callback, '{0!r} != {1!r}'.format(
             handle._callback, callback)
-        assert handle._args == args, '{!r} != {!r}'.format(
+        assert handle._args == args, '{0!r} != {1!r}'.format(
             handle._args, args)
 
     def add_writer(self, fd, callback, *args):
@@ -247,11 +248,11 @@ class TestLoop(base_events.BaseEventLoop):
             return False
 
     def assert_writer(self, fd, callback, *args):
-        assert fd in self.writers, 'fd {} is not registered'.format(fd)
+        assert fd in self.writers, 'fd {0} is not registered'.format(fd)
         handle = self.writers[fd]
-        assert handle._callback == callback, '{!r} != {!r}'.format(
+        assert handle._callback == callback, '{0!r} != {1!r}'.format(
             handle._callback, callback)
-        assert handle._args == args, '{!r} != {!r}'.format(
+        assert handle._args == args, '{0!r} != {1!r}'.format(
             handle._args, args)
 
     def reset_counters(self):
@@ -274,3 +275,56 @@ class TestLoop(base_events.BaseEventLoop):
 
     def _write_to_self(self):
         pass
+
+
+try:
+    skipIf = unittest.skipIf
+    skipUnless = unittest.skipUnless
+except AttributeError:
+    # Python 2.6
+    def skip_wrapper(cond, message, func):
+        def wrapper(*args, **kw):
+            if cond:
+                return func(*args, **kw)
+            else:
+                print("Skip %s: %s" % (func, message))
+        return wrapper
+
+    def skipIf(cond, message):
+        return functools.partial(skip_wrapper, not cond, message)
+
+    def skipUnless(cond, message):
+        return functools.partial(skip_wrapper, cond, message)
+
+class TestCase(unittest.TestCase):
+    def assertIsNone(self, value):
+        self.assertTrue(value is None, value)
+
+    def assertIsNotNone(self, value):
+        self.assertTrue(value is not None, value)
+
+    def assertIs(self, a, b):
+        self.assertTrue(a is b,
+                        "%r is not %r" % (a, b))
+
+    def assertIsNot(self, a, b):
+        self.assertTrue(a is not b,
+                        "%r is not %r" % (a, b))
+
+    def assertIn(self, obj, container):
+        self.assertTrue(obj in container,
+                        "%r not in %r" % (obj, container))
+
+    def assertIsInstance(self, obj, obj_type):
+        self.assertTrue(isinstance(obj, obj_type),
+                        "%r is not an instance of %r" % (obj, obj_type))
+
+    def assertGreater(self, a, b):
+        self.assertTrue(a > b, "%r > %r" % (a, b))
+
+    def assertGreaterEqual(self, a, b):
+        self.assertTrue(a >= b, "%r >= %r" % (a, b))
+
+    def assertLess(self, a, b):
+        self.assertTrue(a < b, "%r < %r" % (a, b))
+
