@@ -697,7 +697,7 @@ class EventLoopTestsMixin(object):
         f_c = self.loop.create_connection(MyProto, host, port,
                                           ssl=sslcontext_client)
         with self.assertRaisesRegex(ssl.SSLError,
-                                    'certificate verify failed '):
+                                    'certificate verify failed'):
             self.loop.run_until_complete(f_c)
 
         # close connection
