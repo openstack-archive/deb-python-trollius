@@ -16,7 +16,6 @@ except ImportError:
 from . import events
 from . import executor
 from .log import logger
-from .coroutine import coroutine, Return
 
 # States for Future.
 _PENDING = 'PENDING'
