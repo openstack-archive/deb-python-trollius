@@ -1,15 +1,17 @@
 import ssl
 from asyncio.backport import _wrap_error
 
-__all__ = ["SSLContext", "BACKPORT_SSL_ERRORS", "BACKPORT_SSL_CONTEXT"]
+__all__ = ["SSLContext", "BACKPORT_SSL_ERRORS", "BACKPORT_SSL_CONTEXT",
+           "SSLWantReadError", "SSLWantWriteError", "SSLEOFError",
+           ]
 
 try:
-    # Available since Python 3.3
-    SSLWantWriteError = ssl.SSLWantWriteError
+    SSLWantReadError = ssl.SSLWantReadError
     SSLWantWriteError = ssl.SSLWantWriteError
     SSLEOFError = ssl.SSLEOFError
     BACKPORT_SSL_ERRORS = False
 except AttributeError:
+    # Python < 3.3
     BACKPORT_SSL_ERRORS = True
 
     class SSLWantReadError(ssl.SSLError):
@@ -21,16 +23,12 @@ except AttributeError:
     class SSLEOFError(ssl.SSLError):
         pass
 
-    # FIXME: Ugly hack to not have to patch various modules
-    ssl.SSLWantReadError = SSLWantReadError
-    ssl.SSLWantWriteError = SSLWantWriteError
-
 
 try:
-    # Available since Python 3.2
     SSLContext = ssl.SSLContext
     BACKPORT_SSL_CONTEXT = False
 except AttributeError:
+    # Python < 3.2
     BACKPORT_SSL_CONTEXT = True
     class SSLContext(object):
         def __init__(self, protocol=ssl.PROTOCOL_SSLv23):
