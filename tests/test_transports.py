@@ -6,6 +6,12 @@ import mock
 from asyncio import test_utils
 from asyncio import transports
 
+try:
+    memoryview
+except NameError:
+    # Python 2.6
+    memoryview = buffer
+
 
 class TransportTests(test_utils.TestCase):
 

@@ -13,7 +13,7 @@ from asyncio.proactor_events import _ProactorDuplexPipeTransport
 from asyncio import test_utils
 
 
-class ProactorSocketTransportTests(unittest.TestCase):
+class ProactorSocketTransportTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
@@ -338,7 +338,7 @@ class ProactorSocketTransportTests(unittest.TestCase):
         tr.close()
 
 
-class BaseProactorEventLoopTests(unittest.TestCase):
+class BaseProactorEventLoopTests(test_utils.TestCase):
 
     def setUp(self):
         self.sock = mock.Mock(socket.socket)
