@@ -97,18 +97,20 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Development version:
+2014-01-08: version 0.1.2
 
-- Basic Windows support: fix compilation of the _overlapped module and add a
+- Trollius now supports CPython 2.6-3.4, PyPy and Windows. All unit tests
+  pass with CPython 2.7 on Linux.
+- Fix Windows support. Fix compilation of the _overlapped module and add a
   asyncio._winapi module (written in pure Python). Patch written by Marc
   Schlaich.
-- Experimental Python 2.6 support which requires an extra dependency:
+- Support Python 2.6: require an extra dependency,
   ordereddict (and unittest2 for unit tests)
-- Experimental Python 3.2 support
+- Support Python 3.2, 3.3 and 3.4
+- Support PyPy 2.2
 - Don't modify __builtins__ nor the ssl module to inject backported exceptions
   like BlockingIOError or SSLWantReadError. Exceptions are available in the
   asyncio module, ex: asyncio.BlockingIOError.
-- Experimental PyPy support
 
 2014-01-06: version 0.1.1
 

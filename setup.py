@@ -3,7 +3,7 @@
 #  - run unit tests with concurrent.futures
 #  - test examples
 #  - update version in setup.py
-#  - set _DEBUG to False in asyncio/coroutine.py
+#  - set _DEBUG to False in asyncio/tasks.py
 #  - set release date in the change log (README file)
 #  - hg ci
 #  - hg tag trollius-VERSION
@@ -39,7 +39,7 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "0.1.1",
+    "version": "0.1.2",
 
     "description": "Experimental port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
     "long_description": long_description,
