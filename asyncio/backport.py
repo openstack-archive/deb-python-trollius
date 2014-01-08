@@ -1,4 +1,7 @@
-__all__ = ['BlockingIOError']
+__all__ = ['BlockingIOError', 'BrokenPipeError', 'ChildProcessError',
+           'ConnectionRefusedError', 'ConnectionResetError',
+           'InterruptedError', 'ConnectionAbortedError',
+           ]
 
 import errno
 import select
