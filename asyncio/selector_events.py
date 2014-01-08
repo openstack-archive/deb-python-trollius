@@ -27,6 +27,14 @@ from .backport import wrap_error
 from .log import logger
 from .compat import PY3, PY26, flatten_bytes
 
+
+def _get_socket_error(sock, address):
+    err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+    if err != 0:
+        # Jump to the except clause below.
+        raise OSError(err, 'Connect call failed %s' % (address,))
+
+
 class BaseSelectorEventLoop(base_events.BaseEventLoop):
     """Selector event loop.
 
@@ -290,12 +298,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
                 # First time around.
                 wrap_error(sock.connect, address)
             else:
-                def wrap():
-                    err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
-                    if err != 0:
-                        # Jump to the except clause below.
-                        raise OSError(err, 'Connect call failed %s' % (address,))
-                wrap_error(wrap)
+                wrap_error(_get_socket_error, sock, address)
         except (backport.BlockingIOError, backport.InterruptedError):
             self.add_writer(fd, self._sock_connect, fut, True, sock, address)
         except Exception as exc:

@@ -1,5 +1,6 @@
 Unsorted "TODO" tasks:
 
+* Remove hasattr(exc, 'winerror') in windows_events.py
 * Fix tests failing with PyPy:
 
   - sys.getrefcount()

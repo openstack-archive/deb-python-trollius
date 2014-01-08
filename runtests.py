@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """Run Tulip unittests.
 
 Usage:
