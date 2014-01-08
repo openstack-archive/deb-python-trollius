@@ -4,17 +4,16 @@ Unsorted "TODO" tasks:
 * add COPYING file
 * add AUTHORS file and fill author field in setup.py
   (mention Tulip authors)
-* Fix tests failing on Linux:
+* Fix general failing tests:
 
-  - test_locks.py
   - test_queues.py
   - test_tasks.py
 
-* Windows:
+* Failing tests on Windows:
 
-  - test_events.py
+  - test_events.py:ProactorEventLoopTests (SelectorEventLoop is fine)
   - test_windows_events.py
-  - segfault in windows_utils.pipe
+  - test_windows_utils.py (segfault in asyncio.windows_utils.pipe())
 
 * Fix examples:
 
