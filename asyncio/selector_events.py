@@ -108,7 +108,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             conn.setblocking(False)
         except (backport.BlockingIOError, backport.InterruptedError, backport.ConnectionAbortedError):
             pass  # False alarm.
-        except OSError as exc:
+        except socket.error as exc:
             # There's nowhere to send the error, so just log it.
             # TODO: Someone will want an error handler for this.
             if exc.errno in (errno.EMFILE, errno.ENFILE,
