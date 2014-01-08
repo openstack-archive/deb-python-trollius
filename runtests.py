@@ -20,58 +20,68 @@ runtests.py --coverage is equivalent of:
 # Originally written by Beech Horn (for NDB).
 
 from __future__ import print_function
-import argparse
+import optparse
 import gc
 import logging
 import os
 import re
 import sys
-import unittest
 import textwrap
-import importlib.machinery
+from asyncio.compat import PY33
+if PY33:
+    import importlib.machinery
+else:
+    import imp
 try:
     import coverage
 except ImportError:
     coverage = None
 
-from unittest.signals import installHandler
+try:
+    import unittest
+    from unittest.signals import installHandler
+except ImportError:
+    import unittest2 as unittest
+    from unittest2.signals import installHandler
 
-assert sys.version >= '3.3', 'Please use Python 3.3 or higher.'
-
-ARGS = argparse.ArgumentParser(description="Run all unittests.")
-ARGS.add_argument(
-    '-v', action="store", dest='verbose',
-    nargs='?', const=1, type=int, default=0, help='verbose')
-ARGS.add_argument(
+ARGS = optparse.OptionParser(description="Run all unittests.", usage="%prog")
+ARGS.add_option(
+    '-v', '--verbose', action="store_true", dest='verbose',
+    default=0, help='verbose')
+ARGS.add_option(
     '-x', action="store_true", dest='exclude', help='exclude tests')
-ARGS.add_argument(
+ARGS.add_option(
     '-f', '--failfast', action="store_true", default=False,
     dest='failfast', help='Stop on first fail or error')
-ARGS.add_argument(
+ARGS.add_option(
     '-c', '--catch', action="store_true", default=False,
     dest='catchbreak', help='Catch control-C and display results')
-ARGS.add_argument(
+ARGS.add_option(
     '--forever', action="store_true", dest='forever', default=False,
     help='run tests forever to catch sporadic errors')
-ARGS.add_argument(
+ARGS.add_option(
     '--findleaks', action='store_true', dest='findleaks',
     help='detect tests that leak memory')
-ARGS.add_argument(
+ARGS.add_option(
     '-q', action="store_true", dest='quiet', help='quiet')
-ARGS.add_argument(
+ARGS.add_option(
     '--tests', action="store", dest='testsdir', default='tests',
     help='tests directory')
-ARGS.add_argument(
+ARGS.add_option(
     '--coverage', action="store_true", dest='coverage',
     help='enable html coverage report')
-ARGS.add_argument(
-    'pattern', action="store", nargs="*",
+ARGS.add_option(
+    '--pattern', action="append",
     help='optional regex patterns to match test ids (default all tests)')
 
-COV_ARGS = argparse.ArgumentParser(description="Run all unittests.")
-COV_ARGS.add_argument(
-    '--coverage', action="store", dest='coverage', nargs='?', const='',
-    help='enable coverage report and provide python files directory')
+
+if PY33:
+    def load_module(modname, sourcefile):
+        loader = importlib.machinery.SourceFileLoader(modname, sourcefile)
+        return loader.load_module()
+else:
+    def load_module(modname, sourcefile):
+        return imp.load_source(modname, sourcefile)
 
 
 def load_modules(basedir, suffix='.py'):
@@ -98,13 +108,14 @@ def load_modules(basedir, suffix='.py'):
 
         return files
 
+
     mods = []
     for modname, sourcefile in list_dir('', basedir):
         if modname == 'runtests':
             continue
         try:
-            loader = importlib.machinery.SourceFileLoader(modname, sourcefile)
-            mods.append((loader.load_module(), sourcefile))
+            mod = load_module(modname, sourcefile)
+            mods.append((mod, sourcefile))
         except SyntaxError:
             raise
         except Exception as err:
@@ -194,7 +205,7 @@ class TestRunner(unittest.TextTestRunner):
 
 
 def runtests():
-    args = ARGS.parse_args()
+    args, commands = ARGS.parse_args()
 
     if args.coverage and coverage is None:
         URL = "bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py"
