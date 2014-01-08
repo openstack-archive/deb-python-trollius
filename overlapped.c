@@ -875,7 +875,11 @@ Overlapped_WSASend(OverlappedObject *self, PyObject *args)
         return NULL;
     }
 
+#ifdef PYTHON3
     if (!PyArg_Parse(bufobj, "y*", &self->write_buffer))
+#else
+    if (!PyArg_Parse(bufobj, "s*", &self->write_buffer))
+#endif
         return NULL;
 
 #if SIZEOF_SIZE_T > SIZEOF_LONG

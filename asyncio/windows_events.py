@@ -60,7 +60,8 @@ class _WaitHandleFuture(futures.Future):
         try:
             _overlapped.UnregisterWait(self._wait_handle)
         except OSError as e:
-            if e.winerror != _overlapped.ERROR_IO_PENDING:
+            if (hasattr(e, 'winerror') and
+                    e.winerror != _overlapped.ERROR_IO_PENDING):
                 raise
 
 
@@ -220,7 +221,8 @@ class IocpProactor(object):
             try:
                 return ov.getresult()
             except OSError as exc:
-                if exc.winerror == _overlapped.ERROR_NETNAME_DELETED:
+                if (hasattr(exc, 'winerror') and
+                        exc.winerror == _overlapped.ERROR_NETNAME_DELETED):
                     raise backport.ConnectionResetError(*exc.args)
                 else:
                     raise
@@ -239,7 +241,8 @@ class IocpProactor(object):
             try:
                 return ov.getresult()
             except OSError as exc:
-                if exc.winerror == _overlapped.ERROR_NETNAME_DELETED:
+                if (hasattr(exc, 'winerror') and
+                        exc.winerror == _overlapped.ERROR_NETNAME_DELETED):
                     raise backport.ConnectionResetError(*exc.args)
                 else:
                     raise
@@ -269,7 +272,7 @@ class IocpProactor(object):
         try:
             _overlapped.BindLocal(conn.fileno(), conn.family)
         except OSError as e:
-            if e.winerror != errno.WSAEINVAL:
+            if hasattr(e, 'winerror') and e.winerror != errno.WSAEINVAL:
                 raise
             # Probably already locally bound; check using getsockname().
             if conn.getsockname()[1] == 0:
@@ -333,7 +336,8 @@ class IocpProactor(object):
                 try:
                     _overlapped.UnregisterWait(wh)
                 except OSError as e:
-                    if e.winerror != _overlapped.ERROR_IO_PENDING:
+                    if (hasattr(e, 'winerror') and
+                            e.winerror != _overlapped.ERROR_IO_PENDING):
                         raise
             # Note that this second wait means that we should only use
             # this with handles types where a successful wait has no
