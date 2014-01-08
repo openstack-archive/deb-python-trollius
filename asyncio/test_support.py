@@ -1,10 +1,15 @@
+
+import gc
 import socket
+import sys
+import time
 import os.path
 
 # TEST_HOME_DIR refers to the top level directory of the "test" package
 # that contains Python's regression test suite
 TEST_SUPPORT_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_HOME_DIR = os.path.dirname(TEST_SUPPORT_DIR)
+
 
 def _is_ipv6_enabled():
     """Check whether IPv6 is enabled on this host."""
@@ -22,6 +27,7 @@ def _is_ipv6_enabled():
     return False
 
 IPV6_ENABLED = _is_ipv6_enabled()
+
 
 def bind_port(sock, host="127.0.0.1"):
     """Bind the socket to a free port and return the port number.  Relies on
@@ -59,6 +65,7 @@ def bind_port(sock, host="127.0.0.1"):
     sock.bind((host, 0))
     port = sock.getsockname()[1]
     return port
+
 
 def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     """Returns an unused port that should be suitable for binding.  This is
@@ -122,3 +129,22 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     del tempsock
     return port
 
+
+is_jython = sys.platform.startswith('java')
+
+
+def gc_collect():
+    """Force as many objects as possible to be collected.
+
+    In non-CPython implementations of Python, this is needed because timely
+    deallocation is not guaranteed by the garbage collector.  (Even in CPython
+    this can be the case in case of reference cycles.)  This means that __del__
+    methods may be called later than expected and weakrefs may remain alive for
+    longer than expected.  This function tries its best to force all garbage
+    objects to disappear.
+    """
+    gc.collect()
+    if is_jython:
+        time.sleep(0.1)
+    gc.collect()
+    gc.collect()
