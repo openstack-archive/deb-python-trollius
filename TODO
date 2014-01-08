@@ -4,10 +4,6 @@ Unsorted "TODO" tasks:
 * add COPYING file
 * add AUTHORS file and fill author field in setup.py
   (mention Tulip authors)
-* Fix general failing tests:
-
-  - test_queues.py
-  - test_tasks.py
 
 * Failing tests on Windows:
 
