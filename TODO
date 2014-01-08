@@ -24,7 +24,6 @@ Unsorted "TODO" tasks:
   - stacks.py: 'exceptions.ZeroDivisionError' object has no attribute '__traceback__'
 
 * as_completed() is a coroutine or not?
-* Fix coroutine._DEBUG=True
 * Fix all FIXME in the code
 * See:
   http://code.google.com/p/appengine-ndb-experiment/source/browse/ndb/tasklets.py

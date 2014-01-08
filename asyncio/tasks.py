@@ -63,6 +63,7 @@ class CoroWrapper(object):
 
     def __next__(self):
         return next(self.gen)
+    next = __next__
 
     def send(self, value):
         return self.gen.send(value)
