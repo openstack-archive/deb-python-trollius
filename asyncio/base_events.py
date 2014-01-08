@@ -324,11 +324,11 @@ class BaseEventLoop(events.AbstractEventLoop):
 
             infos = f1.result()
             if not infos:
-                raise OSError('getaddrinfo() returned empty list')
+                raise socket.error('getaddrinfo() returned empty list')
             if f2 is not None:
                 laddr_infos = f2.result()
                 if not laddr_infos:
-                    raise OSError('getaddrinfo() returned empty list')
+                    raise socket.error('getaddrinfo() returned empty list')
 
             exceptions = []
             for family, type, proto, cname, address in infos:
@@ -340,8 +340,8 @@ class BaseEventLoop(events.AbstractEventLoop):
                             try:
                                 sock.bind(laddr)
                                 break
-                            except OSError as exc:
-                                exc = OSError(
+                            except socket.error as exc:
+                                exc = socket.error(
                                     exc.errno, 'error while '
                                     'attempting to bind on address '
                                     '{0!r}: {1}'.format(
@@ -352,7 +352,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                             sock = None
                             continue
                     yield self.sock_connect(sock, address)
-                except OSError as exc:
+                except socket.error as exc:
                     if sock is not None:
                         sock.close()
                     exceptions.append(exc)
@@ -368,7 +368,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                         raise exceptions[0]
                     # Raise a combined exception so the user can see all
                     # the various error messages.
-                    raise OSError('Multiple exceptions: {0}'.format(
+                    raise socket.error('Multiple exceptions: {0}'.format(
                         ', '.join(str(exc) for exc in exceptions)))
 
         elif sock is None:
@@ -411,7 +411,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                         *addr, family=family, type=socket.SOCK_DGRAM,
                         proto=proto, flags=flags)
                     if not infos:
-                        raise OSError('getaddrinfo() returned empty list')
+                        raise socket.error('getaddrinfo() returned empty list')
 
                     for fam, _, pro, _, address in infos:
                         key = (fam, pro)
@@ -445,7 +445,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                 if remote_addr:
                     yield self.sock_connect(sock, remote_address)
                     r_addr = remote_address
-            except OSError as exc:
+            except socket.error as exc:
                 if sock is not None:
                     sock.close()
                 exceptions.append(exc)
@@ -485,7 +485,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                 host, port, family=family,
                 type=socket.SOCK_STREAM, proto=0, flags=flags)
             if not infos:
-                raise OSError('getaddrinfo() returned empty list')
+                raise socket.error('getaddrinfo() returned empty list')
 
             completed = False
             try:
@@ -509,10 +509,11 @@ class BaseEventLoop(events.AbstractEventLoop):
                                         True)
                     try:
                         sock.bind(sa)
-                    except OSError as err:
-                        raise OSError(err.errno, 'error while attempting '
-                                      'to bind on address %r: %s'
-                                      % (sa, err.strerror.lower()))
+                    except socket.error as err:
+                        raise socket.error(err.errno,
+                                           'error while attempting '
+                                           'to bind on address %r: %s'
+                                           % (sa, err.strerror.lower()))
                 completed = True
             finally:
                 if not completed:

@@ -325,14 +325,15 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         def _socket(*args, **kw):
             non_local['idx'] += 1
-            raise OSError(non_local['errors'][non_local['idx']])
+            raise socket.error(non_local['errors'][non_local['idx']])
 
+        m_socket.error = socket.error
         m_socket.socket = _socket
 
         self.loop.getaddrinfo = getaddrinfo_task
 
         coro = self.loop.create_connection(MyProto, 'example.com', 80)
-        with self.assertRaises(OSError) as cm:
+        with self.assertRaises(socket.error) as cm:
             self.loop.run_until_complete(coro)
 
         self.assertEqual(str(cm.exception), 'Multiple exceptions: err1, err2')
@@ -359,7 +360,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop.getaddrinfo.return_value = f
         coro = self.loop.create_connection(MyProto, 'example.com', 80)
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
     def test_create_connection_connect_err(self):
         def getaddrinfo(*args, **kw):
@@ -369,11 +370,11 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         self.loop.getaddrinfo = getaddrinfo
         self.loop.sock_connect = mock.Mock()
-        self.loop.sock_connect.side_effect = OSError
+        self.loop.sock_connect.side_effect = socket.error
 
         coro = self.loop.create_connection(MyProto, 'example.com', 80)
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
     def test_create_connection_multiple(self):
         @tasks.coroutine
@@ -386,11 +387,11 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         self.loop.getaddrinfo = getaddrinfo_task
         self.loop.sock_connect = mock.Mock()
-        self.loop.sock_connect.side_effect = OSError
+        self.loop.sock_connect.side_effect = socket.error
 
         coro = self.loop.create_connection(
             MyProto, 'example.com', 80, family=socket.AF_INET)
-        with self.assertRaises(OSError):
+        with self.assertRaises(socket.error):
             self.loop.run_until_complete(coro)
 
     @mock.patch('asyncio.base_events.socket')
@@ -398,10 +399,11 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         def bind(addr):
             if addr[0] == '0.0.0.1':
-                err = OSError('Err')
+                err = socket.error('Err')
                 err.strerror = 'Err'
                 raise err
 
+        m_socket.error = socket.error
         m_socket.socket.return_value.bind = bind
 
         @tasks.coroutine
@@ -414,12 +416,12 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         self.loop.getaddrinfo = getaddrinfo_task
         self.loop.sock_connect = mock.Mock()
-        self.loop.sock_connect.side_effect = OSError('Err2')
+        self.loop.sock_connect.side_effect = socket.error('Err2')
 
         coro = self.loop.create_connection(
             MyProto, 'example.com', 80, family=socket.AF_INET,
             local_addr=(None, 8080))
-        with self.assertRaises(OSError) as cm:
+        with self.assertRaises(socket.error) as cm:
             self.loop.run_until_complete(coro)
 
         self.assertTrue(str(cm.exception).startswith('Multiple exceptions: '))
@@ -442,7 +444,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
             MyProto, 'example.com', 80, family=socket.AF_INET,
             local_addr=(None, 8080))
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
     def test_create_connection_ssl_server_hostname_default(self):
         self.loop.getaddrinfo = mock.Mock()
@@ -539,7 +541,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         self.loop.getaddrinfo = getaddrinfo_task
         fut = self.loop.create_server(MyProto, '', 0)
-        self.assertRaises(OSError, self.loop.run_until_complete, fut)
+        self.assertRaises(socket.error, self.loop.run_until_complete, fut)
         self.assertIsNone(non_local['host'])
 
     def test_create_server_host_port_sock(self):
@@ -562,31 +564,33 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop.getaddrinfo = getaddrinfo_task
 
         f = self.loop.create_server(MyProto, '0.0.0.0', 0)
-        self.assertRaises(OSError, self.loop.run_until_complete, f)
+        self.assertRaises(socket.error, self.loop.run_until_complete, f)
 
     @mock.patch('asyncio.base_events.socket')
     def test_create_server_cant_bind(self, m_socket):
 
-        class Err(OSError):
+        class Err(socket.error):
             strerror = 'error'
 
+        m_socket.error = socket.error
         m_socket.getaddrinfo.return_value = [
             (2, 1, 6, '', ('127.0.0.1', 10100))]
         m_sock = m_socket.socket.return_value = mock.Mock()
         m_sock.bind.side_effect = Err
 
         fut = self.loop.create_server(MyProto, '0.0.0.0', 0)
-        self.assertRaises(OSError, self.loop.run_until_complete, fut)
+        self.assertRaises(socket.error, self.loop.run_until_complete, fut)
         self.assertTrue(m_sock.close.called)
 
     @mock.patch('asyncio.base_events.socket')
     def test_create_datagram_endpoint_no_addrinfo(self, m_socket):
+        m_socket.error = socket.error
         m_socket.getaddrinfo.return_value = []
 
         coro = self.loop.create_datagram_endpoint(
             MyDatagramProto, local_addr=('localhost', 0))
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
     def test_create_datagram_endpoint_addr_error(self):
         coro = self.loop.create_datagram_endpoint(
@@ -600,27 +604,28 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def test_create_datagram_endpoint_connect_err(self):
         self.loop.sock_connect = mock.Mock()
-        self.loop.sock_connect.side_effect = OSError
+        self.loop.sock_connect.side_effect = socket.error
 
         coro = self.loop.create_datagram_endpoint(
             protocols.DatagramProtocol, remote_addr=('127.0.0.1', 0))
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
     @mock.patch('asyncio.base_events.socket')
     def test_create_datagram_endpoint_socket_err(self, m_socket):
+        m_socket.error = socket.error
         m_socket.getaddrinfo = socket.getaddrinfo
-        m_socket.socket.side_effect = OSError
+        m_socket.socket.side_effect = socket.error
 
         coro = self.loop.create_datagram_endpoint(
             protocols.DatagramProtocol, family=socket.AF_INET)
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
         coro = self.loop.create_datagram_endpoint(
             protocols.DatagramProtocol, local_addr=('127.0.0.1', 0))
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
 
     @test_utils.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
     def test_create_datagram_endpoint_no_matching_family(self):
@@ -632,12 +637,13 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     @mock.patch('asyncio.base_events.socket')
     def test_create_datagram_endpoint_setblk_err(self, m_socket):
-        m_socket.socket.return_value.setblocking.side_effect = OSError
+        m_socket.error = socket.error
+        m_socket.socket.return_value.setblocking.side_effect = socket.error
 
         coro = self.loop.create_datagram_endpoint(
             protocols.DatagramProtocol, family=socket.AF_INET)
         self.assertRaises(
-            OSError, self.loop.run_until_complete, coro)
+            socket.error, self.loop.run_until_complete, coro)
         self.assertTrue(
             m_socket.socket.return_value.close.called)
 
@@ -648,10 +654,11 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     @mock.patch('asyncio.base_events.socket')
     def test_create_datagram_endpoint_cant_bind(self, m_socket):
-        class Err(OSError):
+        class Err(socket.error):
             pass
 
         m_socket.AF_INET6 = socket.AF_INET6
+        m_socket.error = socket.error
         m_socket.getaddrinfo = socket.getaddrinfo
         m_sock = m_socket.socket.return_value = mock.Mock()
         m_sock.bind.side_effect = Err
@@ -673,7 +680,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
     def test_accept_connection_exception(self, m_log):
         sock = mock.Mock()
         sock.fileno.return_value = 10
-        sock.accept.side_effect = OSError(errno.EMFILE, 'Too many open files')
+        sock.accept.side_effect = socket.error(errno.EMFILE, 'Too many open files')
         self.loop.remove_reader = mock.Mock()
         self.loop.call_later = mock.Mock()
 

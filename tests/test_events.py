@@ -823,7 +823,7 @@ class EventLoopTestsMixin(object):
                 port = support.find_unused_port()
                 f = self.loop.create_server(TestMyProto, host=None, port=port)
                 server = self.loop.run_until_complete(f)
-            except OSError as ex:
+            except socket.error as ex:
                 if ex.errno == errno.EADDRINUSE:
                     try_count += 1
                     self.assertGreaterEqual(5, try_count)
