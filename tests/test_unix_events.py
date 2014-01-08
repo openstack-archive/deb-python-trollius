@@ -767,28 +767,25 @@ class ChildWatcherTestsMixin:
 
     def waitpid_mocks(func):
         def wrapped_func(self):
+            exit_stack = []
+
             def patch(target, wrapper):
-                return mock.patch(target, wraps=wrapper,
-                                           new_callable=mock.Mock)
+                m = mock.patch(target, wraps=wrapper)
+                exit_stack.append(m)
+                return m.__enter__()
 
             m_waitpid = patch('os.waitpid', self.waitpid)
             m_WIFEXITED = patch('os.WIFEXITED', self.WIFEXITED)
             m_WIFSIGNALED = patch('os.WIFSIGNALED', self.WIFSIGNALED)
             m_WEXITSTATUS = patch('os.WEXITSTATUS', self.WEXITSTATUS)
             m_WTERMSIG = patch('os.WTERMSIG', self.WTERMSIG)
-
-            patches = (m_waitpid, m_WIFEXITED, m_WIFSIGNALED,
-                       m_WEXITSTATUS, m_WTERMSIG)
-
-            for obj in patches:
-                obj.__enter__()
             try:
                 func(self, WaitPidMocks(m_waitpid,
                                         m_WIFEXITED, m_WIFSIGNALED,
                                         m_WEXITSTATUS, m_WTERMSIG,
                                         ))
             finally:
-                for obj in patches:
+                for obj in reversed(exit_stack):
                     obj.__exit__(None, None, None)
 
         return wrapped_func
