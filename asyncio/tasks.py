@@ -42,11 +42,6 @@ class Return(StopIteration):
         StopIteration.__init__(self)
         self.value = value
 
-def create_generator(result):
-    # dead code to ensure that create_generator() is a generator
-    if 0:
-        yield None
-    raise Return(result)
 
 class CoroWrapper(object):
     """Wrapper for coroutine in _DEBUG mode."""
@@ -98,6 +93,7 @@ def coroutine(func):
         @functools.wraps(func)
         def coro(*args, **kw):
             res = func(*args, **kw)
+            # FIXME: move the import out of the function
             from asyncio import futures
             if isinstance(res, futures.Future) or inspect.isgenerator(res):
                 res = yield res
@@ -115,6 +111,7 @@ def coroutine(func):
 
     wrapper._is_coroutine = True  # For iscoroutinefunction().
     return wrapper
+
 
 def iscoroutinefunction(func):
     """Return True if func is a decorated coroutine function."""
