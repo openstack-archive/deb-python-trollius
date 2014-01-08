@@ -1,6 +1,7 @@
 """Abstract Transport class."""
 
 import sys
+from .compat import flatten_bytes
 
 _PY34 = sys.version_info >= (3, 4)
 
@@ -94,18 +95,7 @@ class WriteTransport(BaseTransport):
         The default implementation concatenates the arguments and
         calls write() on the result.
         """
-        if not _PY34:
-            # In Python 3.3, bytes.join() doesn't handle memoryview.
-            data = []
-            for item in list_of_data:
-                if isinstance(item, bytearray):
-                    data.append(bytes(item))
-                elif isinstance(item, memoryview):
-                    data.append(item.tobytes())
-                else:
-                    data.append(item)
-        else:
-            data = list_of_data
+        data = map(flatten_bytes, list_of_data)
         self.write(b''.join(data))
 
     def write_eof(self):
