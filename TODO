@@ -13,7 +13,7 @@ Unsorted "TODO" tasks:
 * add AUTHORS file and fill author field in setup.py
   (mention Tulip authors)
 
-* Failing tests on Windows:
+* Failing tests on Windows, Python 2:
 
   - test_events.py:ProactorEventLoopTests (SelectorEventLoop is fine)
   - test_windows_events.py

@@ -1356,11 +1356,14 @@ class SubprocessTestsMixin(object):
 
         @tasks.coroutine
         def connect():
+            if sys.platform != 'win32':
+                kwargs = dict(preexec_fn=start_new_session)
+            else:
+                kwargs = dict()
             # start the new process in a new session
             transp, non_local['proto'] = yield self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
-                'exit 7', stdin=None, stdout=None, stderr=None,
-                preexec_fn=start_new_session)
+                'exit 7', stdin=None, stdout=None, stderr=None, **kwargs)
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())

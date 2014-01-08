@@ -98,7 +98,8 @@ def pipe(duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
             address, access, 0, _winapi.NULL, _winapi.OPEN_EXISTING,
             flags_and_attribs, _winapi.NULL)
 
-        raise RuntimeError('This triggers a segfault.')
+        if sys.version_info[0] < 3:
+            raise RuntimeError('This triggers a segfault.')
         ov = _winapi.ConnectNamedPipe(h1, True)
         ov.GetOverlappedResult(True)
         return h1, h2
