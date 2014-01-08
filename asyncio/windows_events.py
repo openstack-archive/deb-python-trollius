@@ -83,6 +83,7 @@ class PipeServer(object):
         tmp, self._pipe = self._pipe, self._server_pipe_handle(False)
         return tmp
 
+    @backport.error_wrapped
     def _server_pipe_handle(self, first):
         # Return a wrapper for a new pipe handle.
         if self._address is None:

@@ -18,6 +18,8 @@ if PY33:
     ConnectionResetError = builtins.ConnectionResetError
     InterruptedError = builtins.InterruptedError
     ConnectionAbortedError = builtins.ConnectionAbortedError
+    PermissionError = builtins.PermissionError
+
 else:
     # Python < 3.3
     class BlockingIOError(OSError):
@@ -41,6 +43,10 @@ else:
     class ConnectionAbortedError(OSError):
         pass
 
+    class PermissionError(OSError):
+        pass
+
+
 _MAP_ERRNO = {
     errno.EAGAIN: BlockingIOError,
     errno.EALREADY: BlockingIOError,
@@ -53,6 +59,7 @@ _MAP_ERRNO = {
     errno.EPIPE: BrokenPipeError,
     errno.ESHUTDOWN: BrokenPipeError,
     errno.EWOULDBLOCK: BlockingIOError,
+    errno.EACCES: PermissionError,
 }
 
 if sys.version_info >= (3,):
@@ -65,6 +72,7 @@ else:
     raise tp, value, tb
 """)
 
+
 def _wrap_error(mapping, key, err_args):
     if key not in mapping:
         return
@@ -74,6 +82,7 @@ def _wrap_error(mapping, key, err_args):
     # raise a new exception with the original traceback
     traceback = sys.exc_info()[2]
     reraise(new_err_cls, new_err, traceback)
+
 
 def wrap_error(func, *args, **kw):
     """
@@ -89,3 +98,9 @@ def wrap_error(func, *args, **kw):
         _wrap_error(_MAP_ERRNO, err.args[0], err.args)
         raise
 
+
+def error_wrapped(func):
+    """Decorator for wrap_error."""
+    def wrapper(*args, **kwargs):
+        return wrap_error(func, *args, **kwargs)
+    return wrapper
