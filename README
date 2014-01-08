@@ -105,6 +105,9 @@ Development version:
 - Experimental Python 2.6 support which requires an extra dependency:
   ordereddict (and unittest2 for unit tests)
 - Experimental Python 3.2 support
+- Don't modify __builtins__ nor the ssl module to inject backported exceptions
+  like BlockingIOError or SSLWantReadError. Exceptions are available in the
+  asyncio module, ex: asyncio.BlockingIOError.
 
 2014-01-06: version 0.1.1
 

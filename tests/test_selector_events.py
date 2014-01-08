@@ -17,6 +17,7 @@ else:
     HAS_SNI = getattr(ssl, 'HAS_SNI', False)
 
 from asyncio import backport
+from asyncio import backport_ssl
 from asyncio import futures
 from asyncio import selectors
 from asyncio import test_utils
@@ -1074,14 +1075,14 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.assertIsNone(waiter.result())
 
     def test_on_handshake_reader_retry(self):
-        self.sslsock.do_handshake.side_effect = ssl.SSLWantReadError
+        self.sslsock.do_handshake.side_effect = backport_ssl.SSLWantReadError
         transport = _SelectorSslTransport(
             self.loop, self.sock, self.protocol, self.sslcontext)
         transport._on_handshake()
         self.loop.assert_reader(1, transport._on_handshake)
 
     def test_on_handshake_writer_retry(self):
-        self.sslsock.do_handshake.side_effect = ssl.SSLWantWriteError
+        self.sslsock.do_handshake.side_effect = backport_ssl.SSLWantWriteError
         transport = _SelectorSslTransport(
             self.loop, self.sock, self.protocol, self.sslcontext)
         transport._on_handshake()
@@ -1205,7 +1206,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._force_close.assert_called_with(err)
 
     def test_read_ready_recv_retry(self):
-        self.sslsock.recv.side_effect = ssl.SSLWantReadError
+        self.sslsock.recv.side_effect = backport_ssl.SSLWantReadError
         transport = self._make_one()
         transport._read_ready()
         self.assertTrue(self.sslsock.recv.called)
@@ -1222,7 +1223,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
     def test_read_ready_recv_write(self):
         self.loop.remove_reader = mock.Mock()
         self.loop.add_writer = mock.Mock()
-        self.sslsock.recv.side_effect = ssl.SSLWantWriteError
+        self.sslsock.recv.side_effect = backport_ssl.SSLWantWriteError
         transport = self._make_one()
         transport._read_ready()
         self.assertFalse(self.protocol.data_received.called)
@@ -1293,7 +1294,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport = self._make_one()
         transport._buffer = list_to_buffer([b'data'])
 
-        self.sslsock.send.side_effect = ssl.SSLWantWriteError
+        self.sslsock.send.side_effect = backport_ssl.SSLWantWriteError
         transport._write_ready()
         self.assertEqual(list_to_buffer([b'data']), transport._buffer)
 
@@ -1306,7 +1307,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._buffer = list_to_buffer([b'data'])
 
         self.loop.remove_writer = mock.Mock()
-        self.sslsock.send.side_effect = ssl.SSLWantReadError
+        self.sslsock.send.side_effect = backport_ssl.SSLWantReadError
         transport._write_ready()
         self.assertFalse(self.protocol.data_received.called)
         self.assertTrue(transport._write_wants_read)
