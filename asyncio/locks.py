@@ -247,7 +247,6 @@ class Condition(object):
         if not self.locked():
             raise RuntimeError('cannot wait on un-acquired lock')
 
-        keep_lock = True
         self.release()
         try:
             fut = futures.Future(loop=self._loop)
@@ -258,12 +257,8 @@ class Condition(object):
             finally:
                 self._waiters.remove(fut)
 
-        except GeneratorExit:
-            keep_lock = False  # Prevent yield in finally clause.
-            raise
         finally:
-            if keep_lock:
-                yield self.acquire()
+            yield self.acquire()
 
     @tasks.coroutine
     def wait_for(self, predicate):
