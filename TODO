@@ -18,7 +18,6 @@ Unsorted "TODO" tasks:
 
 * Fix examples:
 
-  - source1.py: 'StreamWriter' object has no attribute '_writer'
   - stacks.py: 'exceptions.ZeroDivisionError' object has no attribute '__traceback__'
 
 * as_completed() is a coroutine or not?
