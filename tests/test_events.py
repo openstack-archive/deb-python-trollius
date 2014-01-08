@@ -789,6 +789,10 @@ class EventLoopTestsMixin(object):
         client.connect(('127.0.0.1', port))
         client.send(b'xxx')
         client.close()
+        # we need to process the event on the server before closing
+        # the socket, otherwise they will be handled in the clean up
+        # which fails badly on Windows
+        test_utils.run_briefly(self.loop)
         server.close()
 
     def test_create_server_addr_in_use(self):
@@ -859,12 +863,16 @@ class EventLoopTestsMixin(object):
         client.connect(('127.0.0.1', port))
         client.send(b'xxx')
         client.close()
-
+        # we need to process the event on the server before closing
+        # the socket, otherwise they will be handled in the clean up
+        # which fails badly on Windows
+        test_utils.run_briefly(self.loop)
         server.close()
 
         client = socket.socket()
         self.assertRaises(
-            backport.ConnectionRefusedError, wrap_error, client.connect, ('127.0.0.1', port))
+            backport.ConnectionRefusedError, wrap_error, client.connect,
+            ('127.0.0.1', port))
         client.close()
 
     def test_create_datagram_endpoint(self):
