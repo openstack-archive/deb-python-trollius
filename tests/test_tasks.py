@@ -179,6 +179,7 @@ class TaskTests(test_utils.TestCase):
             raise tasks.Return(12)
 
         t = tasks.Task(task(), loop=loop)
+        test_utils.run_briefly(loop)
         loop.call_soon(t.cancel)
         with self.assertRaises(futures.CancelledError):
             loop.run_until_complete(t)
@@ -336,14 +337,14 @@ class TaskTests(test_utils.TestCase):
                 waiters.append(tasks.sleep(0.1, loop=loop))
                 yield waiters[-1]
                 non_local['x'] += 1
-                if non_local['x'] == 2:
+                if non_local['x'] == 3:
                     loop.stop()
 
         t = tasks.Task(task(), loop=loop)
         self.assertRaises(
             RuntimeError, loop.run_until_complete, t)
         self.assertFalse(t.done())
-        self.assertEqual(non_local['x'], 2)
+        self.assertEqual(non_local['x'], 3)
         self.assertAlmostEqual(0.3, loop.time())
 
         # close generators
@@ -371,6 +372,7 @@ class TaskTests(test_utils.TestCase):
             raise tasks.Return('done')
 
         fut = tasks.Task(foo(), loop=loop)
+        test_utils.run_briefly(loop)
 
         with self.assertRaises(futures.TimeoutError):
             loop.run_until_complete(tasks.wait_for(fut, 0.1, loop=loop))
@@ -404,6 +406,7 @@ class TaskTests(test_utils.TestCase):
         events.set_event_loop(loop)
         try:
             fut = tasks.Task(foo(), loop=loop)
+            test_utils.run_briefly(loop)
             with self.assertRaises(futures.TimeoutError):
                 loop.run_until_complete(tasks.wait_for(fut, 0.01))
         finally:
@@ -752,11 +755,11 @@ class TaskTests(test_utils.TestCase):
 
         def gen():
             when = yield
-            self.assertAlmostEqual(0.12, when)
-            when = yield 0
             self.assertAlmostEqual(0.1, when)
             when = yield 0
             self.assertAlmostEqual(0.15, when)
+            when = yield 0
+            self.assertAlmostEqual(0.12, when)
             when = yield 0.1
             self.assertAlmostEqual(0.12, when)
             yield 0.02
@@ -1026,13 +1029,13 @@ class TaskTests(test_utils.TestCase):
                 raise base_exc
 
         task = tasks.Task(notmutch(), loop=loop)
-        test_utils.run_briefly(loop)
+        for _ in range(2):
+            test_utils.run_briefly(loop)
 
         task.cancel()
         self.assertFalse(task.done())
 
         def run_briefly(loop):
-            # FIXME: why should it be called twice?
             test_utils.run_briefly(loop)
             test_utils.run_briefly(loop)
         self.assertRaises(BaseException, run_briefly, loop)

@@ -148,6 +148,7 @@ class QueueBasicTests(_QueueTestBase):
         @tasks.coroutine
         def test():
             t = tasks.Task(putter(), loop=loop)
+            yield  # one extra iteration for the putter coroutine
             yield tasks.sleep(0.01, loop=loop)
 
             # The putter is blocked after putting two items.
@@ -326,8 +327,9 @@ class QueuePutTests(_QueueTestBase):
 
         @tasks.coroutine
         def queue_get():
-            loop.call_later(0.01, q.get_nowait)
             queue_put_task = tasks.Task(queue_put(), loop=loop)
+            yield
+            loop.call_later(0.01, q.get_nowait)
             yield started.wait()
             self.assertFalse(non_local['finished'])
             yield queue_put_task
