@@ -65,7 +65,7 @@ class ProactorTests(unittest.TestCase):
     def _test_pipe(self):
         ADDRESS = r'\\.\pipe\_test_pipe-%s' % os.getpid()
 
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(backport.FileNotFoundError):
             yield self.loop.create_pipe_connection(
                 protocols.Protocol, ADDRESS)
 
@@ -93,7 +93,7 @@ class ProactorTests(unittest.TestCase):
 
         server.close()
 
-        with self.assertRaises(FileNotFoundError):
+        with self.assertRaises(backport.FileNotFoundError):
             yield self.loop.create_pipe_connection(
                 protocols.Protocol, ADDRESS)
 

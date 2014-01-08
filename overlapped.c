@@ -344,7 +344,11 @@ overlapped_CreateEvent(PyObject *self, PyObject *args)
     Py_UNICODE *Name;
     HANDLE Event;
 
+#ifdef PYTHON3
     if (!PyArg_ParseTuple(args, "O" F_BOOL F_BOOL "Z",
+#else
+    if (!PyArg_ParseTuple(args, "O" F_BOOL F_BOOL "z",
+#endif
                           &EventAttributes, &ManualReset,
                           &InitialState, &Name))
         return NULL;
@@ -819,7 +823,11 @@ Overlapped_WriteFile(OverlappedObject *self, PyObject *args)
         return NULL;
     }
 
+#ifdef PYTHON3
     if (!PyArg_Parse(bufobj, "y*", &self->write_buffer))
+#else
+    if (!PyArg_Parse(bufobj, "s*", &self->write_buffer))
+#endif
         return NULL;
 
 #if SIZEOF_SIZE_T > SIZEOF_LONG

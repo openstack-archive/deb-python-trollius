@@ -1,6 +1,7 @@
 __all__ = ['BlockingIOError', 'BrokenPipeError', 'ChildProcessError',
            'ConnectionRefusedError', 'ConnectionResetError',
            'InterruptedError', 'ConnectionAbortedError', 'PermissionError',
+           'FileNotFoundError',
            ]
 
 import errno
@@ -19,6 +20,7 @@ if PY33:
     InterruptedError = builtins.InterruptedError
     ConnectionAbortedError = builtins.ConnectionAbortedError
     PermissionError = builtins.PermissionError
+    FileNotFoundError = builtins.FileNotFoundError
 
 else:
     # Python < 3.3
@@ -46,6 +48,9 @@ else:
     class PermissionError(OSError):
         pass
 
+    class FileNotFoundError(OSError):
+        pass
+
 
 _MAP_ERRNO = {
     errno.EAGAIN: BlockingIOError,
@@ -60,6 +65,7 @@ _MAP_ERRNO = {
     errno.ESHUTDOWN: BrokenPipeError,
     errno.EWOULDBLOCK: BlockingIOError,
     errno.EACCES: PermissionError,
+    errno.ENOENT: FileNotFoundError,
 }
 
 if sys.version_info >= (3,):
@@ -71,6 +77,10 @@ else:
     exec("""def reraise(tp, value, tb=None):
     raise tp, value, tb
 """)
+
+
+def get_error(errno, default=None):
+    return _MAP_ERRNO.get(errno, default)
 
 
 def _wrap_error(mapping, key, err_args):
