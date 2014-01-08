@@ -1012,8 +1012,12 @@ class EventLoopTestsMixin(object):
             return non_local['proto']
 
         rsock, wsock = test_utils.socketpair()
-        # FIXME: implement wsock.detach()?
-        pipeobj = io.open(wsock.fileno(), 'wb', 1024)
+        if hasattr(wsock, 'detach'):
+            wsock_fd = wsock.detach()
+        else:
+            # Python 2
+            wsock_fd = wsock.fileno()
+        pipeobj = io.open(wsock_fd, 'wb', 1024)
 
         @tasks.coroutine
         def connect():
