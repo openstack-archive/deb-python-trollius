@@ -32,9 +32,9 @@ if os.name == 'nt':
     extensions.append(ext)
 
 requirements = []
-if sys.version < (2, 7):
+if sys.version_info < (2, 7):
     requirements.append('ordereddict')
-if sys.version < (3,):
+if sys.version_info < (3,):
     requirements.append('futures')
 
 install_options = {
