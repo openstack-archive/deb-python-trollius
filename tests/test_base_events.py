@@ -347,8 +347,12 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(ValueError, self.loop.run_until_complete, coro)
 
     def test_create_connection_no_getaddrinfo(self):
-        # FIXME: avoid explicit Future?
-        self.loop.getaddrinfo = mock.Mock()
+        def getaddrinfo(*args, **kw):
+            fut = futures.Future(loop=self.loop)
+            fut.set_result([])
+            return fut
+
+        self.loop.getaddrinfo = getaddrinfo
         f = futures.Future(loop=self.loop)
         f.set_result([])
 
@@ -358,14 +362,12 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
             OSError, self.loop.run_until_complete, coro)
 
     def test_create_connection_connect_err(self):
-        @tasks.coroutine
         def getaddrinfo(*args, **kw):
-            raise Return([(2, 1, 6, '', ('107.6.106.82', 80))])
+            fut = futures.Future(loop=self.loop)
+            fut.set_result([(2, 1, 6, '', ('107.6.106.82', 80))])
+            return fut
 
-        def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
-
-        self.loop.getaddrinfo = getaddrinfo_task
+        self.loop.getaddrinfo = getaddrinfo
         self.loop.sock_connect = mock.Mock()
         self.loop.sock_connect.side_effect = OSError
 
