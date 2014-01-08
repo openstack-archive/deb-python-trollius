@@ -7,8 +7,7 @@ import errno
 import select
 import socket
 import sys
-
-PY33 = (sys.version_info >= (3, 3))
+from .compat import PY33
 
 if PY33:
     import builtins

@@ -22,8 +22,6 @@ _PENDING = 'PENDING'
 _CANCELLED = 'CANCELLED'
 _FINISHED = 'FINISHED'
 
-_PY34 = sys.version_info >= (3, 4)
-
 Error = executor.Error
 CancelledError = executor.CancelledError
 TimeoutError = executor.TimeoutError

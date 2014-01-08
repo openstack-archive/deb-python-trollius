@@ -12,6 +12,7 @@ from . import constants
 from . import futures
 from . import transports
 from .log import logger
+from .compat import flatten_bytes
 
 
 class _ProactorBasePipeTransport(transports.BaseTransport):
@@ -209,9 +210,7 @@ class _ProactorWritePipeTransport(_ProactorBasePipeTransport,
     """Transport for write pipes."""
 
     def write(self, data):
-        if not isinstance(data, (bytes, bytearray, memoryview)):
-            raise TypeError('data argument must be byte-ish (%r)',
-                            type(data))
+        data = flatten_bytes(data)
         if self._eof_written:
             raise RuntimeError('write_eof() already called')
 
