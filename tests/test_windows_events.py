@@ -10,6 +10,7 @@ import asyncio
 from asyncio import Return
 from asyncio import _overlapped
 from asyncio import _winapi
+from asyncio import backport
 from asyncio import futures
 from asyncio import protocols
 from asyncio import streams
@@ -53,7 +54,7 @@ class ProactorTests(unittest.TestCase):
     def test_double_bind(self):
         ADDRESS = r'\\.\pipe\test_double_bind-%s' % os.getpid()
         server1 = windows_events.PipeServer(ADDRESS)
-        with self.assertRaises(PermissionError):
+        with self.assertRaises(backport.PermissionError):
             server2 = windows_events.PipeServer(ADDRESS)
         server1.close()
 
