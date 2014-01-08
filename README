@@ -41,7 +41,8 @@ Differences between Trollius and Tulip
   whereas Tulip coroutines use "yield from" and "return".
 * On Python 2.7, asyncio.SSLContext has less features than the ssl.SSLContext
   of Python 3.3: no options, verify_mode cannot be modified (fixed to
-  CERT_NONE), no set_default_verify_paths() method, etc.
+  CERT_NONE), no set_default_verify_paths() method, no SNI, etc. The SSL
+  transport has "compression" extra info in Python 2.
 * Lock syntax of Tulip "yield from lock" is not supported in
   Trollius. "yield lock.acquire() try: ... finally: lock.release()" should be
   used instead
