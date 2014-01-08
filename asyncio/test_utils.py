@@ -12,11 +12,11 @@ import time
 from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
 try:
     import ssl
+    from . import backport_ssl
 except ImportError:  # pragma: no cover
     ssl = None
 
 from . import tasks
-from . import backport_ssl
 from . import base_events
 from . import events
 from . import selectors
