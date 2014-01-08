@@ -32,6 +32,11 @@ if sys.version_info >= (3,):
     UNICODE_STR = 'unicode'
 else:
     UNICODE_STR = unicode('unicode')
+    try:
+        memoryview
+    except NameError:
+        # Python 2.6
+        memoryview = buffer
 
 
 class TestBaseSelectorEventLoop(BaseSelectorEventLoop):
@@ -814,7 +819,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         transport = _SelectorSocketTransport(
             self.loop, self.sock, self.protocol)
         transport.write(data)
-        self.sock.send.assert_called_with(data)
+        self.sock.send.assert_called_with(b'data')
 
     def test_write_no_data(self):
         transport = _SelectorSocketTransport(
@@ -1446,7 +1451,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         transport.sendto(data, ('0.0.0.0', 1234))
         self.assertTrue(self.sock.sendto.called)
         self.assertEqual(
-            self.sock.sendto.call_args[0], (data, ('0.0.0.0', 1234)))
+            self.sock.sendto.call_args[0], (b'data', ('0.0.0.0', 1234)))
 
     def test_sendto_no_data(self):
         transport = _SelectorDatagramTransport(
