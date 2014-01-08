@@ -314,7 +314,8 @@ class IocpProactor(object):
                 raise backport.ConnectionRefusedError(0, msg, None, err)
             elif err != 0:
                 msg = _overlapped.FormatMessage(err)
-                raise OSError(0, msg, None, err)
+                err_cls = backport.get_error(err, OSError)
+                raise err_cls(0, msg, None, err)
             else:
                 return windows_utils.PipeHandle(handle)
 
