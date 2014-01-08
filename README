@@ -97,6 +97,10 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Development version
+
+- SSL support is now optional: don't fail if the ssl module is missing
+
 2014-01-08: version 0.1.2
 
 - Trollius now supports CPython 2.6-3.4, PyPy and Windows. All unit tests

@@ -20,7 +20,6 @@ if sys.platform == 'win32':
 # This relies on each of the submodules having an __all__ variable.
 from .futures import *
 from .backport import *
-from .backport_ssl import *
 from .events import *
 from .locks import *
 from .transports import *
@@ -36,10 +35,16 @@ else:
 
 __all__ = (futures.__all__ +
            backport.__all__ +
-           backport_ssl.__all__ +
            events.__all__ +
            locks.__all__ +
            transports.__all__ +
            protocols.__all__ +
            streams.__all__ +
            tasks.__all__)
+
+try:
+    from .backport_ssl import *
+    __all__ += backport_ssl.__all__
+except ImportError:
+    # SSL support is optionnal
+    pass

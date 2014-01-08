@@ -11,19 +11,19 @@ import socket
 import sys
 try:
     import ssl
+    from . import backport_ssl
+    from .backport_ssl import wrap_ssl_error
 except ImportError:  # pragma: no cover
     ssl = None
 
 from . import base_events
 from . import backport
-from . import backport_ssl
 from . import constants
 from . import events
 from . import futures
 from . import selectors
 from . import transports
 from .backport import wrap_error
-from .backport_ssl import wrap_ssl_error
 from .log import logger
 from .compat import PY3, PY26, flatten_bytes
 
