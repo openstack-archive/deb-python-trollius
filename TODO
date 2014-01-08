@@ -19,7 +19,6 @@ Unsorted "TODO" tasks:
 
 * Fix examples:
 
-  - cacheclt/cachesrv.py
   - source1.py: 'StreamWriter' object has no attribute '_writer'
   - stacks.py: 'exceptions.ZeroDivisionError' object has no attribute '__traceback__'
 

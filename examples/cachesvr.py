@@ -105,7 +105,7 @@ class Cache:
         peer = writer.get_extra_info('socket').getpeername()
         logging.info('got a connection from %s', peer)
         try:
-            yield from self.frame_parser(reader, writer)
+            yield self.frame_parser(reader, writer)
         except Exception as exc:
             logging.error('error %r from %s', exc, peer)
         else:
@@ -123,13 +123,13 @@ class Cache:
             # if the client doesn't send enough data but doesn't
             # disconnect either.  We add a timeout to each.  (But the
             # timeout should really be implemented by StreamReader.)
-            framing_b = yield from asyncio.wait_for(
+            framing_b = yield asyncio.wait_for(
                 reader.readline(),
                 timeout=args.timeout, loop=self.loop)
             if random.random()*100 < args.fail_percent:
                 logging.warn('Inserting random failure')
-                yield from asyncio.sleep(args.fail_sleep*random.random(),
-                                         loop=self.loop)
+                yield asyncio.sleep(args.fail_sleep*random.random(),
+                                    loop=self.loop)
                 writer.write(b'error random failure\r\n')
                 break
             logging.debug('framing_b = %r', framing_b)
@@ -152,7 +152,7 @@ class Cache:
                 writer.write(b'error invalid frame parameters\r\n')
                 break
             last_request_id = request_id
-            request_b = yield from asyncio.wait_for(
+            request_b = yield asyncio.wait_for(
                 reader.readexactly(byte_count),
                 timeout=args.timeout, loop=self.loop)
             try:
@@ -168,8 +168,8 @@ class Cache:
             byte_count = len(response_b)
             framing_s = 'response {0} {1}\r\n'.format(request_id, byte_count)
             writer.write(framing_s.encode('ascii'))
-            yield from asyncio.sleep(args.resp_sleep*random.random(),
-                                     loop=self.loop)
+            yield asyncio.sleep(args.resp_sleep*random.random(),
+                                loop=self.loop)
             writer.write(response_b)
 
     def handle_request(self, request):
