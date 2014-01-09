@@ -701,6 +701,9 @@ class _SelectorSslTransport(_SelectorTransport):
             return
         self._loop.add_reader(self._sock_fd, self._read_ready)
 
+    def _read_ready_maxsize(self):
+        return wrap_ssl_error(self._sock.recv, self.max_size)
+
     def _read_ready(self):
         if self._write_wants_read:
             self._write_wants_read = False
@@ -710,7 +713,7 @@ class _SelectorSslTransport(_SelectorTransport):
                 self._loop.add_writer(self._sock_fd, self._write_ready)
 
         try:
-            data = wrap_ssl_error(functools.partial(wrap_error, self._sock.recv, self.max_size))
+            data = wrap_error(self._read_ready_maxsize)
         except (BlockingIOError, InterruptedError, SSLWantReadError):
             pass
         except SSLWantWriteError:
