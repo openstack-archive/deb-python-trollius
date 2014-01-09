@@ -19,6 +19,11 @@ from .backport import wrap_error
 EVENT_READ = (1 << 0)
 EVENT_WRITE = (1 << 1)
 
+if sys.version_info[0] < 3:
+    integer_types = (int, long,)
+else:
+    integer_types = (int,)
+
 
 def _fileobj_to_fd(fileobj):
     """Return a file descriptor from a file object.
@@ -32,7 +37,7 @@ def _fileobj_to_fd(fileobj):
     Raises:
     ValueError if the object is invalid
     """
-    if isinstance(fileobj, (int, long)):
+    if isinstance(fileobj, integer_types):
         fd = fileobj
     else:
         try:
