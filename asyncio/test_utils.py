@@ -35,16 +35,17 @@ def dummy_ssl_context():
         return SSLContext(ssl.PROTOCOL_SSLv23)
 
 
-def run_briefly(loop):
+def run_briefly(loop, steps=1):
     @tasks.coroutine
     def once():
         pass
-    gen = once()
-    t = tasks.Task(gen, loop=loop)
-    try:
-        loop.run_until_complete(t)
-    finally:
-        gen.close()
+    for step in range(steps):
+        gen = once()
+        t = tasks.Task(gen, loop=loop)
+        try:
+            loop.run_until_complete(t)
+        finally:
+            gen.close()
 
 
 def run_until(loop, pred, timeout=None):
