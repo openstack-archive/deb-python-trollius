@@ -52,16 +52,12 @@ else:
         pass
 
 
-ERROR_CONNECTION_REFUSED = 1225  # winsock error code
-
-
 _MAP_ERRNO = {
     errno.EAGAIN: BlockingIOError,
     errno.EALREADY: BlockingIOError,
     errno.ECHILD: ChildProcessError,
     errno.ECONNABORTED: ConnectionAbortedError,
     errno.ECONNREFUSED: ConnectionRefusedError,
-    ERROR_CONNECTION_REFUSED: ConnectionRefusedError,
     errno.ECONNRESET: ConnectionResetError,
     errno.EINPROGRESS: BlockingIOError,
     errno.EINTR: InterruptedError,
@@ -71,6 +67,14 @@ _MAP_ERRNO = {
     errno.EACCES: PermissionError,
     errno.ENOENT: FileNotFoundError,
 }
+
+if sys.platform == 'win32':
+    from asyncio import _overlapped
+
+    _MAP_ERRNO.update({
+        _overlapped.ERROR_CONNECTION_REFUSED: ConnectionRefusedError,
+        _overlapped.ERROR_CONNECTION_ABORTED: ConnectionAbortedError,
+    })
 
 if sys.version_info >= (3,):
     def reraise(tp, value, tb=None):
