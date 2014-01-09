@@ -5,7 +5,7 @@ asyncio_path = os.path.join(os.path.dirname(__file__), '..')
 asyncio_path = os.path.abspath(asyncio_path)
 
 sys.path.insert(0, asyncio_path)
-from asyncio.backport import wrap_error
+from asyncio.py33_exceptions import wrap_error
 sys.path.remove(asyncio_path)
 
 if __name__ == '__main__':
