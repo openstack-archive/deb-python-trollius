@@ -91,6 +91,12 @@ def get_error(errno, default=None):
     return _MAP_ERRNO.get(errno, default)
 
 
+def get_error_code(exc):
+    if hasattr(exc, 'winerror'):
+        return exc.winerror
+    return exc.errno
+
+
 def _wrap_error(mapping, key, err_args):
     if key not in mapping:
         return

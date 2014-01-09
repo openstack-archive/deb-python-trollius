@@ -99,7 +99,10 @@ def pipe(duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
             flags_and_attribs, _winapi.NULL)
 
         ov = _winapi.ConnectNamedPipe(h1, True)
-        ov.GetOverlappedResult(True)
+        if hasattr(ov, 'GetOverlappedResult'):
+            ov.GetOverlappedResult(True)
+        else:
+            ov.getresult(True)
         return h1, h2
     except:
         if h1 is not None:

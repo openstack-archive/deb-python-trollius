@@ -95,14 +95,6 @@ Hemisphere, with the greatest diversity of species in Asia, trollius usually
 grow in heavy, wet clay soils.
 
 
-Windows support
-===============
-
-All tests pass on Python 3.3. For Python 2.6 and 2.7, basic socket I/O is
-supported via select and IOCP backend (see examples/tcp_echo.py). Pipes and
-subprocesses are not (yet) supported.
-
-
 Change log
 ==========
 
