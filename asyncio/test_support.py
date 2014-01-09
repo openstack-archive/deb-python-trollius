@@ -29,6 +29,10 @@ def _is_ipv6_enabled():
 IPV6_ENABLED = _is_ipv6_enabled()
 
 
+class TestFailed(Exception):
+    """Test failed."""
+
+
 def bind_port(sock, host="127.0.0.1"):
     """Bind the socket to a free port and return the port number.  Relies on
     ephemeral ports in order to ensure we are using an unbound port.  This is
