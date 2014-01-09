@@ -383,6 +383,9 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         raise NotImplementedError
 
     def _close_self_pipe(self):
+        if self._self_reading_future is not None:
+            self._self_reading_future.cancel()
+            self._self_reading_future = None
         self._ssock.close()
         self._ssock = None
         self._csock.close()
@@ -395,18 +398,19 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         self._ssock.setblocking(False)
         self._csock.setblocking(False)
         self._internal_fds += 1
+        self._self_reading_future = None
         self.call_soon(self._loop_self_reading)
 
-    def _loop_self_reading(self, f=None):
+    def _loop_self_reading(self, future=None):
         try:
-            if f is not None:
-                f.result()  # may raise
-            f = self._proactor.recv(self._ssock, 4096)
+            if self._self_reading_future is not None:
+                self._self_reading_future.result()  # may raise
+            self._self_reading_future = self._proactor.recv(self._ssock, 4096)
         except:
             self.close()
             raise
         else:
-            f.add_done_callback(self._loop_self_reading)
+            self._self_reading_future.add_done_callback(self._loop_self_reading)
 
     def _write_to_self(self):
         self._csock.send(b'x')
