@@ -169,16 +169,13 @@ class LockTests(test_utils.TestCase):
 
         fa = futures.Future(loop=self.loop)
         ta = tasks.Task(lockit('A', fa), loop=self.loop)
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertTrue(lock.locked())
         tb = tasks.Task(lockit('B', None), loop=self.loop)
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual(len(lock._waiters), 1)
         tc = tasks.Task(lockit('C', None), loop=self.loop)
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual(len(lock._waiters), 2)
 
         # Create the race and check.
@@ -186,8 +183,7 @@ class LockTests(test_utils.TestCase):
         fa.set_result(None)
         tb.cancel()
         self.assertTrue(lock._waiters[0].cancelled())
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertFalse(lock.locked())
         self.assertTrue(ta.done())
         self.assertTrue(tb.cancelled())
@@ -294,15 +290,13 @@ class EventTests(test_utils.TestCase):
         t1 = tasks.Task(c1(result), loop=self.loop)
         t2 = tasks.Task(c2(result), loop=self.loop)
 
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([], result)
 
         t3 = tasks.Task(c3(result), loop=self.loop)
 
         ev.set()
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1, 2, 3], result)
 
         self.assertTrue(t1.done())
@@ -423,39 +417,33 @@ class ConditionTests(test_utils.TestCase):
         t2 = tasks.Task(c2(result), loop=self.loop)
         t3 = tasks.Task(c3(result), loop=self.loop)
 
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([], result)
         self.assertFalse(cond.locked())
 
         self.assertTrue(self.loop.run_until_complete(cond.acquire()))
         cond.notify()
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([], result)
         self.assertTrue(cond.locked())
 
         cond.release()
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1], result)
         self.assertTrue(cond.locked())
 
         cond.notify(2)
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1], result)
         self.assertTrue(cond.locked())
 
         cond.release()
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1, 2], result)
         self.assertTrue(cond.locked())
 
         cond.release()
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1, 2, 3], result)
         self.assertTrue(cond.locked())
 
@@ -573,8 +561,7 @@ class ConditionTests(test_utils.TestCase):
         cond.notify(1)
         cond.release()
         # each coroutine requires 2 runs of the event loop
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1], result)
 
         self.loop.run_until_complete(cond.acquire())
@@ -582,8 +569,7 @@ class ConditionTests(test_utils.TestCase):
         cond.notify(2048)
         cond.release()
         # each coroutine requires 2 runs of the event loop
-        for _ in range(4):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 4)
         self.assertEqual([1, 2, 3], result)
 
         self.assertTrue(t1.done())
@@ -624,8 +610,7 @@ class ConditionTests(test_utils.TestCase):
         cond.notify_all()
         cond.release()
         # each coroutine requires 2 runs of the event loop
-        for _ in range(4):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 4)
         self.assertEqual([1, 2], result)
 
         self.assertTrue(t1.done())
@@ -788,8 +773,7 @@ class SemaphoreTests(test_utils.TestCase):
         t3 = tasks.Task(c3(result), loop=self.loop)
 
         # each coroutine requires 2 runs of the event loop
-        for _ in range(2):
-            test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         self.assertEqual([1], result)
         self.assertTrue(sem.locked())
         self.assertEqual(2, len(sem._waiters))

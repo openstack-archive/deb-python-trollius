@@ -793,7 +793,7 @@ class EventLoopTestsMixin(object):
         # we need to process the event on the server before closing
         # the socket, otherwise they will be handled in the clean up
         # which fails badly on Windows
-        test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         server.close()
 
     def test_create_server_addr_in_use(self):
@@ -867,7 +867,7 @@ class EventLoopTestsMixin(object):
         # we need to process the event on the server before closing
         # the socket, otherwise they will be handled in the clean up
         # which fails badly on Windows
-        test_utils.run_briefly(self.loop)
+        test_utils.run_briefly(self.loop, 2)
         server.close()
 
         client = socket.socket()

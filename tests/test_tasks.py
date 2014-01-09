@@ -1029,16 +1029,12 @@ class TaskTests(test_utils.TestCase):
                 raise base_exc
 
         task = tasks.Task(notmutch(), loop=loop)
-        for _ in range(2):
-            test_utils.run_briefly(loop)
+        test_utils.run_briefly(loop, 2)
 
         task.cancel()
         self.assertFalse(task.done())
 
-        def run_briefly(loop):
-            test_utils.run_briefly(loop)
-            test_utils.run_briefly(loop)
-        self.assertRaises(BaseException, run_briefly, loop)
+        self.assertRaises(BaseException, test_utils.run_briefly, loop, 2)
 
         self.assertTrue(task.done())
         self.assertFalse(task.cancelled())
