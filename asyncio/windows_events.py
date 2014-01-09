@@ -5,13 +5,13 @@ import socket
 import subprocess
 import weakref
 import struct
-import _winapi
 
 from . import backport
 from . import events
 from . import base_subprocess
 from . import futures
 from . import proactor_events
+from . import py33_winapi as _winapi
 from . import selector_events
 from . import tasks
 from . import windows_utils
