@@ -53,6 +53,7 @@ else:
 
 
 _MAP_ERRNO = {
+    errno.EACCES: PermissionError,
     errno.EAGAIN: BlockingIOError,
     errno.EALREADY: BlockingIOError,
     errno.ECHILD: ChildProcessError,
@@ -61,11 +62,11 @@ _MAP_ERRNO = {
     errno.ECONNRESET: ConnectionResetError,
     errno.EINPROGRESS: BlockingIOError,
     errno.EINTR: InterruptedError,
+    errno.ENOENT: FileNotFoundError,
+    errno.EPERM: PermissionError,
     errno.EPIPE: BrokenPipeError,
     errno.ESHUTDOWN: BrokenPipeError,
     errno.EWOULDBLOCK: BlockingIOError,
-    errno.EACCES: PermissionError,
-    errno.ENOENT: FileNotFoundError,
 }
 
 if sys.platform == 'win32':
@@ -118,14 +119,7 @@ if not PY33:
         try:
             return func(*args, **kw)
         except (socket.error, IOError, OSError) as err:
-            if hasattr(err, 'winerror'):
-                # "except WindowsError:" cannot be used because WindowsError
-                # exception is only available on Windows (NameError would be
-                # raised on other platforms)
-                number = err.winerror
-            else:
-                number = err.errno
-            _wrap_error(_MAP_ERRNO, number, err.args)
+            _wrap_error(_MAP_ERRNO, err.errno, err.args)
             raise
         except select.error as err:
             _wrap_error(_MAP_ERRNO, err.args[0], err.args)
