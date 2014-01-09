@@ -27,6 +27,8 @@ except ImportError:
     from _multiprocessing import win32
     import _subprocess
 
+    from asyncio import _overlapped
+
     CloseHandle = win32.CloseHandle
     CreateNamedPipe = win32.CreateNamedPipe
     CreateFile = win32.CreateFile
@@ -50,11 +52,19 @@ except ImportError:
 
     WAIT_OBJECT_0 = _subprocess.WAIT_OBJECT_0
     WaitForSingleObject = _subprocess.WaitForSingleObject
+    ERROR_IO_PENDING = _overlapped.ERROR_IO_PENDING
 
     def ConnectNamedPipe(handle, overlapped):
-        # the version in _multiprocessing.win32 is not compatible
-        # with IOCP
-        raise NotImplementedError()
+        ov = _overlapped.Overlapped()
+        ov.ConnectNamedPipe(handle)
+        return ov
 
-    def WaitForMultipleObjects(*args, **kwargs):
-        raise NotImplementedError()
+    def WaitForMultipleObjects(events, wait_all, timeout):
+        if not wait_all:
+            raise NotImplementedError()
+
+        for ev in events:
+            res = WaitForSingleObject(ev, timeout)
+            assert(res, WAIT_OBJECT_0)
+
+        return WAIT_OBJECT_0

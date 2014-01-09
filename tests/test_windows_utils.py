@@ -8,6 +8,7 @@ import mock
 if sys.platform != 'win32':
     raise unittest.SkipTest('Windows only')
 
+from asyncio import backport
 from asyncio import windows_utils
 from asyncio import _overlapped
 from asyncio import _winapi
@@ -49,7 +50,8 @@ class PipeTests(unittest.TestCase):
             try:
                 ov1.getresult()
             except OSError as e:
-                self.assertEqual(e.winerror, ERROR_IO_INCOMPLETE)
+                error_code = backport.get_error_code(e)
+                self.assertEqual(error_code, ERROR_IO_INCOMPLETE)
             else:
                 raise RuntimeError('expected ERROR_IO_INCOMPLETE')
 
@@ -60,7 +62,7 @@ class PipeTests(unittest.TestCase):
             ov2.WriteFile(h2, b"hello")
             self.assertIn(ov2.error, set((0, _winapi.ERROR_IO_PENDING)))
 
-            res = _winapi.WaitForMultipleObjects([ov2.event], False, 100)
+            res = _winapi.WaitForSingleObject(ov2.event, 100)
             self.assertEqual(res, _winapi.WAIT_OBJECT_0)
 
             self.assertFalse(ov1.pending)
