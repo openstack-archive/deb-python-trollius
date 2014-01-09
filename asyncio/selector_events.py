@@ -11,8 +11,7 @@ import socket
 import sys
 try:
     import ssl
-    from . import backport_ssl
-    from .backport_ssl import wrap_ssl_error
+    from .py3_ssl import SSLContext, BACKPORT_SSL_CONTEXT, SSLWantReadError, SSLWantWriteError
 except ImportError:  # pragma: no cover
     ssl = None
 
@@ -596,8 +595,8 @@ class _SelectorSslTransport(_SelectorTransport):
                         check_hostname=bool(server_hostname))
                 else:
                     # Fallback for Python 3.3.
-                    sslcontext = backport_ssl.SSLContext(ssl.PROTOCOL_SSLv23)
-                    if not backport_ssl.BACKPORT_SSL_CONTEXT:
+                    sslcontext = SSLContext(ssl.PROTOCOL_SSLv23)
+                    if not BACKPORT_SSL_CONTEXT:
                         sslcontext.options |= ssl.OP_NO_SSLv2
                         sslcontext.set_default_verify_paths()
                         sslcontext.verify_mode = ssl.CERT_REQUIRED
@@ -626,10 +625,10 @@ class _SelectorSslTransport(_SelectorTransport):
     def _on_handshake(self):
         try:
             wrap_ssl_error(self._sock.do_handshake)
-        except backport_ssl.SSLWantReadError:
+        except SSLWantReadError:
             self._loop.add_reader(self._sock_fd, self._on_handshake)
             return
-        except backport_ssl.SSLWantWriteError:
+        except SSLWantWriteError:
             self._loop.add_writer(self._sock_fd, self._on_handshake)
             return
         except Exception as exc:
@@ -710,9 +709,9 @@ class _SelectorSslTransport(_SelectorTransport):
 
         try:
             data = wrap_ssl_error(functools.partial(wrap_error, self._sock.recv, self.max_size))
-        except (BlockingIOError, InterruptedError, backport_ssl.SSLWantReadError):
+        except (BlockingIOError, InterruptedError, SSLWantReadError):
             pass
-        except backport_ssl.SSLWantWriteError:
+        except SSLWantWriteError:
             self._read_wants_write = True
             self._loop.remove_reader(self._sock_fd)
             self._loop.add_writer(self._sock_fd, self._write_ready)
@@ -742,10 +741,9 @@ class _SelectorSslTransport(_SelectorTransport):
             data = flatten_bytes(self._buffer)
             try:
                 n = wrap_error(self._sock.send, data)
-            except (BlockingIOError, InterruptedError,
-                    backport_ssl.SSLWantWriteError):
+            except (BlockingIOError, InterruptedError, SSLWantWriteError):
                 n = 0
-            except backport_ssl.SSLWantReadError:
+            except SSLWantReadError:
                 n = 0
                 self._loop.remove_writer(self._sock_fd)
                 self._write_wants_read = True

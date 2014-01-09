@@ -12,7 +12,7 @@ import time
 from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
 try:
     import ssl
-    from . import backport_ssl
+    from .py3_ssl import SSLContext
 except ImportError:  # pragma: no cover
     ssl = None
 
@@ -32,7 +32,7 @@ def dummy_ssl_context():
     if ssl is None:
         return None
     else:
-        return backport_ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        return SSLContext(ssl.PROTOCOL_SSLv23)
 
 
 def run_briefly(loop):
