@@ -24,6 +24,7 @@ try:
         WAIT_OBJECT_0, ERROR_IO_PENDING,
     )
 except ImportError:
+    # Python < 3.3
     from _multiprocessing import win32
     import _subprocess
 
