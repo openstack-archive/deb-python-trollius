@@ -93,12 +93,6 @@ else:
 """)
 
 
-def get_error_code(exc):
-    if hasattr(exc, 'winerror'):
-        return exc.winerror
-    return exc.errno
-
-
 def _wrap_error(mapping, key, err_args):
     if key not in mapping:
         return
@@ -119,6 +113,8 @@ if not PY33:
         try:
             return func(*args, **kw)
         except (socket.error, IOError, OSError) as err:
+            if hasattr(err, 'winerror'):
+                _wrap_error(_MAP_ERRNO, err.winerror, err.args)
             _wrap_error(_MAP_ERRNO, err.errno, err.args)
             raise
         except select.error as err:
