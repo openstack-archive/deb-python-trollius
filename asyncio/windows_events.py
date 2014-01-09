@@ -17,7 +17,7 @@ from . import windows_utils
 from . import _overlapped
 from .log import logger
 from .py33_exceptions import ConnectionRefusedError
-from .windows_utils import wrap_overlapped_error
+from .windows_utils import wrap_error, get_error_class
 
 
 __all__ = ['SelectorEventLoop', 'ProactorEventLoop', 'IocpProactor',
@@ -188,10 +188,10 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
 
 
 def _finish_recv(trans, key, ov):
-    return wrap_overlapped_error(ov.getresult)
+    return wrap_error(ov.getresult)
 
 def _finish_send(trans, key, ov):
-    return wrap_overlapped_error(ov.getresult)
+    return wrap_error(ov.getresult)
 
 
 class IocpProactor(object):
@@ -244,7 +244,7 @@ class IocpProactor(object):
 
         # FIXME: move it out of the function
         def finish_accept(trans, key, ov):
-            wrap_overlapped_error(ov.getresult)
+            wrap_error(ov.getresult)
             # Use SO_UPDATE_ACCEPT_CONTEXT so getsockname() etc work.
             buf = struct.pack('@P', listener.fileno())
             conn.setsockopt(socket.SOL_SOCKET,
@@ -269,7 +269,7 @@ class IocpProactor(object):
         ov.ConnectEx(conn.fileno(), address)
 
         def finish_connect(trans, key, ov):
-            wrap_overlapped_error(ov.getresult)
+            wrap_error(ov.getresult)
             # Use SO_UPDATE_CONNECT_CONTEXT so getsockname() etc work.
             conn.setsockopt(socket.SOL_SOCKET,
                             _overlapped.SO_UPDATE_CONNECT_CONTEXT, 0)
@@ -284,7 +284,7 @@ class IocpProactor(object):
 
         # FIXME: move out of the function
         def _finish_accept_pipe(trans, key, ov):
-            wrap_overlapped_error(ov.getresult)
+            wrap_error(ov.getresult)
             return pipe
 
         return self._register(ov, pipe, _finish_accept_pipe)
@@ -302,9 +302,11 @@ class IocpProactor(object):
                 raise ConnectionRefusedError(0, msg, None, err)
             elif err != 0:
                 msg = _overlapped.FormatMessage(err)
-                err_cls = windows_utils._OVERLAPPED_ERRORS.get(err.winerror,
-                                                               WindowsError)
-                raise err_cls(0, msg, None, err)
+                err_cls = get_error_class(err, None)
+                if err_cls is not None:
+                    raise err_cls(0, msg, None, err)
+                else:
+                    raise WindowsError(err, msg)
             else:
                 return windows_utils.PipeHandle(handle)
 

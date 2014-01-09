@@ -68,6 +68,19 @@ _MAP_ERRNO = {
     errno.ENOENT: FileNotFoundError,
 }
 
+if sys.platform == 'win32':
+    from asyncio import _overlapped
+    _MAP_ERRNO.update({
+        _overlapped.ERROR_CONNECTION_REFUSED: ConnectionRefusedError,
+        _overlapped.ERROR_CONNECTION_ABORTED: ConnectionAbortedError,
+        _overlapped.ERROR_NETNAME_DELETED: ConnectionResetError,
+    })
+
+
+def get_error_class(key, default):
+    return _MAP_ERRNO.get(key, default)
+
+
 if sys.version_info >= (3,):
     def reraise(tp, value, tb=None):
         if value.__traceback__ is not tb:
