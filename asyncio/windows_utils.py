@@ -14,9 +14,8 @@ import os
 import subprocess
 import tempfile
 
-from . import backport
 from . import py33_winapi as _winapi
-from .backport import wrap_error
+from .py33_exceptions import wrap_error, BlockingIOError, InterruptedError
 
 
 __all__ = ['socketpair', 'pipe', 'Popen', 'PIPE', 'PipeHandle']
@@ -49,7 +48,7 @@ def socketpair(family=socket.AF_INET, type=socket.SOCK_STREAM, proto=0):
     csock.setblocking(False)
     try:
         wrap_error(csock.connect, (addr, port))
-    except (backport.BlockingIOError, backport.InterruptedError):
+    except (BlockingIOError, InterruptedError):
         pass
     except Exception:
         lsock.close()
