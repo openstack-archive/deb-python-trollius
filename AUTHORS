@@ -1,0 +1,24 @@
+Trollius is a port of the Tulip project on Python 2, see also authors of the
+Tulip project.
+
+Trollius authors
+================
+
+Marc Schlaich <marc.schlaich AT gmail.com>
+Victor Stinner <victor.stinner AT gmail.com>
+
+
+Tulip authors
+=============
+
+A. Jesse Jiryu Davis <jesse AT 10gen.com>
+Andrew Svetlov <andrew.svetlov AT gmail.com>
+Charles-François Natali <cf.natali AT gmail.com>
+Eli Bendersky <eliben AT gmail.com>
+Geert Jansen <geertj AT gmail.com>
+Giampaolo Rodola' <g.rodola AT gmail.com>
+Guido van Rossum <guido AT python.org>
+Nikolay Kim <fafhrd91 AT gmail.com>
+Richard Oudkerk <shibturn AT gmail.com>
+Saúl Ibarra Corretgé <saghul AT gmail.com>
+

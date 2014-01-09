@@ -10,9 +10,6 @@ Unsorted "TODO" tasks:
 * python3.3 runtests.sh:
   sys:1: ResourceWarning: gc: 3 uncollectable objects at shutdown; use gc.set_debug(gc.DEBUG_UNCOLLECTABLE) to list them
 * write unit test for create_connection(ssl=True)
-* add AUTHORS file and fill author field in setup.py
-  (mention Tulip authors)
-
 * Failing tests on Windows, Python 2:
 
   - test_events.py:ProactorEventLoopTests (SelectorEventLoop is fine)
