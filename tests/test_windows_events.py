@@ -9,7 +9,6 @@ import asyncio
 
 from asyncio import Return
 from asyncio import _overlapped
-from asyncio import backport
 from asyncio import futures
 from asyncio import protocols
 from asyncio import py33_winapi as _winapi
@@ -17,6 +16,7 @@ from asyncio import streams
 from asyncio import test_utils
 from asyncio import transports
 from asyncio import windows_events
+from asyncio.py33_exceptions import PermissionError, FileNotFoundError
 
 
 class UpperProto(protocols.Protocol):
@@ -54,7 +54,7 @@ class ProactorTests(unittest.TestCase):
     def test_double_bind(self):
         ADDRESS = r'\\.\pipe\test_double_bind-%s' % os.getpid()
         server1 = windows_events.PipeServer(ADDRESS)
-        with self.assertRaises(backport.PermissionError):
+        with self.assertRaises(PermissionError):
             server2 = windows_events.PipeServer(ADDRESS)
         server1.close()
 
@@ -65,7 +65,7 @@ class ProactorTests(unittest.TestCase):
     def _test_pipe(self):
         ADDRESS = r'\\.\pipe\_test_pipe-%s' % os.getpid()
 
-        with self.assertRaises(backport.FileNotFoundError):
+        with self.assertRaises(FileNotFoundError):
             yield self.loop.create_pipe_connection(
                 protocols.Protocol, ADDRESS)
 
@@ -93,7 +93,7 @@ class ProactorTests(unittest.TestCase):
 
         server.close()
 
-        with self.assertRaises(backport.FileNotFoundError):
+        with self.assertRaises(FileNotFoundError):
             yield self.loop.create_pipe_connection(
                 protocols.Protocol, ADDRESS)
 

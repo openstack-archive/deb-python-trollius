@@ -8,10 +8,10 @@ import mock
 if sys.platform != 'win32':
     raise unittest.SkipTest('Windows only')
 
-from asyncio import backport
-from asyncio import windows_utils
 from asyncio import _overlapped
 from asyncio import py33_winapi as _winapi
+from asyncio import windows_utils
+from asyncio.py33_exceptions import get_error_code
 
 
 class WinsocketpairTests(unittest.TestCase):
@@ -50,7 +50,7 @@ class PipeTests(unittest.TestCase):
             try:
                 ov1.getresult()
             except OSError as e:
-                error_code = backport.get_error_code(e)
+                error_code = get_error_code(e)
                 self.assertEqual(error_code, ERROR_IO_INCOMPLETE)
             else:
                 raise RuntimeError('expected ERROR_IO_INCOMPLETE')

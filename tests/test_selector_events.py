@@ -16,7 +16,9 @@ except ImportError:
 else:
     HAS_SNI = getattr(ssl, 'HAS_SNI', False)
 
-from asyncio import backport
+from asyncio.py33_exceptions import (
+    BlockingIOError, InterruptedError,
+    ConnectionResetError, ConnectionRefusedError)
 from asyncio import backport_ssl
 from asyncio import futures
 from asyncio import selectors
@@ -120,7 +122,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         self.assertRaises(NotImplementedError, self.loop._socketpair)
 
     def test_read_from_self_tryagain(self):
-        self.loop._ssock.recv.side_effect = backport.BlockingIOError
+        self.loop._ssock.recv.side_effect = BlockingIOError
         self.assertIsNone(self.loop._read_from_self())
 
     def test_read_from_self_exception(self):
@@ -128,7 +130,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         self.assertRaises(OSError, self.loop._read_from_self)
 
     def test_write_to_self_tryagain(self):
-        self.loop._csock.send.side_effect = backport.BlockingIOError
+        self.loop._csock.send.side_effect = BlockingIOError
         self.assertIsNone(self.loop._write_to_self())
 
     def test_write_to_self_exception(self):
@@ -167,7 +169,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         f = futures.Future(loop=self.loop)
         sock = mock.Mock()
         sock.fileno.return_value = 10
-        sock.recv.side_effect = backport.BlockingIOError
+        sock.recv.side_effect = BlockingIOError
 
         self.loop.add_reader = mock.Mock()
         self.loop._sock_recv(f, False, sock, 1024)
@@ -227,7 +229,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         f = futures.Future(loop=self.loop)
         sock = mock.Mock()
         sock.fileno.return_value = 10
-        sock.send.side_effect = backport.BlockingIOError
+        sock.send.side_effect = BlockingIOError
 
         self.loop.add_writer = mock.Mock()
         self.loop._sock_sendall(f, False, sock, b'data')
@@ -239,7 +241,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         f = futures.Future(loop=self.loop)
         sock = mock.Mock()
         sock.fileno.return_value = 10
-        sock.send.side_effect = backport.InterruptedError
+        sock.send.side_effect = InterruptedError
 
         self.loop.add_writer = mock.Mock()
         self.loop._sock_sendall(f, False, sock, b'data')
@@ -408,7 +410,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         f = futures.Future(loop=self.loop)
         sock = mock.Mock()
         sock.fileno.return_value = 10
-        sock.accept.side_effect = backport.BlockingIOError
+        sock.accept.side_effect = BlockingIOError
 
         self.loop.add_reader = mock.Mock()
         self.loop._sock_accept(f, False, sock)
@@ -752,7 +754,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
 
     @mock.patch('logging.exception')
     def test_read_ready_tryagain(self, m_exc):
-        self.sock.recv.side_effect = backport.BlockingIOError
+        self.sock.recv.side_effect = BlockingIOError
 
         transport = _SelectorSocketTransport(
             self.loop, self.sock, self.protocol)
@@ -763,7 +765,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
 
     @mock.patch('logging.exception')
     def test_read_ready_tryagain_interrupted(self, m_exc):
-        self.sock.recv.side_effect = backport.InterruptedError
+        self.sock.recv.side_effect = InterruptedError
 
         transport = _SelectorSocketTransport(
             self.loop, self.sock, self.protocol)
@@ -774,7 +776,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
 
     @mock.patch('logging.exception')
     def test_read_ready_conn_reset(self, m_exc):
-        err = self.sock.recv.side_effect = backport.ConnectionResetError()
+        err = self.sock.recv.side_effect = ConnectionResetError()
 
         transport = _SelectorSocketTransport(
             self.loop, self.sock, self.protocol)
@@ -885,7 +887,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         self.assertEqual(list_to_buffer([b'data']), transport._buffer)
 
     def test_write_tryagain(self):
-        self.sock.send.side_effect = backport.BlockingIOError
+        self.sock.send.side_effect = BlockingIOError
 
         data = b'data'
         transport = _SelectorSocketTransport(
@@ -988,7 +990,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         self.assertEqual(list_to_buffer([b'data']), transport._buffer)
 
     def test_write_ready_tryagain(self):
-        self.sock.send.side_effect = backport.BlockingIOError
+        self.sock.send.side_effect = BlockingIOError
 
         transport = _SelectorSocketTransport(
             self.loop, self.sock, self.protocol)
@@ -1034,7 +1036,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
     def test_write_eof_buffer(self):
         tr = _SelectorSocketTransport(
             self.loop, self.sock, self.protocol)
-        self.sock.send.side_effect = backport.BlockingIOError
+        self.sock.send.side_effect = BlockingIOError
         tr.write(b'data')
         tr.write_eof()
         self.assertEqual(tr._buffer, list_to_buffer([b'data']))
@@ -1183,7 +1185,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
 
     def test_read_ready_write_wants_read(self):
         self.loop.add_writer = mock.Mock()
-        self.sslsock.recv.side_effect = backport.BlockingIOError
+        self.sslsock.recv.side_effect = BlockingIOError
         transport = self._make_one()
         transport._write_wants_read = True
         transport._write_ready = mock.Mock()
@@ -1204,7 +1206,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.protocol.eof_received.assert_called_with()
 
     def test_read_ready_recv_conn_reset(self):
-        err = self.sslsock.recv.side_effect = backport.ConnectionResetError()
+        err = self.sslsock.recv.side_effect = ConnectionResetError()
         transport = self._make_one()
         transport._force_close = mock.Mock()
         transport._read_ready()
@@ -1217,11 +1219,11 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.assertTrue(self.sslsock.recv.called)
         self.assertFalse(self.protocol.data_received.called)
 
-        self.sslsock.recv.side_effect = backport.BlockingIOError
+        self.sslsock.recv.side_effect = BlockingIOError
         transport._read_ready()
         self.assertFalse(self.protocol.data_received.called)
 
-        self.sslsock.recv.side_effect = backport.InterruptedError
+        self.sslsock.recv.side_effect = InterruptedError
         transport._read_ready()
         self.assertFalse(self.protocol.data_received.called)
 
@@ -1303,7 +1305,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._write_ready()
         self.assertEqual(list_to_buffer([b'data']), transport._buffer)
 
-        self.sslsock.send.side_effect = backport.BlockingIOError()
+        self.sslsock.send.side_effect = BlockingIOError()
         transport._write_ready()
         self.assertEqual(list_to_buffer([b'data']), transport._buffer)
 
@@ -1330,7 +1332,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
 
     def test_write_ready_read_wants_write(self):
         self.loop.add_reader = mock.Mock()
-        self.sslsock.send.side_effect = backport.BlockingIOError
+        self.sslsock.send.side_effect = BlockingIOError
         transport = self._make_one()
         transport._read_wants_write = True
         transport._read_ready = mock.Mock()
@@ -1399,7 +1401,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol)
 
-        self.sock.recvfrom.side_effect = backport.BlockingIOError
+        self.sock.recvfrom.side_effect = BlockingIOError
         transport._fatal_error = mock.Mock()
         transport._read_ready()
 
@@ -1502,7 +1504,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
     def test_sendto_tryagain(self):
         data = b'data'
 
-        self.sock.sendto.side_effect = backport.BlockingIOError
+        self.sock.sendto.side_effect = BlockingIOError
 
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol)
@@ -1537,7 +1539,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
     def test_sendto_error_received(self):
         data = b'data'
 
-        self.sock.sendto.side_effect = backport.ConnectionRefusedError
+        self.sock.sendto.side_effect = ConnectionRefusedError
 
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol)
@@ -1550,7 +1552,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
     def test_sendto_error_received_connected(self):
         data = b'data'
 
-        self.sock.send.side_effect = backport.ConnectionRefusedError
+        self.sock.send.side_effect = ConnectionRefusedError
 
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol, ('0.0.0.0', 1))
@@ -1617,7 +1619,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         self.assertFalse(self.loop.writers)
 
     def test_sendto_ready_tryagain(self):
-        self.sock.sendto.side_effect = backport.BlockingIOError
+        self.sock.sendto.side_effect = BlockingIOError
 
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol)
@@ -1642,7 +1644,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         transport._fatal_error.assert_called_with(err)
 
     def test_sendto_ready_error_received(self):
-        self.sock.sendto.side_effect = backport.ConnectionRefusedError
+        self.sock.sendto.side_effect = ConnectionRefusedError
 
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol)
@@ -1653,7 +1655,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         self.assertFalse(transport._fatal_error.called)
 
     def test_sendto_ready_error_received_connection(self):
-        self.sock.send.side_effect = backport.ConnectionRefusedError
+        self.sock.send.side_effect = ConnectionRefusedError
 
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol, ('0.0.0.0', 1))
@@ -1668,7 +1670,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
     def test_fatal_error_connected(self, m_exc):
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol, ('0.0.0.0', 1))
-        err = backport.ConnectionRefusedError()
+        err = ConnectionRefusedError()
         transport._fatal_error(err)
         self.assertFalse(self.protocol.error_received.called)
         m_exc.assert_called_with('Fatal error for %s', transport)

@@ -26,7 +26,6 @@ except ImportError:
     concurrent = None
 
 from asyncio import Return
-from asyncio import backport
 from asyncio import futures
 from asyncio import events
 from asyncio import executor
@@ -36,7 +35,9 @@ from asyncio import selector_events
 from asyncio import tasks
 from asyncio import test_utils
 from asyncio import locks
-from asyncio.backport import wrap_error
+from asyncio.py33_exceptions import (wrap_error,
+    BlockingIOError, ConnectionRefusedError, ConnectionRefusedError,
+    FileNotFoundError)
 from asyncio.time_monotonic import time_monotonic
 from asyncio import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
 import asyncio
@@ -332,7 +333,7 @@ class EventLoopTestsMixin(object):
         def reader():
             try:
                 data = r.recv(1024)
-            except backport.BlockingIOError:
+            except BlockingIOError:
                 # Spurious readiness notifications are possible
                 # at least on Linux -- see man select.
                 return
@@ -398,7 +399,7 @@ class EventLoopTestsMixin(object):
 
         sock = socket.socket()
         sock.setblocking(False)
-        with self.assertRaises(backport.ConnectionRefusedError):
+        with self.assertRaises(ConnectionRefusedError):
             self.loop.run_until_complete(
                 self.loop.sock_connect(sock, address))
         sock.close()
@@ -871,7 +872,7 @@ class EventLoopTestsMixin(object):
 
         client = socket.socket()
         self.assertRaises(
-            backport.ConnectionRefusedError, wrap_error, client.connect,
+            ConnectionRefusedError, wrap_error, client.connect,
             ('127.0.0.1', port))
         client.close()
 

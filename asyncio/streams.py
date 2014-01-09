@@ -6,11 +6,11 @@ __all__ = ['StreamReader', 'StreamWriter', 'StreamReaderProtocol',
 
 import collections
 
-from . import backport
 from . import events
 from . import futures
 from . import protocols
 from . import tasks
+from .py33_exceptions import ConnectionResetError
 
 
 _DEFAULT_LIMIT = 2**16
@@ -204,7 +204,7 @@ class StreamWriter(object):
         if self._reader._exception is not None:
             raise self._reader._exception
         if self._transport._conn_lost:  # Uses private variable.
-            raise backport.ConnectionResetError('Connection lost')
+            raise ConnectionResetError('Connection lost')
         if not self._protocol._paused:
             return ()
         waiter = self._protocol._drain_waiter
