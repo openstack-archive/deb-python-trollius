@@ -83,6 +83,28 @@ And coverage as follows:
 --Guido van Rossum <guido@python.org>
 
 
+Backports
+=========
+
+To support Python 2.6-3.4, many Python modules of the standard library have
+been backported:
+
+========================  =========  =======================
+Name                      Python     Backport
+========================  =========  =======================
+OSError                        3.3   asyncio.py33_exceptions
+_overlapped                    3.4   asyncio._overlapped
+_winapi                        3.3   asyncio.py33_winapi
+collections.OrderedDict   2.7, 3.1   ordereddict (PyPI)
+selectors                      3.4   asyncio.selectors
+ssl                       3.2, 3.3   asyncio.py3_ssl
+time.monotonic                 3.3   asyncio.time_monotonic
+unittest                  2.7, 3.1   unittest2 (PyPI)
+unittest.mock                  3.3   mock (PyPI)
+weakref.WeakSet           2.7, 3.0   asyncio.py27_weakrefset
+========================  =========  =======================
+
+
 Trollius name
 =============
 
