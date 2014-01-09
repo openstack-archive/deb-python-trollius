@@ -15,7 +15,11 @@ import subprocess
 import tempfile
 
 from . import py33_winapi as _winapi
-from .py33_exceptions import wrap_error, BlockingIOError, InterruptedError
+from . import _overlapped
+from .py33_exceptions import (
+    _wrap_error, wrap_error,
+    BlockingIOError, InterruptedError,
+    ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError)
 
 
 __all__ = ['socketpair', 'pipe', 'Popen', 'PIPE', 'PipeHandle']
@@ -28,6 +32,20 @@ BUFSIZE = 8192
 PIPE = subprocess.PIPE
 STDOUT = subprocess.STDOUT
 _mmap_counter = itertools.count()
+
+
+_OVERLAPPED_ERRORS = {
+    _overlapped.ERROR_CONNECTION_REFUSED: ConnectionRefusedError,
+    _overlapped.ERROR_CONNECTION_ABORTED: ConnectionAbortedError,
+    _overlapped.ERROR_NETNAME_DELETED: ConnectionResetError,
+}
+
+def wrap_overlapped_error(func, *args, **kw):
+    try:
+        return func(*args, **kw)
+    except WindowsError as err:
+        _wrap_error(_OVERLAPPED_ERRORS, err.winerror, err.args)
+        raise
 
 
 # Replacement for socket.socketpair()
@@ -101,7 +119,7 @@ def pipe(duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
         if hasattr(ov, 'GetOverlappedResult'):
             ov.GetOverlappedResult(True)
         else:
-            ov.getresult(True)
+            wrap_overlapped_error(ov.getresult, True)
         return h1, h2
     except:
         if h1 is not None:

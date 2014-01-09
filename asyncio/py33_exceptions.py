@@ -68,14 +68,6 @@ _MAP_ERRNO = {
     errno.ENOENT: FileNotFoundError,
 }
 
-if sys.platform == 'win32':
-    from asyncio import _overlapped
-
-    _MAP_ERRNO.update({
-        _overlapped.ERROR_CONNECTION_REFUSED: ConnectionRefusedError,
-        _overlapped.ERROR_CONNECTION_ABORTED: ConnectionAbortedError,
-    })
-
 if sys.version_info >= (3,):
     def reraise(tp, value, tb=None):
         if value.__traceback__ is not tb:
@@ -85,10 +77,6 @@ else:
     exec("""def reraise(tp, value, tb=None):
     raise tp, value, tb
 """)
-
-
-def get_error(errno, default=None):
-    return _MAP_ERRNO.get(errno, default)
 
 
 def get_error_code(exc):
@@ -125,10 +113,3 @@ if not PY33:
 else:
     def wrap_error(func, *args, **kw):
         return func(*args, **kw)
-
-
-def error_wrapped(func):
-    """Decorator for wrap_error."""
-    def wrapper(*args, **kwargs):
-        return wrap_error(func, *args, **kwargs)
-    return wrapper

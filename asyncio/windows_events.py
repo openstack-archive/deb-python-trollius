@@ -16,8 +16,8 @@ from . import tasks
 from . import windows_utils
 from . import _overlapped
 from .log import logger
-from .py33_exceptions import (error_wrapped, get_error,
-                              ConnectionResetError, ConnectionRefusedError)
+from .py33_exceptions import ConnectionRefusedError
+from .windows_utils import wrap_overlapped_error
 
 
 __all__ = ['SelectorEventLoop', 'ProactorEventLoop', 'IocpProactor',
@@ -29,7 +29,6 @@ NULL = 0
 INFINITE = 0xffffffff
 ERROR_CONNECTION_REFUSED = 1225
 ERROR_CONNECTION_ABORTED = 1236
-
 
 class _OverlappedFuture(futures.Future):
     """Subclass of Future which represents an overlapped operation.
@@ -44,7 +43,7 @@ class _OverlappedFuture(futures.Future):
     def cancel(self):
         try:
             self.ov.cancel()
-        except OSError:
+        except WindowsError:
             pass
         return super(_OverlappedFuture, self).cancel()
 
@@ -60,9 +59,8 @@ class _WaitHandleFuture(futures.Future):
         super(_WaitHandleFuture, self).cancel()
         try:
             _overlapped.UnregisterWait(self._wait_handle)
-        except OSError as e:
-            if (hasattr(e, 'winerror') and
-                    e.winerror != _overlapped.ERROR_IO_PENDING):
+        except WindowsError as e:
+            if e.winerror != _overlapped.ERROR_IO_PENDING:
                 raise
 
 
@@ -84,7 +82,7 @@ class PipeServer(object):
         tmp, self._pipe = self._pipe, self._server_pipe_handle(False)
         return tmp
 
-    @error_wrapped
+    # FIXME: need to wrap errors
     def _server_pipe_handle(self, first):
         # Return a wrapper for a new pipe handle.
         if self._address is None:
@@ -189,6 +187,13 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
         pass
 
 
+def _finish_recv(trans, key, ov):
+    return wrap_overlapped_error(ov.getresult)
+
+def _finish_send(trans, key, ov):
+    return wrap_overlapped_error(ov.getresult)
+
+
 class IocpProactor(object):
     """Proactor implementation using IOCP."""
 
@@ -219,17 +224,7 @@ class IocpProactor(object):
         else:
             ov.ReadFile(conn.fileno(), nbytes)
 
-        def finish(trans, key, ov):
-            try:
-                return ov.getresult()
-            except OSError as exc:
-                if (hasattr(exc, 'winerror') and
-                        exc.winerror == _overlapped.ERROR_NETNAME_DELETED):
-                    raise ConnectionResetError(*exc.args)
-                else:
-                    raise
-
-        return self._register(ov, conn, finish)
+        return self._register(ov, conn, _finish_recv)
 
     def send(self, conn, buf, flags=0):
         self._register_with_iocp(conn)
@@ -239,17 +234,7 @@ class IocpProactor(object):
         else:
             ov.WriteFile(conn.fileno(), buf)
 
-        def finish(trans, key, ov):
-            try:
-                return ov.getresult()
-            except OSError as exc:
-                if (hasattr(exc, 'winerror') and
-                        exc.winerror == _overlapped.ERROR_NETNAME_DELETED):
-                    raise ConnectionResetError(*exc.args)
-                else:
-                    raise
-
-        return self._register(ov, conn, finish)
+        return self._register(ov, conn, _finish_send)
 
     def accept(self, listener):
         self._register_with_iocp(listener)
@@ -257,8 +242,9 @@ class IocpProactor(object):
         ov = _overlapped.Overlapped(NULL)
         ov.AcceptEx(listener.fileno(), conn.fileno())
 
+        # FIXME: move it out of the function
         def finish_accept(trans, key, ov):
-            ov.getresult()
+            wrap_overlapped_error(ov.getresult)
             # Use SO_UPDATE_ACCEPT_CONTEXT so getsockname() etc work.
             buf = struct.pack('@P', listener.fileno())
             conn.setsockopt(socket.SOL_SOCKET,
@@ -273,8 +259,8 @@ class IocpProactor(object):
         # The socket needs to be locally bound before we call ConnectEx().
         try:
             _overlapped.BindLocal(conn.fileno(), conn.family)
-        except OSError as e:
-            if hasattr(e, 'winerror') and e.winerror != errno.WSAEINVAL:
+        except WindowsError as e:
+            if e.winerror != errno.WSAEINVAL:
                 raise
             # Probably already locally bound; check using getsockname().
             if conn.getsockname()[1] == 0:
@@ -282,9 +268,8 @@ class IocpProactor(object):
         ov = _overlapped.Overlapped(NULL)
         ov.ConnectEx(conn.fileno(), address)
 
-        @error_wrapped
         def finish_connect(trans, key, ov):
-            ov.getresult()
+            wrap_overlapped_error(ov.getresult)
             # Use SO_UPDATE_CONNECT_CONTEXT so getsockname() etc work.
             conn.setsockopt(socket.SOL_SOCKET,
                             _overlapped.SO_UPDATE_CONNECT_CONTEXT, 0)
@@ -297,11 +282,12 @@ class IocpProactor(object):
         ov = _overlapped.Overlapped(NULL)
         ov.ConnectNamedPipe(pipe.fileno())
 
-        def finish(trans, key, ov):
-            ov.getresult()
+        # FIXME: move out of the function
+        def _finish_accept_pipe(trans, key, ov):
+            wrap_overlapped_error(ov.getresult)
             return pipe
 
-        return self._register(ov, pipe, finish)
+        return self._register(ov, pipe, _finish_accept_pipe)
 
     def connect_pipe(self, address):
         ov = _overlapped.Overlapped(NULL)
@@ -316,7 +302,8 @@ class IocpProactor(object):
                 raise ConnectionRefusedError(0, msg, None, err)
             elif err != 0:
                 msg = _overlapped.FormatMessage(err)
-                err_cls = get_error(err, OSError)
+                err_cls = windows_utils._OVERLAPPED_ERRORS.get(err.winerror,
+                                                               WindowsError)
                 raise err_cls(0, msg, None, err)
             else:
                 return windows_utils.PipeHandle(handle)
@@ -339,9 +326,8 @@ class IocpProactor(object):
             if not f.cancelled():
                 try:
                     _overlapped.UnregisterWait(wh)
-                except OSError as e:
-                    if (hasattr(e, 'winerror') and
-                            e.winerror != _overlapped.ERROR_IO_PENDING):
+                except WindowsError as e:
+                    if e.winerror != _overlapped.ERROR_IO_PENDING:
                         raise
             # Note that this second wait means that we should only use
             # this with handles types where a successful wait has no
@@ -446,7 +432,7 @@ class IocpProactor(object):
             else:
                 try:
                     ov.cancel()
-                except OSError:
+                except WindowsError:
                     pass
 
         while self._cache:
