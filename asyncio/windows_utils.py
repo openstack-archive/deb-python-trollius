@@ -13,9 +13,9 @@ import msvcrt
 import os
 import subprocess
 import tempfile
-import _winapi
 
 from . import backport
+from . import py33_winapi as _winapi
 from .backport import wrap_error
 
 

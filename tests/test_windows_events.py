@@ -9,10 +9,10 @@ import asyncio
 
 from asyncio import Return
 from asyncio import _overlapped
-from asyncio import _winapi
 from asyncio import backport
 from asyncio import futures
 from asyncio import protocols
+from asyncio import py33_winapi as _winapi
 from asyncio import streams
 from asyncio import test_utils
 from asyncio import transports
