@@ -19,7 +19,7 @@ if sys.platform == 'win32':
 
 # This relies on each of the submodules having an __all__ variable.
 from .futures import *
-from .backport import *
+from .py33_exceptions import *
 from .events import *
 from .locks import *
 from .transports import *
@@ -34,7 +34,7 @@ else:
 
 
 __all__ = (futures.__all__ +
-           backport.__all__ +
+           py33_exceptions.__all__ +
            events.__all__ +
            locks.__all__ +
            transports.__all__ +
