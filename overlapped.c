@@ -93,7 +93,7 @@ SetFromWindowsErr(DWORD err)
             exception_type = PyExc_OSError;
     }
 #else
-    exception_type = PyExc_OSError;
+    exception_type = PyExc_WindowsError;
 #endif
     return PyErr_SetExcFromWindowsErr(exception_type, err);
 }
