@@ -33,7 +33,6 @@ except ImportError:
     CloseHandle = win32.CloseHandle
     CreateNamedPipe = win32.CreateNamedPipe
     CreateFile = win32.CreateFile
-    GetLastError = win32.GetLastError
     NULL = win32.NULL
 
     GENERIC_READ = win32.GENERIC_READ
@@ -68,7 +67,8 @@ except ImportError:
         for ev in events:
             res = WaitForSingleObject(ev, timeout)
             if res != WAIT_OBJECT_0:
-                err = GetLastError()
-                raise WindowsError(err, "Error")
+                err = win32.GetLastError()
+                msg = _overlapped.FormatMessage(err)
+                raise WindowsError(err, msg)
 
         return WAIT_OBJECT_0
