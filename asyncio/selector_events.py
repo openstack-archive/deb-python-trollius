@@ -11,7 +11,9 @@ import socket
 import sys
 try:
     import ssl
-    from .py3_ssl import SSLContext, BACKPORT_SSL_CONTEXT, SSLWantReadError, SSLWantWriteError
+    from .py3_ssl import (
+        wrap_ssl_error, SSLContext, BACKPORT_SSL_CONTEXT, SSLWantReadError,
+        SSLWantWriteError)
 except ImportError:  # pragma: no cover
     ssl = None
 
