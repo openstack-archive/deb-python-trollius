@@ -118,7 +118,14 @@ if not PY33:
         try:
             return func(*args, **kw)
         except (socket.error, IOError, OSError) as err:
-            _wrap_error(_MAP_ERRNO, err.errno, err.args)
+            if hasattr(err, 'winerror'):
+                # "except WindowsError:" cannot be used because WindowsError
+                # exception is only available on Windows (NameError would be
+                # raised on other platforms)
+                number = err.winerror
+            else:
+                number = err.errno
+            _wrap_error(_MAP_ERRNO, number, err.args)
             raise
         except select.error as err:
             _wrap_error(_MAP_ERRNO, err.args[0], err.args)
