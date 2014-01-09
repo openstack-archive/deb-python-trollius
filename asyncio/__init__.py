@@ -43,8 +43,8 @@ __all__ = (futures.__all__ +
            tasks.__all__)
 
 try:
-    from .backport_ssl import *
-    __all__ += backport_ssl.__all__
+    from .py3_ssl import *
+    __all__ += py3_ssl.__all__
 except ImportError:
     # SSL support is optionnal
     pass
