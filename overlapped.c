@@ -81,7 +81,7 @@ SetFromWindowsErr(DWORD err)
 
     if (err == 0)
         err = GetLastError();
-#ifdef PYTHON3
+#if (PY_MAJOR_VERSION == 3 && PY_MINOR_VERSION >= 3) || PY_MAJOR_VERSION > 3
     switch (err) {
         case ERROR_CONNECTION_REFUSED:
             exception_type = PyExc_ConnectionRefusedError;
