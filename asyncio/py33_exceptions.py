@@ -108,19 +108,23 @@ def _wrap_error(mapping, key, err_args):
     reraise(new_err_cls, new_err, traceback)
 
 
-def wrap_error(func, *args, **kw):
-    """
-    Wrap socket.error, IOError, OSError, select.error to raise new specialized
-    exceptions of Python 3.3 like InterruptedError (PEP 3151).
-    """
-    try:
+if not PY33:
+    def wrap_error(func, *args, **kw):
+        """
+        Wrap socket.error, IOError, OSError, select.error to raise new specialized
+        exceptions of Python 3.3 like InterruptedError (PEP 3151).
+        """
+        try:
+            return func(*args, **kw)
+        except (socket.error, IOError, OSError) as err:
+            _wrap_error(_MAP_ERRNO, err.errno, err.args)
+            raise
+        except select.error as err:
+            _wrap_error(_MAP_ERRNO, err.args[0], err.args)
+            raise
+else:
+    def wrap_error(func, *args, **kw):
         return func(*args, **kw)
-    except (socket.error, IOError, OSError) as err:
-        _wrap_error(_MAP_ERRNO, err.errno, err.args)
-        raise
-    except select.error as err:
-        _wrap_error(_MAP_ERRNO, err.args[0], err.args)
-        raise
 
 
 def error_wrapped(func):
