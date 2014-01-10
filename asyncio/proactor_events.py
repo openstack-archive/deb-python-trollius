@@ -403,16 +403,17 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         self._self_reading_future = None
         self.call_soon(self._loop_self_reading)
 
-    def _loop_self_reading(self, future=None):
+    def _loop_self_reading(self, f=None):
         try:
-            if self._self_reading_future is not None:
-                self._self_reading_future.result()  # may raise
-            self._self_reading_future = self._proactor.recv(self._ssock, 4096)
+            if f is not None:
+                f.result()  # may raise
+            f = self._proactor.recv(self._ssock, 4096)
         except:
             self.close()
             raise
         else:
-            self._self_reading_future.add_done_callback(self._loop_self_reading)
+            self._self_reading_future = f
+            f.add_done_callback(self._loop_self_reading)
 
     def _write_to_self(self):
         self._csock.send(b'x')
@@ -423,15 +424,15 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         if ssl:
             raise ValueError('IocpEventLoop is incompatible with SSL.')
 
-        def loop(future=None):
+        def loop(f=None):
             try:
-                if future is not None:
-                    conn, addr = future.result()
+                if f is not None:
+                    conn, addr = f.result()
                     protocol = protocol_factory()
                     self._make_socket_transport(
                         conn, protocol,
                         extra={'peername': addr}, server=server)
-                future = self._proactor.accept(sock)
+                f = self._proactor.accept(sock)
             except OSError:
                 if sock.fileno() != -1:
                     logger.exception('Accept failed')
@@ -439,8 +440,8 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
             except futures.CancelledError:
                 sock.close()
             else:
-                self._accept_futures[sock.fileno()] = future
-                future.add_done_callback(loop)
+                self._accept_futures[sock.fileno()] = f
+                f.add_done_callback(loop)
 
         self.call_soon(loop)
 
