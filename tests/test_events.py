@@ -860,10 +860,6 @@ class EventLoopTestsMixin(object):
         client.connect(('127.0.0.1', port))
         client.send(b'xxx')
         client.close()
-        # we need to process the event on the server before closing
-        # the socket, otherwise they will be handled in the clean up
-        # which fails badly on Windows
-        test_utils.run_briefly(self.loop, 2)
         server.close()
 
         client = socket.socket()
