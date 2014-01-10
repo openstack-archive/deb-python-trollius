@@ -331,6 +331,7 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         logger.debug('Using proactor: %s', proactor.__class__.__name__)
         self._proactor = proactor
         self._selector = proactor   # convenient alias
+        self._accept_futures = {}   # sock => Future
         proactor.set_loop(self)
         self._make_self_pipe()
 
@@ -366,6 +367,7 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
             self._proactor = None
             self._selector = None
             super(BaseProactorEventLoop, self).close()
+        self._accept_futures.clear()
 
     def sock_recv(self, sock, n):
         return self._proactor.recv(sock, n)
@@ -416,19 +418,20 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         self._csock.send(b'x')
 
     def _start_serving(self, protocol_factory, sock, ssl=None, server=None):
-        self._accept_future = None
+        assert len(self._accept_futures)==0, self._accept_futures
+        self._accept_futures.clear()
         if ssl:
             raise ValueError('IocpEventLoop is incompatible with SSL.')
 
         def loop(future=None):
             try:
-                if self._accept_future is not None:
-                    conn, addr = self._accept_future.result()
+                if future is not None:
+                    conn, addr = future.result()
                     protocol = protocol_factory()
                     self._make_socket_transport(
                         conn, protocol,
                         extra={'peername': addr}, server=server)
-                self._accept_future = self._proactor.accept(sock)
+                future = self._proactor.accept(sock)
             except OSError:
                 if sock.fileno() != -1:
                     logger.exception('Accept failed')
@@ -436,7 +439,8 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
             except futures.CancelledError:
                 sock.close()
             else:
-                self._accept_future.add_done_callback(loop)
+                self._accept_futures[sock] = future
+                future.add_done_callback(loop)
 
         self.call_soon(loop)
 
@@ -444,8 +448,9 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         pass    # XXX hard work currently done in poll
 
     def _stop_serving(self, sock):
-        if self._accept_future is not None:
-            self._accept_future.cancel()
-            # Keep the future so loop() will be stopped with CancelledError
+        for future in self._accept_futures.values():
+            if future is not None:
+                future.cancel()
+        # Keep the future so loop() will be stopped with CancelledError
         self._proactor._stop_serving(sock)
         sock.close()
