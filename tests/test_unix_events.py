@@ -11,7 +11,6 @@ import stat
 import sys
 import threading
 import unittest
-import mock
 
 if sys.platform == 'win32':
     raise unittest.SkipTest('UNIX only')
@@ -22,6 +21,7 @@ from asyncio import protocols
 from asyncio import test_utils
 from asyncio import unix_events
 from asyncio.py33_exceptions import BlockingIOError, ChildProcessError
+from asyncio.test_utils import mock
 
 
 @test_utils.skipUnless(signal, 'Signals are not supported')

@@ -2,15 +2,15 @@
 
 import socket
 import unittest
-import mock
 
-import asyncio
-from asyncio.py33_exceptions import ConnectionAbortedError, ConnectionResetError
+from asyncio import test_utils
 from asyncio.proactor_events import BaseProactorEventLoop
+from asyncio.proactor_events import _ProactorDuplexPipeTransport
 from asyncio.proactor_events import _ProactorSocketTransport
 from asyncio.proactor_events import _ProactorWritePipeTransport
-from asyncio.proactor_events import _ProactorDuplexPipeTransport
-from asyncio import test_utils
+from asyncio.py33_exceptions import ConnectionAbortedError, ConnectionResetError
+from asyncio.test_utils import mock
+import asyncio
 
 
 class ProactorSocketTransportTests(test_utils.TestCase):

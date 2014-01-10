@@ -1,10 +1,10 @@
 """Tests for selectors.py."""
 
-import mock
 import unittest
 
 from asyncio import selectors
 from asyncio import test_utils
+from asyncio.test_utils import mock
 
 
 class FakeSelector(selectors._BaseSelectorImpl):

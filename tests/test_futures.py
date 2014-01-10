@@ -6,13 +6,13 @@ except ImportError:
     concurrent = None
 import threading
 import unittest
-import mock
 
 from asyncio import executor
 from asyncio import events
 from asyncio import futures
 from asyncio import tasks
 from asyncio import test_utils
+from asyncio.test_utils import mock
 
 
 def _fakefunc(f):
