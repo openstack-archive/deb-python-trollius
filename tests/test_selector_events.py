@@ -678,11 +678,15 @@ class SelectorTransportTests(test_utils.TestCase):
         self.assertIsNone(tr._sock)
 
         self.assertIsNone(tr._protocol)
-        self.assertEqual(2, sys.getrefcount(self.protocol),
-                         pprint.pformat(gc.get_referrers(self.protocol)))
+        self.assertEqual(2, sys.getrefcount(self.protocol)
+                         # pprint fails on Windows
+                         #, pprint.pformat(gc.get_referrers(self.protocol))
+                         )
         self.assertIsNone(tr._loop)
-        self.assertEqual(2, sys.getrefcount(self.loop),
-                         pprint.pformat(gc.get_referrers(self.loop)))
+        self.assertEqual(2, sys.getrefcount(self.loop)
+                         # pprint fails on Windows
+                         #, pprint.pformat(gc.get_referrers(self.loop))
+                         )
 
 
 class SelectorSocketTransportTests(test_utils.TestCase):
