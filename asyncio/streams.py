@@ -39,7 +39,7 @@ def open_connection(host=None, port=None,
     if loop is None:
         loop = events.get_event_loop()
     reader = StreamReader(limit=limit, loop=loop)
-    protocol = StreamReaderProtocol(reader)
+    protocol = StreamReaderProtocol(reader, loop=loop)
     transport, _ = yield loop.create_connection(
         lambda: protocol, host, port, **kwds)
     writer = StreamWriter(transport, protocol, reader, loop)
@@ -153,7 +153,7 @@ class StreamWriter(object):
     This exposes write(), writelines(), [can_]write_eof(),
     get_extra_info() and close().  It adds drain() which returns an
     optional Future on which you can wait for flow control.  It also
-    adds a transport attribute which references the Transport
+    adds a transport property which references the Transport
     directly.
     """
 

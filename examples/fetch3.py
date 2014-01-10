@@ -42,6 +42,10 @@ class ConnectionPool:
             key = h, p, ssl
             conn = self.connections.get(key)
             if conn:
+                reader, writer = conn
+                if reader._eof:
+                    self.connections.pop(key)
+                    continue
                 if self.verbose:
                     print('* Reusing pooled connection', key, file=sys.stderr)
                 raise Return(conn)
@@ -177,19 +181,19 @@ class Response:
         if nbytes is None:
             if self.get_header('transfer-encoding', '').lower() == 'chunked':
                 blocks = []
-                while True:
+                size = -1
+                while size:
                     size_header = yield self.reader.readline()
                     if not size_header:
                         break
                     parts = size_header.split(b';')
                     size = int(parts[0], 16)
-                    if not size:
-                        break
-                    block = yield self.reader.readexactly(size)
-                    assert len(block) == size, (len(block), size)
-                    blocks.append(block)
+                    if size:
+                        block = yield self.reader.readexactly(size)
+                        assert len(block) == size, (len(block), size)
+                        blocks.append(block)
                     crlf = yield self.reader.readline()
-                    assert crlf == b'\r\n'
+                    assert crlf == b'\r\n', repr(crlf)
                 body = b''.join(blocks)
             else:
                 body = yield self.reader.read()
