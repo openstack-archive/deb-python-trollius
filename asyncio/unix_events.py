@@ -168,9 +168,9 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             transp = _UnixSubprocessTransport(self, protocol, args, shell,
                                               stdin, stdout, stderr, bufsize,
                                               extra=None, **kwargs)
+            yield transp._post_init()
             watcher.add_child_handler(transp.get_pid(),
                                       self._child_watcher_callback, transp)
-        yield transp._post_init()
         raise tasks.Return(transp)
 
     def _child_watcher_callback(self, pid, returncode, transp):
