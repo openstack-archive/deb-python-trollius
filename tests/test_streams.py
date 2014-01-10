@@ -2,7 +2,6 @@
 
 import gc
 import unittest
-import mock
 try:
     import ssl
 except ImportError:
@@ -13,6 +12,7 @@ from asyncio import events
 from asyncio import streams
 from asyncio import tasks
 from asyncio import test_utils
+from asyncio.test_utils import mock
 
 
 class StreamReaderTests(test_utils.TestCase):

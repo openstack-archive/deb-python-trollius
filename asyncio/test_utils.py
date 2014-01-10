@@ -4,7 +4,6 @@ import collections
 import contextlib
 import functools
 import io
-import mock
 import os
 import sys
 import threading
@@ -27,6 +26,24 @@ if sys.platform == 'win32':  # pragma: no cover
 else:
     from socket import socketpair  # pragma: no cover
 
+try:
+    import unittest
+    skipIf = unittest.skipIf
+    skipUnless = unittest.skipUnless
+    TestCase = unittest.TestCase
+except AttributeError:
+    # Python 2.6: use the backported unittest module called "unittest2"
+    import unittest2
+    skipIf = unittest2.skipIf
+    skipUnless = unittest2.skipUnless
+    TestCase = unittest2.TestCase
+
+try:
+    from unittest import mock
+except ImportError:
+    # Python < 3.3
+    import mock
+
 
 def dummy_ssl_context():
     if ssl is None:
@@ -39,13 +56,15 @@ def run_briefly(loop, steps=1):
     @tasks.coroutine
     def once():
         pass
-    for step in range(steps):
+    stop = False
+    while not stop:
         gen = once()
         t = tasks.Task(gen, loop=loop)
         try:
             loop.run_until_complete(t)
         finally:
             gen.close()
+        stop = len(loop._ready) == 0
 
 
 def run_until(loop, pred, timeout=None):
@@ -275,16 +294,3 @@ class TestLoop(base_events.BaseEventLoop):
 
     def _write_to_self(self):
         pass
-
-
-try:
-    import unittest
-    skipIf = unittest.skipIf
-    skipUnless = unittest.skipUnless
-    TestCase = unittest.TestCase
-except AttributeError:
-    # Python 2.6: use the backported unittest module called "unittest2"
-    import unittest2
-    skipIf = unittest2.skipIf
-    skipUnless = unittest2.skipUnless
-    TestCase = unittest2.TestCase

@@ -19,7 +19,6 @@ import threading
 import time
 import errno
 import unittest
-import mock
 try:
     import concurrent
 except ImportError:
@@ -38,6 +37,7 @@ from asyncio import locks
 from asyncio.py33_exceptions import (wrap_error,
     BlockingIOError, ConnectionRefusedError, ConnectionRefusedError,
     FileNotFoundError)
+from asyncio.test_utils import mock
 from asyncio.time_monotonic import time_monotonic
 from asyncio import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
 import asyncio

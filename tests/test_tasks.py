@@ -2,13 +2,13 @@
 
 import gc
 import unittest
-import mock
-from mock import Mock
 
 from asyncio import events
 from asyncio import futures
 from asyncio import tasks
 from asyncio import test_utils
+from asyncio.test_utils import mock
+from asyncio.test_utils.mock import Mock
 
 
 class Dummy:

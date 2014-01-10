@@ -1,10 +1,10 @@
 """Tests for transports.py."""
 
 import unittest
-import mock
 
 from asyncio import test_utils
 from asyncio import transports
+from asyncio.test_utils import mock
 
 try:
     memoryview

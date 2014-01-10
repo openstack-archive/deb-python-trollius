@@ -1,7 +1,6 @@
 """Tests for lock.py"""
 
 import unittest
-import mock
 import re
 
 from asyncio import Return
@@ -11,6 +10,7 @@ from asyncio import futures
 from asyncio import locks
 from asyncio import tasks
 from asyncio import test_utils
+from asyncio.test_utils import mock
 
 
 STR_RGX_REPR = (

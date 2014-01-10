@@ -1,7 +1,6 @@
 """Tests for queues.py"""
 
 import unittest
-import mock
 
 from asyncio import Return
 from asyncio import events
@@ -10,6 +9,7 @@ from asyncio import locks
 from asyncio import queues
 from asyncio import tasks
 from asyncio import test_utils
+from asyncio.test_utils import mock
 
 
 class _QueueTestBase(test_utils.TestCase):

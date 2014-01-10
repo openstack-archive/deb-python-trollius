@@ -7,7 +7,6 @@ import pprint
 import socket
 import sys
 import unittest
-import mock
 try:
     import ssl
 except ImportError:
@@ -29,6 +28,7 @@ from asyncio.selector_events import _SelectorDatagramTransport
 from asyncio.selector_events import _SelectorSocketTransport
 from asyncio.selector_events import _SelectorSslTransport
 from asyncio.selector_events import _SelectorTransport
+from asyncio.test_utils import mock
 
 if sys.version_info >= (3,):
     UNICODE_STR = 'unicode'
