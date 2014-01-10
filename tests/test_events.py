@@ -1000,8 +1000,8 @@ class EventLoopTestsMixin(object):
         # extra info is available
         self.assertIsNotNone(non_local['proto'].transport.get_extra_info('pipe'))
 
-    @unittest.skipUnless(sys.platform != 'win32',
-                         "Don't support pipes for Windows")
+    @test_utils.skipUnless(sys.platform != 'win32',
+                           "Don't support pipes for Windows")
     def test_write_pipe(self):
         non_local = {'proto': None, 'transport': None}
 
