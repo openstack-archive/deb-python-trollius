@@ -416,18 +416,19 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         self._csock.send(b'x')
 
     def _start_serving(self, protocol_factory, sock, ssl=None, server=None):
+        self._accept_future = None
         if ssl:
             raise ValueError('IocpEventLoop is incompatible with SSL.')
 
-        def loop(f=None):
+        def loop(future=None):
             try:
-                if f is not None:
-                    conn, addr = f.result()
+                if self._accept_future is not None:
+                    conn, addr = self._accept_future.result()
                     protocol = protocol_factory()
                     self._make_socket_transport(
                         conn, protocol,
                         extra={'peername': addr}, server=server)
-                f = self._proactor.accept(sock)
+                self._accept_future = self._proactor.accept(sock)
             except OSError:
                 if sock.fileno() != -1:
                     logger.exception('Accept failed')
@@ -435,7 +436,7 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
             except futures.CancelledError:
                 sock.close()
             else:
-                f.add_done_callback(loop)
+                self._accept_future.add_done_callback(loop)
 
         self.call_soon(loop)
 
@@ -443,5 +444,8 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         pass    # XXX hard work currently done in poll
 
     def _stop_serving(self, sock):
+        if self._accept_future is not None:
+            self._accept_future.cancel()
+            # Keep the future so loop() will be stopped with CancelledError
         self._proactor._stop_serving(sock)
         sock.close()

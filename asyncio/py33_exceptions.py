@@ -115,6 +115,9 @@ if not PY33:
         except (socket.error, IOError, OSError) as err:
             if hasattr(err, 'winerror'):
                 _wrap_error(_MAP_ERRNO, err.winerror, err.args)
+                # _MAP_ERRNO does not contain all Windows errors.
+                # For some errors like "file not found", err.errno should
+                # be used (ex: ENOENT).
             _wrap_error(_MAP_ERRNO, err.errno, err.args)
             raise
         except select.error as err:
