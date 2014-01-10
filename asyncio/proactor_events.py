@@ -439,7 +439,7 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
             except futures.CancelledError:
                 sock.close()
             else:
-                self._accept_futures[sock] = future
+                self._accept_futures[sock.fileno()] = future
                 future.add_done_callback(loop)
 
         self.call_soon(loop)
