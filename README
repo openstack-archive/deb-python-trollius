@@ -1,5 +1,6 @@
-Trollius is an experimental port of the Tulip project (asyncio module, PEP
-3156) on Python 2.7.
+Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
+2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux and
+FreeBSD.
 
 * Website: https://bitbucket.org/haypo/trollius
 * Tulip project: http://code.google.com/p/tulip/
