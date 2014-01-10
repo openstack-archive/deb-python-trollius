@@ -8,7 +8,6 @@ from asyncio import futures
 from asyncio import tasks
 from asyncio import test_utils
 from asyncio.test_utils import mock
-from asyncio.test_utils.mock import Mock
 
 
 class Dummy:
@@ -1285,7 +1284,7 @@ class GatherTestsBase:
     def _check_success(self, **kwargs):
         a, b, c = [futures.Future(loop=self.one_loop) for i in range(3)]
         fut = tasks.gather(*self.wrap_futures(a, b, c), **kwargs)
-        cb = Mock()
+        cb = mock.Mock()
         fut.add_done_callback(cb)
         b.set_result(1)
         a.set_result(2)
@@ -1307,7 +1306,7 @@ class GatherTestsBase:
     def test_one_exception(self):
         a, b, c, d, e = [futures.Future(loop=self.one_loop) for i in range(5)]
         fut = tasks.gather(*self.wrap_futures(a, b, c, d, e))
-        cb = Mock()
+        cb = mock.Mock()
         fut.add_done_callback(cb)
         exc = ZeroDivisionError()
         a.set_result(1)
@@ -1326,7 +1325,7 @@ class GatherTestsBase:
         a, b, c, d = [futures.Future(loop=self.one_loop) for i in range(4)]
         fut = tasks.gather(*self.wrap_futures(a, b, c, d),
                            return_exceptions=True)
-        cb = Mock()
+        cb = mock.Mock()
         fut.add_done_callback(cb)
         exc = ZeroDivisionError()
         exc2 = RuntimeError()
@@ -1387,7 +1386,7 @@ class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
     def test_one_cancellation(self):
         a, b, c, d, e = [futures.Future(loop=self.one_loop) for i in range(5)]
         fut = tasks.gather(a, b, c, d, e)
-        cb = Mock()
+        cb = mock.Mock()
         fut.add_done_callback(cb)
         a.set_result(1)
         b.cancel()
@@ -1406,7 +1405,7 @@ class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
         a, b, c, d, e, f = [futures.Future(loop=self.one_loop)
                             for i in range(6)]
         fut = tasks.gather(a, b, c, d, e, f, return_exceptions=True)
-        cb = Mock()
+        cb = mock.Mock()
         fut.add_done_callback(cb)
         a.set_result(1)
         zde = ZeroDivisionError()
