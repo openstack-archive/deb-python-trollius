@@ -56,15 +56,13 @@ def run_briefly(loop, steps=1):
     @tasks.coroutine
     def once():
         pass
-    stop = False
-    while not stop:
+    for step in range(steps):
         gen = once()
         t = tasks.Task(gen, loop=loop)
         try:
             loop.run_until_complete(t)
         finally:
             gen.close()
-        stop = len(loop._ready) == 0
 
 
 def run_until(loop, pred, timeout=None):
