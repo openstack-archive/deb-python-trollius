@@ -178,7 +178,7 @@ class ConnectionPool:
                 else:
                     self.log(1, '* Reusing pooled connection', key,
                                 'FD =', writer._transport._sock.fileno())
-                    raise asyncio.Return(key, reader, writer)
+                    raise asyncio.Return((key, reader, writer))
 
         # Create a new connection.
         reader, writer = yield asyncio.open_connection(host, port,
@@ -191,7 +191,7 @@ class ConnectionPool:
         key = host, port, ssl
         self.log(1, '* New connection', key,
                     'FD =', writer._transport._sock.fileno())
-        raise asyncio.Return(key, reader, writer)
+        raise asyncio.Return((key, reader, writer))
 
     def unreserve(self, key, reader, writer):
         """Make a connection available for reuse.
@@ -729,7 +729,8 @@ class Crawler:
     @asyncio.coroutine
     def crawl(self):
         """Run the crawler until all finished."""
-        with (yield self.termination):
+        yield self.termination.acquire()
+        try:
             while self.todo or self.busy:
                 if self.todo:
                     url, max_redirect = self.todo.popitem()
@@ -742,6 +743,8 @@ class Crawler:
                     fetcher.task = asyncio.Task(self.fetch(fetcher))
                 else:
                     yield self.termination.wait()
+        finally:
+            self.termination.release()
         self.t1 = time.time()
 
     @asyncio.coroutine
@@ -751,16 +754,22 @@ class Crawler:
         Once this returns, move the fetcher from busy to done.
         """
         url = fetcher.url
-        with (yield self.governor):
+        yield self.governor.acquire()
+        try:
             try:
                 yield fetcher.fetch()  # Fetcher gonna fetch.
             finally:
                 # Force GC of the task, so the error is logged.
                 fetcher.task = None
-        with (yield self.termination):
+        finally:
+            self.governor.release()
+        yield self.termination.acquire()
+        try:
             self.done[url] = fetcher
             del self.busy[url]
             self.termination.notify()
+        finally:
+            self.termination.release()
 
     def report(self, file=None):
         """Print a report on all completed URLs."""
