@@ -1,8 +1,6 @@
 Unsorted "TODO" tasks:
 
-* test_events.test_create_server_ssl() hangs with OpenSSL 0.9.8 (on Mac OS 10.8
-  and OpenIndiana):
-  https://groups.google.com/forum/?fromgroups#!topic/python-tulip/Eh6M8r2G-mo
+* test_events.test_ssl_connection() hangs on Mac OS X
 * tests/test_events.py -v KqueueEventLoopTests.test_read_pty_output failed on Mac OS X:
   OSError: [Errno 22] Invalid argument
 * Fix tests failing with PyPy:
