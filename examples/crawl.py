@@ -2,6 +2,8 @@
 
 """A simple web crawler."""
 
+from __future__ import print_function
+
 # TODO:
 # - More organized logging (with task ID or URL?).
 # - Use logging module for Logger.
@@ -19,13 +21,14 @@ import argparse
 import asyncio
 import asyncio.locks
 import cgi
-from http.client import BadStatusLine
+from httplib import BadStatusLine
 import logging
 import re
 import signal
 import sys
 import time
-import urllib.parse
+import urllib
+import urlparse
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -98,7 +101,7 @@ class Logger:
 
     def _log(self, n, args):
         if self.level >= n:
-            print(*args, file=sys.stderr, flush=True)
+            print(*args, file=sys.stderr)
 
     def log(self, n, *args):
         self._log(n, args)
@@ -136,14 +139,14 @@ class ConnectionPool:
             for _, writer in pairs:
                 writer.close()
         self.connections.clear()
-        self.queue.clear()
+        self.queue[:] = []
 
     @asyncio.coroutine
     def reserve(self, host, port, ssl):
         """Create or reuse a connection."""
         port = port or (443 if ssl else 80)
         try:
-            ipaddrs = yield from self.loop.getaddrinfo(host, port)
+            ipaddrs = yield self.loop.getaddrinfo(host, port)
         except Exception as exc:
             self.log(0, 'Exception %r for (%r, %r)' % (exc, host, port))
             raise
@@ -151,7 +154,8 @@ class ConnectionPool:
                     (host, ', '.join(ip[4][0] for ip in ipaddrs)))
 
         # Look for a reusable connection.
-        for _, _, _, _, (h, p, *_) in ipaddrs:
+        for _, _, _, _, addr in ipaddrs:
+            h, p = addr[:2]
             key = h, p, ssl
             pair = None
             pairs = self.connections.get(key)
@@ -168,20 +172,20 @@ class ConnectionPool:
                 else:
                     self.log(1, '* Reusing pooled connection', key,
                                 'FD =', writer._transport._sock.fileno())
-                    return key, reader, writer
+                    raise asyncio.Return(key, reader, writer)
 
         # Create a new connection.
-        reader, writer = yield from asyncio.open_connection(host, port,
+        reader, writer = yield asyncio.open_connection(host, port,
                                                             ssl=ssl)
         peername = writer.get_extra_info('peername')
         if peername:
-            host, port, *_ = peername
+            host, port = peername[:2]
         else:
             self.log(1, 'NO PEERNAME???', host, port, ssl)
         key = host, port, ssl
         self.log(1, '* New connection', key,
                     'FD =', writer._transport._sock.fileno())
-        return key, reader, writer
+        raise asyncio.Return(key, reader, writer)
 
     def unreserve(self, key, reader, writer):
         """Make a connection available for reuse.
@@ -226,7 +230,7 @@ class Request:
         self.log = log
         self.url = url
         self.pool = pool
-        self.parts = urllib.parse.urlparse(self.url)
+        self.parts = urlparse.urlparse(self.url)
         self.scheme = self.parts.scheme
         assert self.scheme in ('http', 'https'), repr(url)
         self.ssl = self.parts.scheme == 'https'
@@ -254,7 +258,7 @@ class Request:
                      'ssl' if self.ssl else 'tcp',
                      self.url))
         self.key, self.reader, self.writer = \
-            yield from self.pool.reserve(self.hostname, self.port, self.ssl)
+            yield self.pool.reserve(self.hostname, self.port, self.ssl)
         self.log(1, '* Connected to %s' %
                     (self.writer.get_extra_info('peername'),))
 
@@ -286,7 +290,7 @@ class Request:
         """Send the request."""
         request_line = '%s %s %s' % (self.method, self.full_path,
                                      self.http_version)
-        yield from self.putline(request_line)
+        yield self.putline(request_line)
         # TODO: What if a header is already set?
         self.headers.append(('User-Agent', 'asyncio-example-crawl/0.0'))
         self.headers.append(('Host', self.netloc))
@@ -294,15 +298,15 @@ class Request:
         ##self.headers.append(('Accept-Encoding', 'gzip'))
         for key, value in self.headers:
             line = '%s: %s' % (key, value)
-            yield from self.putline(line)
-        yield from self.putline('')
+            yield self.putline(line)
+        yield self.putline('')
 
     @asyncio.coroutine
     def get_response(self):
         """Receive the response."""
         response = Response(self.log, self.reader)
-        yield from response.read_headers()
-        return response
+        yield response.read_headers()
+        raise asyncio.Return(response)
 
 
 class Response:
@@ -324,14 +328,14 @@ class Response:
     @asyncio.coroutine
     def getline(self):
         """Read one line from the connection."""
-        line = (yield from self.reader.readline()).decode('latin-1').rstrip()
+        line = (yield self.reader.readline()).decode('latin-1').rstrip()
         self.log(2, '<', line)
-        return line
+        raise asyncio.Return(line)
 
     @asyncio.coroutine
     def read_headers(self):
         """Read the response status and the request headers."""
-        status_line = yield from self.getline()
+        status_line = yield self.getline()
         status_parts = status_line.split(None, 2)
         if len(status_parts) != 3:
             self.log(0, 'bad status_line', repr(status_line))
@@ -339,7 +343,7 @@ class Response:
         self.http_version, status, self.reason = status_parts
         self.status = int(status)
         while True:
-            header_line = yield from self.getline()
+            header_line = yield self.getline()
             if not header_line:
                 break
             # TODO: Continuation lines.
@@ -371,14 +375,14 @@ class Response:
         while nread < nbytes:
             self.log(3, 'reading block', len(blocks),
                      'with', nbytes - nread, 'bytes remaining')
-            block = yield from self.reader.read(nbytes-nread)
+            block = yield self.reader.read(nbytes-nread)
             self.log(3, 'read', len(block), 'bytes')
             if not block:
                 raise EOFError('EOF with %d more bytes expected' %
                                (nbytes - nread))
             blocks.append(block)
             nread += len(block)
-        return b''.join(blocks)
+        raise asyncio.Return(b''.join(blocks))
 
     @asyncio.coroutine
     def read(self):
@@ -396,7 +400,7 @@ class Response:
                 self.log(2, 'parsing chunked response')
                 blocks = []
                 while True:
-                    size_header = yield from self.reader.readline()
+                    size_header = yield self.reader.readline()
                     if not size_header:
                         self.log(0, 'premature end of chunked response')
                         break
@@ -405,10 +409,10 @@ class Response:
                     size = int(parts[0], 16)
                     if size:
                         self.log(3, 'reading chunk of', size, 'bytes')
-                        block = yield from self.readexactly(size)
+                        block = yield self.readexactly(size)
                         assert len(block) == size, (len(block), size)
                         blocks.append(block)
-                    crlf = yield from self.reader.readline()
+                    crlf = yield self.reader.readline()
                     assert crlf == b'\r\n', repr(crlf)
                     if not size:
                         break
@@ -417,12 +421,12 @@ class Response:
                             'bytes in', len(blocks), 'blocks')
             else:
                 self.log(3, 'reading until EOF')
-                body = yield from self.reader.read()
+                body = yield self.reader.read()
                 # TODO: Should make sure not to recycle the connection
                 # in this case.
         else:
-            body = yield from self.readexactly(nbytes)
-        return body
+            body = yield self.readexactly(nbytes)
+        raise asyncio.Return(body)
 
 
 class Fetcher:
@@ -474,10 +478,10 @@ class Fetcher:
             self.request = None
             try:
                 self.request = Request(self.log, self.url, self.crawler.pool)
-                yield from self.request.connect()
-                yield from self.request.send_request()
-                self.response = yield from self.request.get_response()
-                self.body = yield from self.response.read()
+                yield self.request.connect()
+                yield self.request.send_request()
+                self.response = yield self.request.get_response()
+                self.body = yield self.response.read()
                 h_conn = self.response.get_header('connection').lower()
                 h_t_enc = self.response.get_header('transfer-encoding').lower()
                 if h_conn != 'close':
@@ -502,7 +506,7 @@ class Fetcher:
             return
         next_url = self.response.get_redirect_url()
         if next_url:
-            self.next_url = urllib.parse.urljoin(self.url, next_url)
+            self.next_url = urlparse.urljoin(self.url, next_url)
             if self.max_redirect > 0:
                 self.log(1, 'redirect to', self.next_url, 'from', self.url)
                 self.crawler.add_url(self.next_url, self.max_redirect-1)
@@ -527,8 +531,8 @@ class Fetcher:
                     self.new_urls = set()
                     for url in self.urls:
                         url = unescape(url)
-                        url = urllib.parse.urljoin(self.url, url)
-                        url, frag = urllib.parse.urldefrag(url)
+                        url = urlparse.urljoin(self.url, url)
+                        url, frag = urlparse.urldefrag(url)
                         if self.crawler.add_url(url):
                             self.new_urls.add(url)
 
@@ -626,8 +630,8 @@ class Crawler:
         self.pool = ConnectionPool(self.log, max_pool, max_tasks)
         self.root_domains = set()
         for root in roots:
-            parts = urllib.parse.urlparse(root)
-            host, port = urllib.parse.splitport(parts.netloc)
+            parts = urlparse.urlparse(root)
+            host, port = urllib.splitport(parts.netloc)
             if not host:
                 continue
             if re.match(r'\A[\d\.]*\Z', host):
@@ -700,11 +704,11 @@ class Crawler:
         """Add a URL to the todo list if not seen before."""
         if self.exclude and re.search(self.exclude, url):
             return False
-        parts = urllib.parse.urlparse(url)
+        parts = urlparse.urlparse(url)
         if parts.scheme not in ('http', 'https'):
             self.log(2, 'skipping non-http scheme in', url)
             return False
-        host, port = urllib.parse.splitport(parts.netloc)
+        host, port = urllib.splitport(parts.netloc)
         if not self.host_okay(host):
             self.log(2, 'skipping non-root host in', url)
             return False
@@ -719,7 +723,7 @@ class Crawler:
     @asyncio.coroutine
     def crawl(self):
         """Run the crawler until all finished."""
-        with (yield from self.termination):
+        with (yield self.termination):
             while self.todo or self.busy:
                 if self.todo:
                     url, max_redirect = self.todo.popitem()
@@ -731,7 +735,7 @@ class Crawler:
                     self.busy[url] = fetcher
                     fetcher.task = asyncio.Task(self.fetch(fetcher))
                 else:
-                    yield from self.termination.wait()
+                    yield self.termination.wait()
         self.t1 = time.time()
 
     @asyncio.coroutine
@@ -741,13 +745,13 @@ class Crawler:
         Once this returns, move the fetcher from busy to done.
         """
         url = fetcher.url
-        with (yield from self.governor):
+        with (yield self.governor):
             try:
-                yield from fetcher.fetch()  # Fetcher gonna fetch.
+                yield fetcher.fetch()  # Fetcher gonna fetch.
             finally:
                 # Force GC of the task, so the error is logged.
                 fetcher.task = None
-        with (yield from self.termination):
+        with (yield self.termination):
             self.done[url] = fetcher
             del self.busy[url]
             self.termination.notify()
