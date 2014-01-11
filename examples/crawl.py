@@ -21,14 +21,20 @@ import argparse
 import asyncio
 import asyncio.locks
 import cgi
-from httplib import BadStatusLine
 import logging
 import re
 import signal
 import sys
 import time
-import urllib
-import urlparse
+try:
+    from httplib import BadStatusLine
+    import urlparse
+    from urllib import splitport as urllib_splitport
+except ImportError:
+    # Python 3
+    from http.client import BadStatusLine
+    from urllib import parse as urlparse
+    from urllib.parse import splitport as urllib_splitport
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -631,7 +637,7 @@ class Crawler:
         self.root_domains = set()
         for root in roots:
             parts = urlparse.urlparse(root)
-            host, port = urllib.splitport(parts.netloc)
+            host, port = urllib_splitport(parts.netloc)
             if not host:
                 continue
             if re.match(r'\A[\d\.]*\Z', host):
@@ -708,7 +714,7 @@ class Crawler:
         if parts.scheme not in ('http', 'https'):
             self.log(2, 'skipping non-http scheme in', url)
             return False
-        host, port = urllib.splitport(parts.netloc)
+        host, port = urllib_splitport(parts.netloc)
         if not self.host_okay(host):
             self.log(2, 'skipping non-root host in', url)
             return False
