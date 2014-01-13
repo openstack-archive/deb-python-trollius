@@ -11,9 +11,9 @@ try:
     import ssl
 except ImportError:
     ssl = None
-    HAS_SNI = False
 else:
     HAS_SNI = getattr(ssl, 'HAS_SNI', False)
+    from asyncio.py3_ssl import SSLWantReadError, SSLWantWriteError
 
 from asyncio.py33_exceptions import (
     BlockingIOError, InterruptedError,
@@ -22,7 +22,6 @@ from asyncio import futures
 from asyncio import selectors
 from asyncio import test_utils
 from asyncio.protocols import DatagramProtocol, Protocol
-from asyncio.py3_ssl import SSLWantReadError, SSLWantWriteError
 from asyncio.selector_events import BaseSelectorEventLoop
 from asyncio.selector_events import _SelectorDatagramTransport
 from asyncio.selector_events import _SelectorSocketTransport
