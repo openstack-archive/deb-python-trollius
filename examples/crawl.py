@@ -729,8 +729,7 @@ class Crawler:
     @asyncio.coroutine
     def crawl(self):
         """Run the crawler until all finished."""
-        yield self.termination.acquire()
-        try:
+        with (yield self.termination):
             while self.todo or self.busy:
                 if self.todo:
                     url, max_redirect = self.todo.popitem()
@@ -743,8 +742,6 @@ class Crawler:
                     fetcher.task = asyncio.Task(self.fetch(fetcher))
                 else:
                     yield self.termination.wait()
-        finally:
-            self.termination.release()
         self.t1 = time.time()
 
     @asyncio.coroutine
@@ -754,22 +751,16 @@ class Crawler:
         Once this returns, move the fetcher from busy to done.
         """
         url = fetcher.url
-        yield self.governor.acquire()
-        try:
+        with (yield self.governor):
             try:
                 yield fetcher.fetch()  # Fetcher gonna fetch.
             finally:
                 # Force GC of the task, so the error is logged.
                 fetcher.task = None
-        finally:
-            self.governor.release()
-        yield self.termination.acquire()
-        try:
+        with (yield self.termination):
             self.done[url] = fetcher
             del self.busy[url]
             self.termination.notify()
-        finally:
-            self.termination.release()
 
     def report(self, file=None):
         """Print a report on all completed URLs."""

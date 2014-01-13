@@ -47,9 +47,6 @@ Differences between Trollius and Tulip
   of Python 3.3: no options, verify_mode cannot be modified (fixed to
   CERT_NONE), no set_default_verify_paths() method, no SNI, etc. The SSL
   transport has "compression" extra info in Python 2.
-* Lock syntax of Tulip "yield from lock" is not supported in
-  Trollius. "yield lock.acquire() try: ... finally: lock.release()" should be
-  used instead
 * Python 2 does not support keyword-only parameters.
 * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
   uses a synchronous executor instead of a pool of threads. It blocks until the
@@ -131,6 +128,7 @@ Development version
 - SSL support is now optional: don't fail if the ssl module is missing
 - ``return x, y`` is now written ``raise Return(x, y)`` instead of
   ``raise Return((x, y))``
+- Support "with (yield lock):" syntax for Lock, Condition and Semaphore
 
 2014-01-08: version 0.1.2
 
