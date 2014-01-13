@@ -28,6 +28,7 @@ except AttributeError:
 try:
     SSLContext = ssl.SSLContext
     BACKPORT_SSL_CONTEXT = False
+    wrap_socket = ssl.wrap_socket
 except AttributeError:
     # Python < 3.2
     BACKPORT_SSL_CONTEXT = True
