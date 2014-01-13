@@ -1,4 +1,5 @@
 import ssl
+import sys
 from asyncio.py33_exceptions import _wrap_error
 
 __all__ = ["SSLContext", "BACKPORT_SSL_ERRORS", "BACKPORT_SSL_CONTEXT",
@@ -30,6 +31,73 @@ try:
 except AttributeError:
     # Python < 3.2
     BACKPORT_SSL_CONTEXT = True
+
+    if (sys.version_info < (2, 6, 6)):
+        # SSLSocket constructor has bugs in Python older than 2.6.6:
+        #    http://bugs.python.org/issue5103
+        #    http://bugs.python.org/issue7943
+        from socket import socket, error as socket_error, _delegate_methods
+        import _ssl
+
+        class BackportSSLSocket(ssl.SSLSocket):
+            # Override SSLSocket.__init__()
+            def __init__(self, sock, keyfile=None, certfile=None,
+                         server_side=False, cert_reqs=ssl.CERT_NONE,
+                         ssl_version=ssl.PROTOCOL_SSLv23, ca_certs=None,
+                         do_handshake_on_connect=True,
+                         suppress_ragged_eofs=True):
+                socket.__init__(self, _sock=sock._sock)
+                # The initializer for socket overrides the methods send(), recv(), etc.
+                # in the instancce, which we don't need -- but we want to provide the
+                # methods defined in SSLSocket.
+                for attr in _delegate_methods:
+                    try:
+                        delattr(self, attr)
+                    except AttributeError:
+                        pass
+
+                if certfile and not keyfile:
+                    keyfile = certfile
+                # see if it's connected
+                try:
+                    socket.getpeername(self)
+                except socket_error, e:
+                    if e.errno != errno.ENOTCONN:
+                        raise
+                    # no, no connection yet
+                    self._connected = False
+                    self._sslobj = None
+                else:
+                    # yes, create the SSL object
+                    self._connected = True
+                    self._sslobj = _ssl.sslwrap(self._sock, server_side,
+                                                keyfile, certfile,
+                                                cert_reqs, ssl_version, ca_certs)
+                    if do_handshake_on_connect:
+                        self.do_handshake()
+                self.keyfile = keyfile
+                self.certfile = certfile
+                self.cert_reqs = cert_reqs
+                self.ssl_version = ssl_version
+                self.ca_certs = ca_certs
+                self.do_handshake_on_connect = do_handshake_on_connect
+                self.suppress_ragged_eofs = suppress_ragged_eofs
+                self._makefile_refs = 0
+
+        def wrap_socket(sock, keyfile=None, certfile=None,
+                        server_side=False, cert_reqs=ssl.CERT_NONE,
+                        ssl_version=ssl.PROTOCOL_SSLv23, ca_certs=None,
+                        do_handshake_on_connect=True,
+                        suppress_ragged_eofs=True):
+            return BackportSSLSocket(sock, keyfile=keyfile, certfile=certfile,
+                             server_side=server_side, cert_reqs=cert_reqs,
+                             ssl_version=ssl_version, ca_certs=ca_certs,
+                             do_handshake_on_connect=do_handshake_on_connect,
+                             suppress_ragged_eofs=suppress_ragged_eofs)
+    else:
+        wrap_socket = ssl.wrap_socket
+
+
     class SSLContext(object):
         def __init__(self, protocol=ssl.PROTOCOL_SSLv23):
             self.protocol = protocol
@@ -41,7 +109,7 @@ except AttributeError:
             self.keyfile = keyfile
 
         def wrap_socket(self, sock, **kw):
-            return ssl.wrap_socket(sock,
+            return wrap_socket(sock,
                                    ssl_version=self.protocol,
                                    certfile=self.certfile,
                                    keyfile=self.keyfile,

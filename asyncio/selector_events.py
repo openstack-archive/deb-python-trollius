@@ -29,12 +29,6 @@ from .py33_exceptions import (wrap_error,
     BlockingIOError, InterruptedError, ConnectionAbortedError, BrokenPipeError,
     ConnectionResetError)
 
-# On Mac OS 10.8 with Python 2.6.1 and OpenSSL 0.9.8,
-# _SelectorSslTransport._read_ready() hangs if the socket has no data
-_WORKAROUND_BUGGY_SSL = (sys.platform == 'darwin' and sys.version_info < (2, 7))
-if _WORKAROUND_BUGGY_SSL:
-    import select
-
 
 def _get_socket_error(sock, address):
     err = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
@@ -719,11 +713,6 @@ class _SelectorSslTransport(_SelectorTransport):
                 self._loop.add_writer(self._sock_fd, self._write_ready)
 
         try:
-            if _WORKAROUND_BUGGY_SSL:
-                rfds, wfds, efds = select.select([self._sock.fileno()], (), (), 0.0)
-                if not rfds:
-                    # False alarm.
-                    return
             data = wrap_error(self._read_ready_maxsize)
         except (BlockingIOError, InterruptedError, SSLWantReadError):
             pass

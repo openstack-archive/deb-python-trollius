@@ -126,6 +126,8 @@ Change log
 
 Development version
 
+- Workaround bugs in the ssl module of Python older than 2.6.6 (ex: system
+  python on Mac OS 10.6, Snow Leopard)
 - SSL support is now optional: don't fail if the ssl module is missing
 
 2014-01-08: version 0.1.2
