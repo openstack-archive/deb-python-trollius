@@ -41,8 +41,9 @@ class QueueBasicTests(_QueueTestBase):
         self.addCleanup(loop.close)
 
         q = queues.Queue(loop=loop)
-        self.assertTrue(fn(q).startswith('<Queue'), fn(q))
-        id_is_present = hex(id(q)) in fn(q)
+        text = fn(q)
+        self.assertTrue(text.startswith('<Queue'), text)
+        id_is_present = ("%x" % id(q)) in text
         self.assertEqual(expect_id, id_is_present)
 
         @tasks.coroutine

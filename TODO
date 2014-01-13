@@ -12,10 +12,6 @@ Unsorted "TODO" tasks:
 * python3.3 runtests.sh:
   sys:1: ResourceWarning: gc: 3 uncollectable objects at shutdown; use gc.set_debug(gc.DEBUG_UNCOLLECTABLE) to list them
 * write unit test for create_connection(ssl=True)
-* Failing tests on Windows, Python 2:
-
-  - test_queues
-
 * Fix examples:
 
   - stacks.py: 'exceptions.ZeroDivisionError' object has no attribute '__traceback__'
