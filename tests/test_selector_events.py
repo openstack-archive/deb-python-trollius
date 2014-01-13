@@ -28,6 +28,7 @@ from asyncio.selector_events import _SelectorDatagramTransport
 from asyncio.selector_events import _SelectorSocketTransport
 from asyncio.selector_events import _SelectorSslTransport
 from asyncio.selector_events import _SelectorTransport
+from asyncio.selector_events import _WORKAROUND_BUGGY_SSL
 from asyncio.test_utils import mock
 
 if sys.version_info >= (3,):
@@ -1180,6 +1181,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport.write(b'data')
         m_log.warning.assert_called_with('socket.send() raised exception.')
 
+    @test_utils.skipIf(_WORKAROUND_BUGGY_SSL, 'buggy ssl with the workaround')
     def test_read_ready_recv(self):
         self.sslsock.recv.return_value = b'data'
         transport = self._make_one()
@@ -1201,6 +1203,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.loop.add_writer.assert_called_with(
             transport._sock_fd, transport._write_ready)
 
+    @test_utils.skipIf(_WORKAROUND_BUGGY_SSL, 'buggy ssl with the workaround')
     def test_read_ready_recv_eof(self):
         self.sslsock.recv.return_value = b''
         transport = self._make_one()
@@ -1209,6 +1212,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport.close.assert_called_with()
         self.protocol.eof_received.assert_called_with()
 
+    @test_utils.skipIf(_WORKAROUND_BUGGY_SSL, 'buggy ssl with the workaround')
     def test_read_ready_recv_conn_reset(self):
         err = self.sslsock.recv.side_effect = ConnectionResetError()
         transport = self._make_one()
@@ -1216,6 +1220,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._read_ready()
         transport._force_close.assert_called_with(err)
 
+    @test_utils.skipIf(_WORKAROUND_BUGGY_SSL, 'buggy ssl with the workaround')
     def test_read_ready_recv_retry(self):
         self.sslsock.recv.side_effect = SSLWantReadError
         transport = self._make_one()
@@ -1231,6 +1236,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._read_ready()
         self.assertFalse(self.protocol.data_received.called)
 
+    @test_utils.skipIf(_WORKAROUND_BUGGY_SSL, 'buggy ssl with the workaround')
     def test_read_ready_recv_write(self):
         self.loop.remove_reader = mock.Mock()
         self.loop.add_writer = mock.Mock()
@@ -1244,6 +1250,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.loop.add_writer.assert_called_with(
             transport._sock_fd, transport._write_ready)
 
+    @test_utils.skipIf(_WORKAROUND_BUGGY_SSL, 'buggy ssl with the workaround')
     def test_read_ready_recv_exc(self):
         err = self.sslsock.recv.side_effect = OSError()
         transport = self._make_one()
