@@ -43,7 +43,7 @@ def open_connection(host=None, port=None,
     transport, _ = yield loop.create_connection(
         lambda: protocol, host, port, **kwds)
     writer = StreamWriter(transport, protocol, reader, loop)
-    raise tasks.Return((reader, writer))
+    raise tasks.Return(reader, writer)
 
 
 @tasks.coroutine

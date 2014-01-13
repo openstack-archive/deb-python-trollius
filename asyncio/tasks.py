@@ -38,9 +38,14 @@ _DEBUG = False
 
 
 class Return(StopIteration):
-    def __init__(self, value=None):
+    def __init__(self, *value):
         StopIteration.__init__(self)
-        self.value = value
+        if not value:
+            self.value = None
+        elif len(value) == 1:
+            self.value = value[0]
+        else:
+            self.value = value
 
 
 class CoroWrapper(object):
@@ -456,7 +461,7 @@ def _wait(fs, timeout, return_when, loop):
             done.add(f)
         else:
             pending.add(f)
-    raise Return((done, pending))
+    raise Return(done, pending)
 
 
 # This is *not* a @coroutine!  It is just an iterator (yielding Futures).

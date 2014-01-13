@@ -42,7 +42,7 @@ Differences between Trollius and Tulip
 
 * Trollius coroutines use "yield" and "raise Return(value)",
   whereas Tulip coroutines use "yield from" and "return".
-  "return x, y" must be converted to "raise Return((x, y))".
+  "return x, y" must be converted to "raise Return(x, y)".
 * On Python 2.7, asyncio.SSLContext has less features than the ssl.SSLContext
   of Python 3.3: no options, verify_mode cannot be modified (fixed to
   CERT_NONE), no set_default_verify_paths() method, no SNI, etc. The SSL
@@ -129,6 +129,8 @@ Development version
 - Workaround bugs in the ssl module of Python older than 2.6.6 (ex: system
   python on Mac OS 10.6, Snow Leopard)
 - SSL support is now optional: don't fail if the ssl module is missing
+- ``return x, y`` is now written ``raise Return(x, y)`` instead of
+  ``raise Return((x, y))``
 
 2014-01-08: version 0.1.2
 

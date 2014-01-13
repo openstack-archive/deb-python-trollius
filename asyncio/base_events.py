@@ -388,7 +388,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             transport = self._make_socket_transport(sock, protocol, waiter)
 
         yield waiter
-        raise tasks.Return((transport, protocol))
+        raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
     def create_datagram_endpoint(self, protocol_factory,
@@ -456,7 +456,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         protocol = protocol_factory()
         transport = self._make_datagram_transport(sock, protocol, r_addr)
-        raise tasks.Return((transport, protocol))
+        raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
     def create_server(self, protocol_factory, host=None, port=None,
@@ -538,7 +538,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         waiter = futures.Future(loop=self)
         transport = self._make_read_pipe_transport(pipe, protocol, waiter)
         yield waiter
-        raise tasks.Return((transport, protocol))
+        raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
     def connect_write_pipe(self, protocol_factory, pipe):
@@ -546,7 +546,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         waiter = futures.Future(loop=self)
         transport = self._make_write_pipe_transport(pipe, protocol, waiter)
         yield waiter
-        raise tasks.Return((transport, protocol))
+        raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
     def subprocess_shell(self, protocol_factory, cmd, stdin=subprocess.PIPE,
@@ -559,7 +559,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
             protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs)
-        raise tasks.Return((transport, protocol))
+        raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
     def subprocess_exec(self, protocol_factory, *args, **kwargs):
@@ -577,7 +577,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
             protocol, args, False, stdin, stdout, stderr, bufsize, **kwargs)
-        raise tasks.Return((transport, protocol))
+        raise tasks.Return(transport, protocol)
 
     def _add_callback(self, handle):
         """Add a Handle to ready or scheduled."""
