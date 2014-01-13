@@ -61,7 +61,7 @@ except AttributeError:
                 # see if it's connected
                 try:
                     socket.getpeername(self)
-                except socket_error, e:
+                except socket_error a e:
                     if e.errno != errno.ENOTCONN:
                         raise
                     # no, no connection yet
