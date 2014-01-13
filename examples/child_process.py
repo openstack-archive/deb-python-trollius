@@ -45,7 +45,7 @@ def connect_read_pipe(file):
     def factory():
         return streams.StreamReaderProtocol(stream_reader)
     transport, _ = yield loop.connect_read_pipe(factory, file)
-    raise asyncio.Return((stream_reader, transport))
+    raise asyncio.Return(stream_reader, transport)
 
 
 #

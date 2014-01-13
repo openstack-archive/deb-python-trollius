@@ -136,7 +136,7 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
         protocol = protocol_factory()
         trans = self._make_duplex_pipe_transport(pipe, protocol,
                                                  extra={'addr': address})
-        raise tasks.Return((trans, protocol))
+        raise tasks.Return(trans, protocol)
 
     @tasks.coroutine
     def start_serving_pipe(self, protocol_factory, address):

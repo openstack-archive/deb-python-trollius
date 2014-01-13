@@ -178,7 +178,7 @@ class ConnectionPool:
                 else:
                     self.log(1, '* Reusing pooled connection', key,
                                 'FD =', writer._transport._sock.fileno())
-                    raise asyncio.Return((key, reader, writer))
+                    raise asyncio.Return(key, reader, writer)
 
         # Create a new connection.
         reader, writer = yield asyncio.open_connection(host, port,
@@ -191,7 +191,7 @@ class ConnectionPool:
         key = host, port, ssl
         self.log(1, '* New connection', key,
                     'FD =', writer._transport._sock.fileno())
-        raise asyncio.Return((key, reader, writer))
+        raise asyncio.Return(key, reader, writer)
 
     def unreserve(self, key, reader, writer):
         """Make a connection available for reuse.

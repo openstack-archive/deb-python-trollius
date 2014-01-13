@@ -162,7 +162,7 @@ class CacheClient:
         if len(data) != resp_size:
             raise EOFError()
         resp = json.loads(data.decode('utf8'))
-        raise asyncio.Return((resp_id, resp))
+        raise asyncio.Return(resp_id, resp)
 
 
 def main():

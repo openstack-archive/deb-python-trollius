@@ -57,7 +57,7 @@ class ConnectionPool:
         self.connections[key] = reader, writer
         if self.verbose:
             print('* New connection', key, file=sys.stderr)
-        raise Return((reader, writer))
+        raise Return(reader, writer)
 
 
 class Request:
