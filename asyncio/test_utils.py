@@ -11,7 +11,7 @@ import time
 from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
 try:
     import ssl
-    from .py3_ssl import SSLContext
+    from .py3_ssl import SSLContext, wrap_socket
 except ImportError:  # pragma: no cover
     ssl = None
 
@@ -115,10 +115,10 @@ def run_test_server(host='127.0.0.1', port=0, use_ssl=False):
                                     'test', 'test_asyncio')
             keyfile = os.path.join(here, 'ssl_key.pem')
             certfile = os.path.join(here, 'ssl_cert.pem')
-            ssock = ssl.wrap_socket(request,
-                                    keyfile=keyfile,
-                                    certfile=certfile,
-                                    server_side=True)
+            ssock = wrap_socket(request,
+                                keyfile=keyfile,
+                                certfile=certfile,
+                                server_side=True)
             try:
                 self.RequestHandlerClass(ssock, client_address, self)
                 ssock.close()
