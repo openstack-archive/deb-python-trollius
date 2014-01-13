@@ -1,14 +1,17 @@
 # Release procedure:
-#  - run unit tests without concurrent.futures
 #  - run unit tests with concurrent.futures
+#  - run unit tests without concurrent.futures
+#  - run unit tests without ssl: set sys.modules['ssl']=None at startup
 #  - test examples
 #  - update version in setup.py
-#  - set _DEBUG to False in asyncio/tasks.py
+#  - set _DEBUG to False in asyncio/coroutine.py
 #  - set release date in the change log (README file)
 #  - hg ci
 #  - hg tag trollius-VERSION
 #  - hg push
 #  - python setup.py register sdist bdist_wheel upload
+#  - increment version in setup.py
+#  - hg ci && hg push
 
 import os
 import sys
