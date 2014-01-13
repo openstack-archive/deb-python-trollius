@@ -1,8 +1,6 @@
 Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
-2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux and
-FreeBSD.
-
-Status of Mac OS X: SSL tests hang.
+2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux,
+Mac OS X, FreeBSD and OpenIndiana.
 
 * Website: https://bitbucket.org/haypo/trollius
 * Tulip project: http://code.google.com/p/tulip/
@@ -121,14 +119,16 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Development version
+2014-01-13: version 0.1.3
 
-- Workaround bugs in the ssl module of Python older than 2.6.6 (ex: system
-  python on Mac OS 10.6, Snow Leopard)
-- SSL support is now optional: don't fail if the ssl module is missing
+- Workaround bugs in the ssl module of Python older than 2.6.6. For example,
+  Mac OS 10.6 (Snow Leopard) uses Python 2.6.1.
 - ``return x, y`` is now written ``raise Return(x, y)`` instead of
   ``raise Return((x, y))``
 - Support "with (yield lock):" syntax for Lock, Condition and Semaphore
+- SSL support is now optional: don't fail if the ssl module is missing
+- Add tox.ini, tool to run unit tests. For example, "tox -e py27" creates a
+  virtual environment to run tests with Python 2.7.
 
 2014-01-08: version 0.1.2
 
