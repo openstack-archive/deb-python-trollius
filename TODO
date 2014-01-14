@@ -1,7 +1,5 @@
 Unsorted "TODO" tasks:
 
-* tox.ini: python 2.6 requires unittest2, but not python 2.7+ and installing
-  unittest2 on python 3 raises syntax errors
 * tests/test_events.py -v KqueueEventLoopTests.test_read_pty_output failed on Mac OS X:
   OSError: [Errno 22] Invalid argument
 * Fix tests failing with PyPy:
