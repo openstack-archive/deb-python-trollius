@@ -30,12 +30,14 @@ try:
     import unittest
     skipIf = unittest.skipIf
     skipUnless = unittest.skipUnless
+    SkipTest = unittest.SkipTest
     TestCase = unittest.TestCase
 except AttributeError:
     # Python 2.6: use the backported unittest module called "unittest2"
     import unittest2
     skipIf = unittest2.skipIf
     skipUnless = unittest2.skipUnless
+    SkipTest = unittest2.SkipTest
     TestCase = unittest2.TestCase
 
 try:

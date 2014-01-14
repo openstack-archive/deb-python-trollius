@@ -1,16 +1,16 @@
 """Tests for window_utils"""
 
-import sys
+from asyncio.test_utils import mock, SkipTest
 import asyncio.test_support as support
+import sys
 import unittest
 
 if sys.platform != 'win32':
-    raise unittest.SkipTest('Windows only')
+    raise SkipTest('Windows only')
 
 from asyncio import _overlapped
 from asyncio import py33_winapi as _winapi
 from asyncio import windows_utils
-from asyncio.test_utils import mock
 
 
 class WinsocketpairTests(unittest.TestCase):
