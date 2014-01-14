@@ -1,9 +1,10 @@
+from asyncio import test_utils
 import os
 import sys
 import unittest
 
 if sys.platform != 'win32':
-    raise unittest.SkipTest('Windows only')
+    raise test_utils.SkipTest('Windows only')
 
 import asyncio
 
@@ -13,7 +14,6 @@ from asyncio import futures
 from asyncio import protocols
 from asyncio import py33_winapi as _winapi
 from asyncio import streams
-from asyncio import test_utils
 from asyncio import transports
 from asyncio import windows_events
 from asyncio.py33_exceptions import PermissionError, FileNotFoundError
