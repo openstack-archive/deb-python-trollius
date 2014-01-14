@@ -119,6 +119,10 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Developement version
+
+- Experimental Twisted event loop
+
 2014-01-13: version 0.1.3
 
 - Workaround bugs in the ssl module of Python older than 2.6.6. For example,
