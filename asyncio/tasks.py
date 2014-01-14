@@ -218,7 +218,7 @@ class Task(futures.Future):
                 result = async(result, loop=self._loop)
             # FIXME: faster check. common base class? hasattr?
             elif isinstance(result, (Lock, Condition, Semaphore)):
-                result = async(lock_coroutine(result), loop=self._loop)
+                result = Task(lock_coroutine(result), loop=self._loop)
 
             if isinstance(result, futures.Future):
                 # Yielded Future must come from Future.__iter__().
