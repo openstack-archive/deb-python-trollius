@@ -121,7 +121,7 @@ Change log
 
 Developement version
 
-- Experimental Twisted event loop
+- Fix CoroWrapper (_DEBUG=True): add missing import
 
 2014-01-13: version 0.1.3
 

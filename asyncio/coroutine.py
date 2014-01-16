@@ -1,6 +1,7 @@
 import functools
 import inspect
 from asyncio import futures
+from .log import logger
 
 # If you set _DEBUG to true, @coroutine will wrap the resulting
 # generator objects in a CoroWrapper instance (defined below).  That

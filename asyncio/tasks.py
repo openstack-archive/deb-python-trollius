@@ -21,7 +21,6 @@ except ImportError:
 from . import events
 from . import executor
 from . import futures
-from .log import logger
 from .locks import Lock, Condition, Semaphore
 from .coroutine import Return, coroutine, iscoroutinefunction, iscoroutine
 
