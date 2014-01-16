@@ -202,6 +202,7 @@ class Task(futures.Future):
             else:
                 result = next(coro)
         except Return as exc:
+            exc.raised = True
             self.set_result(exc.value)
         except StopIteration:
             self.set_result(None)

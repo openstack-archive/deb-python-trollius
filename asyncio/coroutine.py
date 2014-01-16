@@ -24,6 +24,11 @@ class Return(StopIteration):
             self.value = value[0]
         else:
             self.value = value
+        self.raised = False
+
+    def __del__(self):
+        if not self.raised:
+            logger.error('Return(%r) used without raise', self.value)
 
 
 class CoroWrapper(object):
