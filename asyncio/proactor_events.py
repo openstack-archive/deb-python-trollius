@@ -331,7 +331,8 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         logger.debug('Using proactor: %s', proactor.__class__.__name__)
         self._proactor = proactor
         self._selector = proactor   # convenient alias
-        self._accept_futures = {}   # sock => Future
+        self._self_reading_future = None
+        self._accept_futures = {}   # socket file descriptor => Future
         proactor.set_loop(self)
         self._make_self_pipe()
 
@@ -450,8 +451,6 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
 
     def _stop_serving(self, sock):
         for future in self._accept_futures.values():
-            if future is not None:
-                future.cancel()
-        # Keep the future so loop() will be stopped with CancelledError
+            future.cancel()
         self._proactor._stop_serving(sock)
         sock.close()
