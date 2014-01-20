@@ -32,9 +32,9 @@ class Return(StopIteration):
 
 
 class CoroWrapper(object):
-    """Wrapper for coroutine in _DEBUG mode."""
+    # Wrapper for coroutine in _DEBUG mode.
 
-    __slot__ = ['gen', 'func']
+    __slots__ = ['gen', 'func', '__name__', '__doc__']
 
     def __init__(self, gen, func):
         assert inspect.isgenerator(gen), gen
