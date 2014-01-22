@@ -119,11 +119,13 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Developement version
+2014-01-22: version 0.1.4
 
 - The project moved to https://bitbucket.org/enovance/trollius
 - Fix CoroWrapper (_DEBUG=True): add missing import
 - Emit a warning when Return is not raised
+- Merge with Tulip to get latest Tulip bugfixes
+- Fix dependencies in tox.ini for the different Python versions
 
 2014-01-13: version 0.1.3
 
