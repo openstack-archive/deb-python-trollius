@@ -49,7 +49,7 @@ install_options = {
 
     "description": "Experimental port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
     "long_description": long_description,
-    "url": "https://bitbucket.org/haypo/trollius/",
+    "url": "https://bitbucket.org/enovance/trollius/",
 
     "classifiers": [
         "Programming Language :: Python",
