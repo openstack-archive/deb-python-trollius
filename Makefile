@@ -39,6 +39,8 @@ clean:
 	rm -rf htmlcov
 	rm -rf build
 	rm -f MANIFEST
+	rm -rf trollius.egg-info
+	rm -rf .tox
 
 
 # Make distributions for Python 3.3
