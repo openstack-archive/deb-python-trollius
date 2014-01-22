@@ -1,4 +1,5 @@
 # Release procedure:
+#  - run maybe update_tulip.sh
 #  - run unit tests with concurrent.futures
 #  - run unit tests without concurrent.futures
 #  - run unit tests without ssl: set sys.modules['ssl']=None at startup
