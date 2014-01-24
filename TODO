@@ -1,5 +1,6 @@
 Unsorted "TODO" tasks:
 
+* test_internal_fds() of test_events.py emits two ResourceWarning on Windows
 * tests/test_events.py -v KqueueEventLoopTests.test_read_pty_output failed on Mac OS X:
   OSError: [Errno 22] Invalid argument
 * Fix tests failing with PyPy:
