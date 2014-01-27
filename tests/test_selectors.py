@@ -10,6 +10,10 @@ from asyncio.test_utils import mock
 class FakeSelector(selectors._BaseSelectorImpl):
     """Trivial non-abstract subclass of BaseSelector."""
 
+    @property
+    def resolution(self):
+        return 1e-3
+
     def select(self, timeout=None):
         raise NotImplementedError
 

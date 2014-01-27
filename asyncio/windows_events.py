@@ -178,9 +178,6 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
         yield transp._post_init()
         raise tasks.Return(transp)
 
-    def _subprocess_closed(self, transport):
-        pass
-
 
 def _finish_recv(trans, key, ov):
     return wrap_error(ov.getresult)

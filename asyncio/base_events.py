@@ -33,7 +33,7 @@ from . import futures
 from . import tasks
 from .executor import get_default_executor
 from .log import logger
-from .time_monotonic import time_monotonic
+from .time_monotonic import time_monotonic, time_monotonic_resolution
 
 
 __all__ = ['BaseEventLoop', 'Server']
@@ -98,6 +98,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._default_executor = None
         self._internal_fds = 0
         self._running = False
+        self._granularity = time_monotonic_resolution
 
     def _make_socket_transport(self, sock, protocol, waiter=None,
                                extra=None, server=None):
@@ -636,7 +637,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._process_events(event_list)
 
         # Handle 'later' callbacks that are ready.
-        now = self.time()
+        now = self.time() + self._granularity
         while self._scheduled:
             handle = self._scheduled[0]
             if handle._when > now:

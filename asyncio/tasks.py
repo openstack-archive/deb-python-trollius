@@ -26,8 +26,8 @@ from .coroutine import Return, coroutine, iscoroutinefunction, iscoroutine
 
 @coroutine
 def lock_coroutine(lock):
-    yield lock.acquire()
-    raise Return(lock)
+    cm = yield lock.acquire()
+    raise Return(cm)
 
 
 class Task(futures.Future):
@@ -299,8 +299,9 @@ def wait_for(fut, timeout, loop=None):
 
     Coroutine will be wrapped in Task.
 
-    Returns result of the Future or coroutine.  Raises TimeoutError when
-    timeout occurs.
+    Returns result of the Future or coroutine.  When a timeout occurs,
+    it cancels the task and raises TimeoutError.  To avoid the task
+    cancellation, wrap it in shield().
 
     Usage:
 
@@ -322,6 +323,7 @@ def wait_for(fut, timeout, loop=None):
             raise Return(fut.result())
         else:
             fut.remove_done_callback(cb)
+            fut.cancel()
             raise futures.TimeoutError()
     finally:
         timeout_handle.cancel()
