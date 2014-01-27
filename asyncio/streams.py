@@ -1,7 +1,7 @@
 """Stream-related things."""
 
 __all__ = ['StreamReader', 'StreamWriter', 'StreamReaderProtocol',
-           'open_connection', 'start_server',
+           'open_connection', 'start_server', 'IncompleteReadError',
            ]
 
 import collections
@@ -15,6 +15,19 @@ from .py33_exceptions import ConnectionResetError
 
 _DEFAULT_LIMIT = 2**16
 
+class IncompleteReadError(EOFError):
+    """
+    Incomplete read error. Attributes:
+
+    - partial: read bytes string before the end of stream was reached
+    - expected: total number of expected bytes
+    """
+    def __init__(self, partial, expected):
+        EOFError.__init__(self, "%s bytes read on a total of %s expected bytes"
+                                % (len(partial), expected))
+        self.partial = partial
+        self.expected = expected
+
 
 @tasks.coroutine
 def open_connection(host=None, port=None,
@@ -22,7 +35,7 @@ def open_connection(host=None, port=None,
     """A wrapper for create_connection() returning a (reader, writer) pair.
 
     The reader returned is a StreamReader instance; the writer is a
-    Transport.
+    StreamWriter instance.
 
     The arguments are all the usual arguments to create_connection()
     except protocol_factory; most common are positional host and port,
@@ -287,6 +300,16 @@ class StreamReader(object):
             else:
                 self._paused = True
 
+    def _create_waiter(self, func_name):
+        # StreamReader uses a future to link the protocol feed_data() method
+        # to a read coroutine. Running two read coroutines at the same time
+        # would have an unexpected behaviour. It would not possible to know
+        # which coroutine would get the next data.
+        if self._waiter is not None:
+            raise RuntimeError('%s() called while another coroutine is '
+                               'already waiting for incoming data' % func_name)
+        return futures.Future(loop=self._loop)
+
     @tasks.coroutine
     def readline(self):
         if self._exception is not None:
@@ -321,8 +344,7 @@ class StreamReader(object):
                 break
 
             if not_enough:
-                assert self._waiter is None
-                self._waiter = futures.Future(loop=self._loop)
+                self._waiter = self._create_waiter('readline')
                 try:
                     yield self._waiter
                 finally:
@@ -344,16 +366,14 @@ class StreamReader(object):
 
         if n < 0:
             while not self._eof:
-                assert not self._waiter
-                self._waiter = futures.Future(loop=self._loop)
+                self._waiter = self._create_waiter('read')
                 try:
                     yield self._waiter
                 finally:
                     self._waiter = None
         else:
             if not self._byte_count and not self._eof:
-                assert not self._waiter
-                self._waiter = futures.Future(loop=self._loop)
+                self._waiter = self._create_waiter('read')
                 try:
                     yield self._waiter
                 finally:
@@ -399,12 +419,9 @@ class StreamReader(object):
         while n > 0:
             block = yield self.read(n)
             if not block:
-                break
+                partial = b''.join(blocks)
+                raise IncompleteReadError(partial, len(partial) + n)
             blocks.append(block)
             n -= len(block)
-
-        # TODO: Raise EOFError if we break before n == 0?  (That would
-        # be a change in specification, but I've always had to add an
-        # explicit size check to the caller.)
 
         raise tasks.Return(b''.join(blocks))

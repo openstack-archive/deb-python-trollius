@@ -1,8 +1,9 @@
 """
 Backport of time.monotonic() of Python 3.3 (PEP 418) for Python 2.7.
 
-Export one function: time_monotonic(). This clock may or may not be monotonic
-depending on the operating system.
+- time_monotonic(). This clock may or may not be monotonic depending on the
+  operating system.
+- time_monotonic_resolution: Resolution of time_monotonic() clock in second
 
 Support Windows, Mac OS X, Linux, FreeBSD, OpenBSD and Solaris, but requires
 the ctypes module.
@@ -34,6 +35,7 @@ if os.name == "nt":
 
         def time_monotonic():
             return GetTickCount64() * 1e-3
+        time_monotonic_resolution = 1e-3
     else:
         GetTickCount = windll.kernel32.GetTickCount
         GetTickCount.restype = DWORD
@@ -53,6 +55,7 @@ if os.name == "nt":
             return (ticks + time_monotonic.delta) * 1e-3
         time_monotonic.last = 0
         time_monotonic.delta = 0
+        time_monotonic_resolution = 1e-3
 
 elif sys.platform == 'darwin':
     # Mac OS X: use mach_absolute_time() and mach_timebase_info()
@@ -86,6 +89,7 @@ elif sys.platform == 'darwin':
         timebase = mach_timebase_info_data_t()
         mach_timebase_info(ctypes.byref(timebase))
         time_monotonic.factor = float(timebase.numer) / timebase.denom * 1e-9
+        time_monotonic_resolution = time_monotonic.factor
         del timebase
 
 elif sys.platform.startswith(("linux", "freebsd", "openbsd", "sunos")):
@@ -147,6 +151,20 @@ elif sys.platform.startswith(("linux", "freebsd", "openbsd", "sunos")):
             time_monotonic.clk_id = 4   # CLOCK_MONOTONIC
         elif sys.platform.startswith("openbsd"):
             time_monotonic.clk_id = 3   # CLOCK_MONOTONIC
-        elif sys.platform.startswith("sunos"):
+        else:
+            assert sys.platform.startswith("sunos")
             time_monotonic.clk_id = 4   # CLOCK_HIGHRES
+
+        def get_resolution():
+            _clock_getres = library.clock_getres
+            _clock_getres.argtypes = (clockid_t, timespec_p)
+            _clock_getres.restype = ctypes.c_int
+
+            ts = timespec()
+            err = _clock_getres(time_monotonic.clk_id, ctypes.byref(ts))
+            if err:
+                raise ctypes_oserror()
+            return ts.tv_sec + ts.tv_nsec * 1e-9
+        time_monotonic_resolution = get_resolution()
+        del get_resolution
 
