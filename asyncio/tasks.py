@@ -324,6 +324,15 @@ def wait_for(fut, timeout, loop=None):
         else:
             fut.remove_done_callback(cb)
             fut.cancel()
+
+            # If the task was waiting for a future, Task.cancel() does not
+            # cancel the task immediatly: the future asks the event loop to
+            # wake up the task which will be cancelled.  If we are a mixed
+            # chain of tasks and futures, it may use many scheduled events.
+            waiter2 = futures.Future(loop=loop)
+            fut.add_done_callback(lambda fut: waiter2.set_result(True))
+            yield waiter2
+
             raise futures.TimeoutError()
     finally:
         timeout_handle.cancel()
