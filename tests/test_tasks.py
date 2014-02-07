@@ -377,6 +377,13 @@ class TaskTests(test_utils.TestCase):
 
         with self.assertRaises(asyncio.TimeoutError):
             loop.run_until_complete(asyncio.wait_for(fut, 0.1, loop=loop))
+
+        # Trollius issue #2: need to run the loop briefly to ensure that the
+        # cancellation is propagated to all tasks
+        waiter = asyncio.Future(loop=loop)
+        fut.add_done_callback(lambda f: waiter.set_result(True))
+        loop.run_until_complete(waiter)
+
         self.assertTrue(fut.done())
         # it should have been cancelled due to the timeout
         self.assertTrue(fut.cancelled())
@@ -409,6 +416,12 @@ class TaskTests(test_utils.TestCase):
                 loop.run_until_complete(asyncio.wait_for(fut, 0.01))
         finally:
             asyncio.set_event_loop(None)
+
+        # Trollius issue #2: need to run the loop briefly to ensure that the
+        # cancellation is propagated to all tasks
+        waiter = asyncio.Future(loop=loop)
+        fut.add_done_callback(lambda f: waiter.set_result(True))
+        loop.run_until_complete(waiter)
 
         self.assertAlmostEqual(0.01, loop.time())
         self.assertTrue(fut.done())
