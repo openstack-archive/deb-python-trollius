@@ -960,6 +960,9 @@ class EventLoopTestsMixin(object):
 
     @test_utils.skipUnless(sys.platform != 'win32',
                          "Don't support pipes for Windows")
+    # select, poll and kqueue don't support character devices (PTY) on Mac OS X
+    # older than 10.6 (Snow Leopard)
+    @support.requires_mac_ver(10, 6)
     def test_read_pty_output(self):
         non_local = {'proto': None}
 
@@ -1078,6 +1081,9 @@ class EventLoopTestsMixin(object):
 
     @unittest.skipUnless(sys.platform != 'win32',
                          "Don't support pipes for Windows")
+    # select, poll and kqueue don't support character devices (PTY) on Mac OS X
+    # older than 10.6 (Snow Leopard)
+    @support.requires_mac_ver(10, 6)
     def test_write_pty(self):
         non_local = {'proto': None, 'transport': None}
 
@@ -1164,20 +1170,19 @@ class EventLoopTestsMixin(object):
         orig_run_once = self.loop._run_once
         self.loop._run_once_counter = 0
         self.loop._run_once = _run_once
-        calls = []
 
         @asyncio.coroutine
         def wait():
             loop = self.loop
-            calls.append(loop._run_once_counter)
-            yield asyncio.sleep(loop._granularity * 10, loop=loop)
-            calls.append(loop._run_once_counter)
-            yield asyncio.sleep(loop._granularity / 10, loop=loop)
-            calls.append(loop._run_once_counter)
+            yield asyncio.sleep(1e-2, loop=loop)
+            yield asyncio.sleep(1e-4, loop=loop)
 
         self.loop.run_until_complete(wait())
-        calls.append(self.loop._run_once_counter)
-        self.assertEqual(calls, [1, 5, 9, 10])
+        # The ideal number of call is 6, but on some platforms, the selector
+        # may sleep at little bit less than timeout depending on the resolution
+        # of the clock used by the kernel. Tolerate 2 useless calls on these
+        # platforms.
+        self.assertLessEqual(self.loop._run_once_counter, 8)
 
 
 class SubprocessTestsMixin(object):
@@ -1452,6 +1457,7 @@ class SubprocessTestsMixin(object):
         self.loop.run_until_complete(non_local['proto'].completed)
         self.check_terminated(non_local['proto'].returncode)
 
+    @test_utils.skipUnless(hasattr(os, 'setsid'), "need os.setsid()")
     def test_subprocess_wait_no_same_group(self):
         non_local = {'proto': None}
 
@@ -1460,19 +1466,48 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            if sys.platform != 'win32':
-                kwargs = dict(preexec_fn=start_new_session)
-            else:
-                kwargs = dict()
             # start the new process in a new session
             transp, non_local['proto'] = yield self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
-                'exit 7', stdin=None, stdout=None, stderr=None, **kwargs)
+                'exit 7', stdin=None, stdout=None, stderr=None,
+                preexec_fn=start_new_session)
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
         self.loop.run_until_complete(non_local['proto'].completed)
         self.assertEqual(7, non_local['proto'].returncode)
+
+    def test_subprocess_exec_invalid_args(self):
+        @asyncio.coroutine
+        def connect(**kwds):
+            yield self.loop.subprocess_exec(
+                asyncio.SubprocessProtocol,
+                'pwd', **kwds)
+
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(universal_newlines=True))
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(bufsize=4096))
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(shell=True))
+
+    def test_subprocess_shell_invalid_args(self):
+        @asyncio.coroutine
+        def connect(cmd=None, **kwds):
+            if not cmd:
+                cmd = 'pwd'
+            yield self.loop.subprocess_shell(
+                asyncio.SubprocessProtocol,
+                cmd, **kwds)
+
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(['ls', '-l']))
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(universal_newlines=True))
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(bufsize=4096))
+        with self.assertRaises(ValueError):
+            self.loop.run_until_complete(connect(shell=False))
 
 
 if sys.platform == 'win32':
@@ -1546,13 +1581,13 @@ else:
             # than 10.9 (Maverick)
             @support.requires_mac_ver(10, 9)
             def test_read_pty_output(self):
-                super().test_read_pty_output()
+                super(KqueueEventLoopTests, self).test_read_pty_output()
 
             # kqueue doesn't support character devices (PTY) on Mac OS X older
             # than 10.9 (Maverick)
             @support.requires_mac_ver(10, 9)
             def test_write_pty(self):
-                super().test_write_pty()
+                super(KqueueEventLoopTests, self).test_write_pty()
 
     if hasattr(selectors, 'EpollSelector'):
         class EPollEventLoopTests(UnixEventLoopTestsMixin,

@@ -118,12 +118,19 @@ class BaseEventLoopTests(test_utils.TestCase):
             self.loop.stop()
 
         self.loop._process_events = mock.Mock()
-        when = self.loop.time() + 0.1
+        delay = 0.1
+
+        when = self.loop.time() + delay
         self.loop.call_at(when, cb)
         t0 = self.loop.time()
         self.loop.run_forever()
-        t1 = self.loop.time()
-        self.assertTrue(0.09 <= t1-t0 <= 0.9, t1-t0)
+        dt = self.loop.time() - t0
+
+        # 50 ms: maximum granularity of the event loop
+        self.assertGreaterEqual(dt, delay - 0.050, dt)
+        # tolerate a difference of +800 ms because some Python buildbots
+        # are really slow
+        self.assertLessEqual(dt, 0.9, dt)
 
     def test_run_once_in_executor_handle(self):
         def cb():
@@ -186,7 +193,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
     @mock.patch('asyncio.base_events.time_monotonic')
     @mock.patch('asyncio.base_events.logger')
-    def test__run_once_logging(self, m_logging, m_time_monotonic):
+    def test__run_once_logging(self, m_logger, m_time_monotonic):
         # Log to INFO level if timeout > 1.0 sec.
         non_local = {
             'idx': -1,
@@ -198,20 +205,18 @@ class BaseEventLoopTests(test_utils.TestCase):
             return non_local['data'][non_local['idx']]
 
         m_time_monotonic.side_effect = time_monotonic
-        m_logging.INFO = logging.INFO
-        m_logging.DEBUG = logging.DEBUG
 
         self.loop._scheduled.append(
             asyncio.TimerHandle(11.0, lambda: True, ()))
         self.loop._process_events = mock.Mock()
         self.loop._run_once()
-        self.assertEqual(logging.INFO, m_logging.log.call_args[0][0])
+        self.assertEqual(logging.INFO, m_logger.log.call_args[0][0])
 
         non_local['idx'] = -1
         non_local['data'] = [10.0, 10.0, 10.3, 13.0]
         self.loop._scheduled = [asyncio.TimerHandle(11.0, lambda:True, ())]
         self.loop._run_once()
-        self.assertEqual(logging.DEBUG, m_logging.log.call_args[0][0])
+        self.assertEqual(logging.DEBUG, m_logger.log.call_args[0][0])
 
     def test__run_once_schedule_handle(self):
         non_local = {'handle': None, 'processed': False}

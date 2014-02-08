@@ -1,4 +1,5 @@
 """Event loop and event loop policy."""
+from __future__ import absolute_import
 
 __all__ = ['AbstractEventLoopPolicy',
            'AbstractEventLoop', 'AbstractServer',

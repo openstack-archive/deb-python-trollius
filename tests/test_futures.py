@@ -81,6 +81,11 @@ class FutureTests(test_utils.TestCase):
         self.assertRaises(asyncio.InvalidStateError, f.set_exception, None)
         self.assertFalse(f.cancel())
 
+    def test_exception_class(self):
+        f = asyncio.Future(loop=self.loop)
+        f.set_exception(RuntimeError)
+        self.assertIsInstance(f.exception(), RuntimeError)
+
     def test_repr(self):
         f_pending = asyncio.Future(loop=self.loop)
         self.assertEqual(repr(f_pending), 'Future<PENDING>')

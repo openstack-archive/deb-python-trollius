@@ -8,6 +8,7 @@ This module allows high-level and efficient I/O multiplexing, built upon the
 from abc import ABCMeta, abstractmethod, abstractproperty
 from collections import namedtuple, Mapping
 import functools
+import math
 import select
 import sys
 
@@ -89,11 +90,6 @@ class BaseSelector(object):
     performant implementation on the current platform.
     """
     __metaclass__ = ABCMeta
-
-    @abstractproperty
-    def resolution(self):
-        """Resolution of the selector in seconds"""
-        return None
 
     @abstractmethod
     def register(self, fileobj, events, data=None):
@@ -296,10 +292,6 @@ class SelectSelector(_BaseSelectorImpl):
         self._readers = set()
         self._writers = set()
 
-    @property
-    def resolution(self):
-        return 1e-6
-
     def register(self, fileobj, events, data=None):
         key = super(SelectSelector, self).register(fileobj, events, data)
         if events & EVENT_READ:
@@ -353,10 +345,6 @@ if hasattr(select, 'poll'):
             super(PollSelector, self).__init__()
             self._poll = select.poll()
 
-        @property
-        def resolution(self):
-            return 1e-3
-
         def register(self, fileobj, events, data=None):
             key = super(PollSelector, self).register(fileobj, events, data)
             poll_events = 0
@@ -378,8 +366,9 @@ if hasattr(select, 'poll'):
             elif timeout <= 0:
                 timeout = 0
             else:
-                # Round towards zero
-                timeout = int(timeout * 1000)
+                # poll() has a resolution of 1 millisecond, round away from
+                # zero to wait *at least* timeout seconds.
+                timeout = math.ceil(timeout * 1e3)
             ready = []
             try:
                 fd_event_list = wrap_error(self._poll.poll, timeout)
@@ -406,10 +395,6 @@ if hasattr(select, 'epoll'):
         def __init__(self):
             super(EpollSelector, self).__init__()
             self._epoll = select.epoll()
-
-        @property
-        def resolution(self):
-            return 1e-3
 
         def fileno(self):
             return self._epoll.fileno()
@@ -439,6 +424,10 @@ if hasattr(select, 'epoll'):
                 timeout = -1
             elif timeout <= 0:
                 timeout = 0
+            else:
+                # epoll_wait() has a resolution of 1 millisecond, round away
+                # from zero to wait *at least* timeout seconds.
+                timeout = math.ceil(timeout * 1e3) * 1e-3
             max_ev = len(self._fd_to_key)
             ready = []
             try:
@@ -470,10 +459,6 @@ if hasattr(select, 'kqueue'):
         def __init__(self):
             super(KqueueSelector, self).__init__()
             self._kqueue = select.kqueue()
-
-        @property
-        def resolution(self):
-            return 1e-9
 
         def fileno(self):
             return self._kqueue.fileno()

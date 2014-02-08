@@ -80,13 +80,13 @@ class StreamReaderTests(test_utils.TestCase):
         stream = asyncio.StreamReader(loop=self.loop)
 
         stream.feed_data(b'')
-        self.assertEqual(0, stream._byte_count)
+        self.assertEqual(b'', stream._buffer)
 
-    def test_feed_data_byte_count(self):
+    def test_feed_nonempty_data(self):
         stream = asyncio.StreamReader(loop=self.loop)
 
         stream.feed_data(self.DATA)
-        self.assertEqual(len(self.DATA), stream._byte_count)
+        self.assertEqual(self.DATA, stream._buffer)
 
     def test_read_zero(self):
         # Read zero bytes.
@@ -95,7 +95,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         data = self.loop.run_until_complete(stream.read(0))
         self.assertEqual(b'', data)
-        self.assertEqual(len(self.DATA), stream._byte_count)
+        self.assertEqual(self.DATA, stream._buffer)
 
     def test_read(self):
         # Read bytes.
@@ -108,7 +108,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         data = self.loop.run_until_complete(read_task)
         self.assertEqual(self.DATA, data)
-        self.assertFalse(stream._byte_count)
+        self.assertEqual(b'', stream._buffer)
 
     def test_read_line_breaks(self):
         # Read bytes without line breaks.
@@ -119,7 +119,7 @@ class StreamReaderTests(test_utils.TestCase):
         data = self.loop.run_until_complete(stream.read(5))
 
         self.assertEqual(b'line1', data)
-        self.assertEqual(5, stream._byte_count)
+        self.assertEqual(b'line2', stream._buffer)
 
     def test_read_eof(self):
         # Read bytes, stop at eof.
@@ -132,7 +132,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         data = self.loop.run_until_complete(read_task)
         self.assertEqual(b'', data)
-        self.assertFalse(stream._byte_count)
+        self.assertEqual(b'', stream._buffer)
 
     def test_read_until_eof(self):
         # Read all bytes until eof.
@@ -148,7 +148,7 @@ class StreamReaderTests(test_utils.TestCase):
         data = self.loop.run_until_complete(read_task)
 
         self.assertEqual(b'chunk1\nchunk2', data)
-        self.assertFalse(stream._byte_count)
+        self.assertEqual(b'', stream._buffer)
 
     def test_read_exception(self):
         stream = asyncio.StreamReader(loop=self.loop)
@@ -162,7 +162,8 @@ class StreamReaderTests(test_utils.TestCase):
             ValueError, self.loop.run_until_complete, stream.read(2))
 
     def test_readline(self):
-        # Read one line.
+        # Read one line. 'readline' will need to wait for the data
+        # to come from 'cb'
         stream = asyncio.StreamReader(loop=self.loop)
         stream.feed_data(b'chunk1 ')
         read_task = asyncio.Task(stream.readline(), loop=self.loop)
@@ -175,30 +176,55 @@ class StreamReaderTests(test_utils.TestCase):
 
         line = self.loop.run_until_complete(read_task)
         self.assertEqual(b'chunk1 chunk2 chunk3 \n', line)
-        self.assertEqual(len(b'\n chunk4')-1, stream._byte_count)
+        self.assertEqual(b' chunk4', stream._buffer)
 
     def test_readline_limit_with_existing_data(self):
-        stream = asyncio.StreamReader(3, loop=self.loop)
+        # Read one line. The data is in StreamReader's buffer
+        # before the event loop is run.
+
+        stream = asyncio.StreamReader(limit=3, loop=self.loop)
         stream.feed_data(b'li')
         stream.feed_data(b'ne1\nline2\n')
 
         self.assertRaises(
             ValueError, self.loop.run_until_complete, stream.readline())
-        self.assertEqual([b'line2\n'], list(stream._buffer))
+        # The buffer should contain the remaining data after exception
+        self.assertEqual(b'line2\n', stream._buffer)
 
-        stream = asyncio.StreamReader(3, loop=self.loop)
+        stream = asyncio.StreamReader(limit=3, loop=self.loop)
         stream.feed_data(b'li')
         stream.feed_data(b'ne1')
         stream.feed_data(b'li')
 
         self.assertRaises(
             ValueError, self.loop.run_until_complete, stream.readline())
-        self.assertEqual([b'li'], list(stream._buffer))
-        self.assertEqual(2, stream._byte_count)
+        # No b'\n' at the end. The 'limit' is set to 3. So before
+        # waiting for the new data in buffer, 'readline' will consume
+        # the entire buffer, and since the length of the consumed data
+        # is more than 3, it will raise a ValudError. The buffer is
+        # expected to be empty now.
+        self.assertEqual(b'', stream._buffer)
+
+    def test_at_eof(self):
+        stream = asyncio.StreamReader(loop=self.loop)
+        self.assertFalse(stream.at_eof())
+
+        stream.feed_data(b'some data\n')
+        self.assertFalse(stream.at_eof())
+
+        self.loop.run_until_complete(stream.readline())
+        self.assertFalse(stream.at_eof())
+
+        stream.feed_data(b'some data\n')
+        stream.feed_eof()
+        self.loop.run_until_complete(stream.readline())
+        self.assertTrue(stream.at_eof())
 
     def test_readline_limit(self):
-        stream = asyncio.StreamReader(7, loop=self.loop)
+        # Read one line. StreamReaders are fed with data after
+        # their 'readline' methods are called.
 
+        stream = asyncio.StreamReader(limit=7, loop=self.loop)
         def cb():
             stream.feed_data(b'chunk1')
             stream.feed_data(b'chunk2')
@@ -208,10 +234,25 @@ class StreamReaderTests(test_utils.TestCase):
 
         self.assertRaises(
             ValueError, self.loop.run_until_complete, stream.readline())
-        self.assertEqual([b'chunk3\n'], list(stream._buffer))
-        self.assertEqual(7, stream._byte_count)
+        # The buffer had just one line of data, and after raising
+        # a ValueError it should be empty.
+        self.assertEqual(b'', stream._buffer)
 
-    def test_readline_line_byte_count(self):
+        stream = asyncio.StreamReader(limit=7, loop=self.loop)
+        def cb():
+            stream.feed_data(b'chunk1')
+            stream.feed_data(b'chunk2\n')
+            stream.feed_data(b'chunk3\n')
+            stream.feed_eof()
+        self.loop.call_soon(cb)
+
+        self.assertRaises(
+            ValueError, self.loop.run_until_complete, stream.readline())
+        self.assertEqual(b'chunk3\n', stream._buffer)
+
+    def test_readline_nolimit_nowait(self):
+        # All needed data for the first 'readline' call will be
+        # in the buffer.
         stream = asyncio.StreamReader(loop=self.loop)
         stream.feed_data(self.DATA[:6])
         stream.feed_data(self.DATA[6:])
@@ -219,7 +260,7 @@ class StreamReaderTests(test_utils.TestCase):
         line = self.loop.run_until_complete(stream.readline())
 
         self.assertEqual(b'line1\n', line)
-        self.assertEqual(len(self.DATA) - len(b'line1\n'), stream._byte_count)
+        self.assertEqual(b'line2\nline3\n', stream._buffer)
 
     def test_readline_eof(self):
         stream = asyncio.StreamReader(loop=self.loop)
@@ -245,9 +286,7 @@ class StreamReaderTests(test_utils.TestCase):
         data = self.loop.run_until_complete(stream.read(7))
 
         self.assertEqual(b'line2\nl', data)
-        self.assertEqual(
-            len(self.DATA) - len(b'line1\n') - len(b'line2\nl'),
-            stream._byte_count)
+        self.assertEqual(b'ine3\n', stream._buffer)
 
     def test_readline_exception(self):
         stream = asyncio.StreamReader(loop=self.loop)
@@ -259,6 +298,7 @@ class StreamReaderTests(test_utils.TestCase):
         stream.set_exception(ValueError())
         self.assertRaises(
             ValueError, self.loop.run_until_complete, stream.readline())
+        self.assertEqual(b'', stream._buffer)
 
     def test_readexactly_zero_or_less(self):
         # Read exact number of bytes (zero or less).
@@ -267,11 +307,11 @@ class StreamReaderTests(test_utils.TestCase):
 
         data = self.loop.run_until_complete(stream.readexactly(0))
         self.assertEqual(b'', data)
-        self.assertEqual(len(self.DATA), stream._byte_count)
+        self.assertEqual(self.DATA, stream._buffer)
 
         data = self.loop.run_until_complete(stream.readexactly(-1))
         self.assertEqual(b'', data)
-        self.assertEqual(len(self.DATA), stream._byte_count)
+        self.assertEqual(self.DATA, stream._buffer)
 
     def test_readexactly(self):
         # Read exact number of bytes.
@@ -288,7 +328,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         data = self.loop.run_until_complete(read_task)
         self.assertEqual(self.DATA + self.DATA, data)
-        self.assertEqual(len(self.DATA), stream._byte_count)
+        self.assertEqual(self.DATA, stream._buffer)
 
     def test_readexactly_eof(self):
         # Read exact number of bytes (eof).
@@ -307,7 +347,7 @@ class StreamReaderTests(test_utils.TestCase):
         self.assertEqual(cm.exception.expected, n)
         self.assertEqual(str(cm.exception),
                          '18 bytes read on a total of 36 expected bytes')
-        self.assertFalse(stream._byte_count)
+        self.assertEqual(b'', stream._buffer)
 
     def test_readexactly_exception(self):
         stream = asyncio.StreamReader(loop=self.loop)
@@ -416,7 +456,7 @@ class StreamReaderTests(test_utils.TestCase):
         server = MyServer(self.loop)
         server.start()
         msg = self.loop.run_until_complete(asyncio.Task(client(),
-                                                      loop=self.loop))
+                                                        loop=self.loop))
         server.stop()
         self.assertEqual(msg, b"hello world!\n")
 
@@ -424,7 +464,7 @@ class StreamReaderTests(test_utils.TestCase):
         server = MyServer(self.loop)
         server.start_callback()
         msg = self.loop.run_until_complete(asyncio.Task(client(),
-                                                      loop=self.loop))
+                                                        loop=self.loop))
         server.stop()
         self.assertEqual(msg, b"hello world!\n")
 

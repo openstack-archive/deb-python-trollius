@@ -1,6 +1,7 @@
 """
 Various Windows specific bits and pieces
 """
+from __future__ import absolute_import
 
 import sys
 

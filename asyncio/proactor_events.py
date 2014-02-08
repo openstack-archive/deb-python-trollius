@@ -14,7 +14,8 @@ from . import futures
 from . import transports
 from .log import logger
 from .compat import flatten_bytes
-from .py33_exceptions import ConnectionAbortedError, ConnectionResetError
+from .py33_exceptions import (BrokenPipeError,
+    ConnectionAbortedError, ConnectionResetError)
 
 
 class _ProactorBasePipeTransport(transports.BaseTransport):
@@ -31,6 +32,7 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
         self._buffer = None  # None or bytearray.
         self._read_fut = None
         self._write_fut = None
+        self._pending_write = 0
         self._conn_lost = 0
         self._closing = False  # Set when close() called.
         self._eof_written = False
@@ -56,7 +58,8 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
             self._read_fut.cancel()
 
     def _fatal_error(self, exc):
-        logger.exception('Fatal error for %s', self)
+        if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+            logger.exception('Fatal error for %s', self)
         self._force_close(exc)
 
     def _force_close(self, exc):
@@ -69,6 +72,7 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
         if self._read_fut:
             self._read_fut.cancel()
         self._write_fut = self._read_fut = None
+        self._pending_write = 0
         self._buffer = None
         self._loop.call_soon(self._call_connection_lost, exc)
 
@@ -129,11 +133,10 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
         self._low_water = low
 
     def get_write_buffer_size(self):
-        # NOTE: This doesn't take into account data already passed to
-        # send() even if send() hasn't finished yet.
-        if not self._buffer:
-            return 0
-        return len(self._buffer)
+        size = self._pending_write
+        if self._buffer is not None:
+            size += len(self._buffer)
+        return size
 
 
 class _ProactorReadPipeTransport(_ProactorBasePipeTransport,
@@ -207,8 +210,8 @@ class _ProactorReadPipeTransport(_ProactorBasePipeTransport,
                     self.close()
 
 
-class _ProactorWritePipeTransport(_ProactorBasePipeTransport,
-                                  transports.WriteTransport):
+class _ProactorBaseWritePipeTransport(_ProactorBasePipeTransport,
+                                      transports.WriteTransport):
     """Transport for write pipes."""
 
     def write(self, data):
@@ -252,6 +255,7 @@ class _ProactorWritePipeTransport(_ProactorBasePipeTransport,
         try:
             assert f is self._write_fut
             self._write_fut = None
+            self._pending_write = 0
             if f:
                 f.result()
             if data is None:
@@ -262,15 +266,21 @@ class _ProactorWritePipeTransport(_ProactorBasePipeTransport,
                     self._loop.call_soon(self._call_connection_lost, None)
                 if self._eof_written:
                     self._sock.shutdown(socket.SHUT_WR)
+                # Now that we've reduced the buffer size, tell the
+                # protocol to resume writing if it was paused.  Note that
+                # we do this last since the callback is called immediately
+                # and it may add more data to the buffer (even causing the
+                # protocol to be paused again).
+                self._maybe_resume_protocol()
             else:
                 self._write_fut = self._loop._proactor.send(self._sock, data)
-                self._write_fut.add_done_callback(self._loop_writing)
-            # Now that we've reduced the buffer size, tell the
-            # protocol to resume writing if it was paused.  Note that
-            # we do this last since the callback is called immediately
-            # and it may add more data to the buffer (even causing the
-            # protocol to be paused again).
-            self._maybe_resume_protocol()
+                if not self._write_fut.done():
+                    assert self._pending_write == 0
+                    self._pending_write = len(data)
+                    self._write_fut.add_done_callback(self._loop_writing)
+                    self._maybe_pause_protocol()
+                else:
+                    self._write_fut.add_done_callback(self._loop_writing)
         except ConnectionResetError as exc:
             self._force_close(exc)
         except OSError as exc:
@@ -286,8 +296,30 @@ class _ProactorWritePipeTransport(_ProactorBasePipeTransport,
         self._force_close(None)
 
 
+class _ProactorWritePipeTransport(_ProactorBaseWritePipeTransport):
+    def __init__(self, *args, **kw):
+        super(_ProactorWritePipeTransport, self).__init__(*args, **kw)
+        self._read_fut = self._loop._proactor.recv(self._sock, 16)
+        self._read_fut.add_done_callback(self._pipe_closed)
+
+    def _pipe_closed(self, fut):
+        if fut.cancelled():
+            # the transport has been closed
+            return
+        assert fut.result() == b''
+        if self._closing:
+            assert self._read_fut is None
+            return
+        assert fut is self._read_fut, (fut, self._read_fut)
+        self._read_fut = None
+        if self._write_fut is not None:
+            self._force_close(exc)
+        else:
+            self.close()
+
+
 class _ProactorDuplexPipeTransport(_ProactorReadPipeTransport,
-                                   _ProactorWritePipeTransport,
+                                   _ProactorBaseWritePipeTransport,
                                    transports.Transport):
     """Transport for duplex pipes."""
 
@@ -299,7 +331,7 @@ class _ProactorDuplexPipeTransport(_ProactorReadPipeTransport,
 
 
 class _ProactorSocketTransport(_ProactorReadPipeTransport,
-                               _ProactorWritePipeTransport,
+                               _ProactorBaseWritePipeTransport,
                                transports.Transport):
     """Transport for connected sockets."""
 
@@ -353,15 +385,10 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         return _ProactorReadPipeTransport(self, sock, protocol, waiter, extra)
 
     def _make_write_pipe_transport(self, sock, protocol, waiter=None,
-                                   extra=None, check_for_hangup=True):
-        if check_for_hangup:
-            # We want connection_lost() to be called when other end closes
-            return _ProactorDuplexPipeTransport(self,
-                                                sock, protocol, waiter, extra)
-        else:
-            # If other end closes we may not notice for a long time
-            return _ProactorWritePipeTransport(self, sock, protocol, waiter,
-                                               extra)
+                                   extra=None):
+        # We want connection_lost() to be called when other end closes
+        return _ProactorWritePipeTransport(self,
+                                           sock, protocol, waiter, extra)
 
     def close(self):
         if self._proactor is not None:

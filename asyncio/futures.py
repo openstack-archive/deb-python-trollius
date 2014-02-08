@@ -287,6 +287,8 @@ class Future(object):
         """
         if self._state != _PENDING:
             raise InvalidStateError('{0}: {1!r}'.format(self._state, self))
+        if isinstance(exception, type):
+            exception = exception()
         self._exception = exception
 
         # FIXME: delay when the traceback is formatted

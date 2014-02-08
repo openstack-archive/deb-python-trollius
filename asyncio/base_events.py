@@ -98,7 +98,6 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._default_executor = None
         self._internal_fds = 0
         self._running = False
-        self._granularity = time_monotonic_resolution
 
     def _make_socket_transport(self, sock, protocol, waiter=None,
                                extra=None, server=None):
@@ -554,9 +553,14 @@ class BaseEventLoop(events.AbstractEventLoop):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=False, shell=True, bufsize=0,
                          **kwargs):
-        assert not universal_newlines, "universal_newlines must be False"
-        assert shell, "shell must be True"
-        assert isinstance(cmd, str), cmd
+        if not isinstance(cmd, str):
+            raise ValueError("cmd must be a string")
+        if universal_newlines:
+            raise ValueError("universal_newlines must be False")
+        if not shell:
+            raise ValueError("shell must be True")
+        if bufsize != 0:
+            raise ValueError("bufsize must be 0")
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
             protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs)
@@ -570,11 +574,12 @@ class BaseEventLoop(events.AbstractEventLoop):
         universal_newlines = kwargs.pop('universal_newlines', False)
         shell = kwargs.pop('shell', False)
         bufsize = kwargs.pop('bufsize', 0)
-        if kwargs:
-            raise TypeError("unexpected keyword")
-
-        assert not universal_newlines, "universal_newlines must be False"
-        assert not shell, "shell must be False"
+        if universal_newlines:
+            raise ValueError("universal_newlines must be False")
+        if shell:
+            raise ValueError("shell must be False")
+        if bufsize != 0:
+            raise ValueError("bufsize must be 0")
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
             protocol, args, False, stdin, stdout, stderr, bufsize, **kwargs)
@@ -637,7 +642,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._process_events(event_list)
 
         # Handle 'later' callbacks that are ready.
-        now = self.time() + self._granularity
+        now = self.time()
         while self._scheduled:
             handle = self._scheduled[0]
             if handle._when > now:

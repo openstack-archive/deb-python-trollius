@@ -865,6 +865,7 @@ def main():
     finally:
         crawler.report()
         crawler.close()
+        loop.close()
 
 
 if __name__ == '__main__':
