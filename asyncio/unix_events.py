@@ -1,4 +1,6 @@
 """Selector eventloop for Unix with signal handling."""
+from __future__ import absolute_import
+
 
 import errno
 import fcntl
@@ -21,18 +23,14 @@ from . import transports
 from .log import logger
 from .py33_exceptions import (
     reraise, wrap_error,
-    BlockingIOError, InterruptedError, ChildProcessError)
+    BlockingIOError, BrokenPipeError, ConnectionResetError,
+    InterruptedError, ChildProcessError)
 
 
-__all__ = ['SelectorEventLoop', 'STDIN', 'STDOUT', 'STDERR',
+__all__ = ['SelectorEventLoop',
            'AbstractChildWatcher', 'SafeChildWatcher',
            'FastChildWatcher', 'DefaultEventLoopPolicy',
            ]
-
-STDIN = 0
-STDOUT = 1
-STDERR = 2
-
 
 if sys.platform == 'win32':  # pragma: no cover
     raise ImportError('Signals are not really supported on Windows')
@@ -167,7 +165,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         with events.get_child_watcher() as watcher:
             transp = _UnixSubprocessTransport(self, protocol, args, shell,
                                               stdin, stdout, stderr, bufsize,
-                                              extra=None, **kwargs)
+                                              extra=extra, **kwargs)
             yield transp._post_init()
             watcher.add_child_handler(transp.get_pid(),
                                       self._child_watcher_callback, transp)
@@ -254,7 +252,8 @@ class _UnixReadPipeTransport(transports.ReadTransport):
             self._loop = None
 
 
-class _UnixWritePipeTransport(transports.WriteTransport):
+class _UnixWritePipeTransport(selector_events._FlowControlMixin,
+                              transports.WriteTransport):
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
         super(_UnixWritePipeTransport, self).__init__(extra)
@@ -285,12 +284,20 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         if waiter is not None:
             self._loop.call_soon(waiter.set_result, None)
 
+    def get_write_buffer_size(self):
+        return sum(len(data) for data in self._buffer)
+
     def _read_ready(self):
         # Pipe was closed by peer.
-        self._close()
+        if self._buffer:
+            self._close(BrokenPipeError())
+        else:
+            self._close()
 
     def write(self, data):
-        assert isinstance(data, bytes), repr(data)
+        assert isinstance(data, (bytes, bytearray, memoryview)), repr(data)
+        if isinstance(data, bytearray):
+            data = memoryview(data)
         if not data:
             return
 
@@ -318,6 +325,7 @@ class _UnixWritePipeTransport(transports.WriteTransport):
             self._loop.add_writer(self._fileno, self._write_ready)
 
         self._buffer.append(data)
+        self._maybe_pause_protocol()
 
     def _write_ready(self):
         data = b''.join(self._buffer)
@@ -337,7 +345,8 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         else:
             if n == len(data):
                 self._loop.remove_writer(self._fileno)
-                if self._closing:
+                self._maybe_resume_protocol()  # May append to buffer.
+                if not self._buffer and self._closing:
                     self._loop.remove_reader(self._fileno)
                     self._call_connection_lost(None)
                 return
@@ -371,7 +380,8 @@ class _UnixWritePipeTransport(transports.WriteTransport):
 
     def _fatal_error(self, exc):
         # should be called by exception handler only
-        logger.exception('Fatal error for %s', self)
+        if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+            logger.exception('Fatal error for %s', self)
         self._close(exc)
 
     def _close(self, exc=None):

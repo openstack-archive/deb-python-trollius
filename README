@@ -49,6 +49,7 @@ Differences between Trollius and Tulip
 * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
   uses a synchronous executor instead of a pool of threads. It blocks until the
   function returns, and so DNS resolutions are blocking.
+* asyncio.subprocess has no DEVNULL constant
 
 
 Usage
@@ -66,10 +67,10 @@ To run coverage (coverage package is required):
 On Windows, things are a little more complicated.  Assume 'P' is your
 Python binary (for example C:\Python33\python.exe).
 
-You must first build the _overlapped.pyd extension and have it placed
-in the asyncio directory, as follows:
+You must first build the _overlapped.pyd extension (it will be placed
+in the asyncio directory):
 
-    C> P setup.py build_ext --inplace
+    C> P setup.py build_ext
 
 Then you can run the tests as follows:
 

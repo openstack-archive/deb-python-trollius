@@ -25,6 +25,7 @@ from .protocols import *
 from .py33_exceptions import *
 from .queues import *
 from .streams import *
+from .subprocess import *
 from .tasks import *
 from .transports import *
 
@@ -41,6 +42,7 @@ __all__ = (events.__all__ +
            protocols.__all__ +
            queues.__all__ +
            streams.__all__ +
+           subprocess.__all__ +
            tasks.__all__ +
            transports.__all__)
 
