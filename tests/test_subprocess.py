@@ -138,13 +138,9 @@ class SubprocessMixin:
             proc = yield asyncio.create_subprocess_exec(*args,
                                                         loop=self.loop)
             yield proc.wait()
-            # need to poll subprocess.Popen, otherwise the returncode
-            # attribute is not set
-            proc.subprocess.wait()
             raise asyncio.Return(proc)
 
         proc = self.loop.run_until_complete(run())
-        self.assertEqual(proc.subprocess.returncode, proc.returncode)
         self.assertEqual(proc.subprocess.pid, proc.pid)
 
     def test_broken_pipe(self):
