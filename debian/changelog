@@ -1,0 +1,5 @@
+python-trollius (0.1.4-1) unstable; urgency=low
+
+  * Initial release. (Closes: #738511)
+
+ -- Thomas Goirand <zigo@debian.org>  Sun, 09 Feb 2014 17:41:15 +0800
