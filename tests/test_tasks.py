@@ -877,7 +877,7 @@ class TaskTests(test_utils.TestCase):
         def runner():
             result = []
             c = coro('ham')
-            for f in asyncio.as_completed(set((c, c, coro('spam'))), loop=self.loop):
+            for f in asyncio.as_completed([c, c, coro('spam')], loop=self.loop):
                 result.append((yield f))
             raise asyncio.Return(result)
 
