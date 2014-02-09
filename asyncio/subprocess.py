@@ -90,7 +90,9 @@ class Process:
         self.stdin = protocol.stdin
         self.stdout = protocol.stdout
         self.stderr = protocol.stderr
-        self.pid = transport.get_pid()
+        # transport.get_pid() cannot be used because it fails
+        # if the process already exited
+        self.pid = self.subprocess.pid
 
     @property
     def returncode(self):
