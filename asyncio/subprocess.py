@@ -92,7 +92,7 @@ class Process:
         self.stderr = protocol.stderr
         # transport.get_pid() cannot be used because it fails
         # if the process already exited
-        self.pid = self.subprocess.pid
+        self.pid = self._transport.get_extra_info('subprocess').pid
 
     @property
     def returncode(self):
