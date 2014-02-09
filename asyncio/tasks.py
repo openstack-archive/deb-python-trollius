@@ -280,7 +280,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
     if loop is None:
         loop = events.get_event_loop()
 
-    fs = {async(f, loop=loop) for f in set(fs)}
+    fs = set(async(f, loop=loop) for f in set(fs))
 
     if return_when not in (FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED):
         raise ValueError('Invalid return_when value: {0}'.format(return_when))
@@ -392,7 +392,7 @@ def as_completed(fs, loop=None, timeout=None):
     """
     loop = loop if loop is not None else events.get_event_loop()
     deadline = None if timeout is None else loop.time() + timeout
-    todo = {async(f, loop=loop) for f in set(fs)}
+    todo = set(async(f, loop=loop) for f in set(fs))
     completed = collections.deque()
 
     @coroutine

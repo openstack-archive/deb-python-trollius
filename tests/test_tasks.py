@@ -514,7 +514,7 @@ class TaskTests(test_utils.TestCase):
         done, pending = self.loop.run_until_complete(task)
 
         self.assertFalse(pending)
-        self.assertEqual(set(f.result() for f in done), {'test', 'spam'})
+        self.assertEqual(set(f.result() for f in done), set(('test', 'spam')))
 
     def test_wait_errors(self):
         self.assertRaises(
@@ -877,14 +877,14 @@ class TaskTests(test_utils.TestCase):
         def runner():
             result = []
             c = coro('ham')
-            for f in asyncio.as_completed({c, c, coro('spam')}, loop=self.loop):
+            for f in asyncio.as_completed(set((c, c, coro('spam'))), loop=self.loop):
                 result.append((yield f))
             raise asyncio.Return(result)
 
         fut = asyncio.Task(runner(), loop=self.loop)
         self.loop.run_until_complete(fut)
         result = fut.result()
-        self.assertEqual(set(result), {'ham', 'spam'})
+        self.assertEqual(set(result), set(('ham', 'spam')))
         self.assertEqual(len(result), 2)
 
     def test_sleep(self):
