@@ -120,6 +120,27 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Development version
+
+- Merge with Tulip:
+
+  * New asyncio.subprocess module
+  * _UnixWritePipeTransport now also supports character devices, as
+    _UnixReadPipeTransport. Patch written by Jonathan Slenders.
+  * StreamReader.readexactly() now raises an IncompleteReadError if the
+    end of stream is reached before we received enough bytes, instead of
+    returning less bytes than requested.
+  * poll and epoll selectors now round the timeout away from zero (instead of
+    rounding towards zero) to fix a performance issue
+  * asyncio.queue: Empty renamed to QueueEmpty, Full to QueueFull
+  * _fatal_error() of _UnixWritePipeTransport and _ProactorBasePipeTransport
+    don't log BrokenPipeError nor ConnectionResetError
+  * Future.set_exception(exc) now instanciate exc if it is a class
+  * streams.StreamReader: Use bytearray instead of deque of bytes for internal
+    buffer
+
+- Fix test_wait_for() unit test
+
 2014-01-22: version 0.1.4
 
 - The project moved to https://bitbucket.org/enovance/trollius
