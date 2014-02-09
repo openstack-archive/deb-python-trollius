@@ -1178,11 +1178,11 @@ class EventLoopTestsMixin(object):
             yield asyncio.sleep(1e-4, loop=loop)
 
         self.loop.run_until_complete(wait())
-        # The ideal number of call is 6, but on some platforms, the selector
+        # The ideal number of call is 10, but on some platforms, the selector
         # may sleep at little bit less than timeout depending on the resolution
         # of the clock used by the kernel. Tolerate 2 useless calls on these
         # platforms.
-        self.assertLessEqual(self.loop._run_once_counter, 8)
+        self.assertLessEqual(self.loop._run_once_counter, 12)
 
 
 class SubprocessTestsMixin(object):
