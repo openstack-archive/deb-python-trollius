@@ -10,6 +10,7 @@ from . import futures
 from . import protocols
 from . import streams
 from . import tasks
+from .py33_exceptions import ProcessLookupError
 
 
 PIPE = subprocess.PIPE

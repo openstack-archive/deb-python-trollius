@@ -21,6 +21,7 @@ if PY33:
     ConnectionAbortedError = builtins.ConnectionAbortedError
     PermissionError = builtins.PermissionError
     FileNotFoundError = builtins.FileNotFoundError
+    ProcessLookupError = builtins.ProcessLookupError
 
 else:
     # Python < 3.3
@@ -51,6 +52,9 @@ else:
     class FileNotFoundError(OSError):
         pass
 
+    class ProcessLookupError(OSError):
+        pass
+
 
 _MAP_ERRNO = {
     errno.EACCES: PermissionError,
@@ -67,6 +71,7 @@ _MAP_ERRNO = {
     errno.EPIPE: BrokenPipeError,
     errno.ESHUTDOWN: BrokenPipeError,
     errno.EWOULDBLOCK: BlockingIOError,
+    errno.ESRCH: ProcessLookupError,
 }
 
 if sys.platform == 'win32':

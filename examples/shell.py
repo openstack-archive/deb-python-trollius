@@ -4,6 +4,7 @@ import logging; logging.basicConfig()
 import asyncio
 import signal
 from asyncio.subprocess import PIPE
+from asyncio.py33_exceptions import ProcessLookupError
 
 @asyncio.coroutine
 def cat(loop):
