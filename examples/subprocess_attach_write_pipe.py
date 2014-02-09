@@ -26,9 +26,9 @@ def task():
         kwargs['pass_fds'] = (rfd,)
     proc = yield asyncio.create_subprocess_exec(*args, **kwargs)
 
-    pipe = open(wfd, 'wb', 0)
+    pipe = os.fdopen(wfd, 'wb', 0)
     transport, _ = yield loop.connect_write_pipe(asyncio.Protocol,
-                                                      pipe)
+                                                 pipe)
     transport.write(b'data')
 
     stdout, stderr = yield proc.communicate()

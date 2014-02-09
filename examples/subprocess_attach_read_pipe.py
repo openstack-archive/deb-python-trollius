@@ -18,12 +18,15 @@ def task():
     rfd, wfd = os.pipe()
     args = [sys.executable, '-c', code, str(wfd)]
 
-    pipe = open(rfd, 'rb', 0)
+    pipe = os.fdopen(rfd, 'rb', 0)
     reader = asyncio.StreamReader(loop=loop)
     protocol = asyncio.StreamReaderProtocol(reader, loop=loop)
     transport, _ = yield loop.connect_read_pipe(lambda: protocol, pipe)
 
-    proc = yield asyncio.create_subprocess_exec(*args, pass_fds={wfd})
+    kwds = {}
+    if sys.version_info >= (3, 2):
+        kwds['pass_fds'] = (wfd,)
+    proc = yield asyncio.create_subprocess_exec(*args, **kwds)
     yield proc.wait()
 
     os.close(wfd)
