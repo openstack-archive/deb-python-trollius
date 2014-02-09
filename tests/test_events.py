@@ -1079,8 +1079,8 @@ class EventLoopTestsMixin(object):
         self.loop.run_until_complete(non_local['proto'].done)
         self.assertEqual('CLOSED', non_local['proto'].state)
 
-    @unittest.skipUnless(sys.platform != 'win32',
-                         "Don't support pipes for Windows")
+    @test_utils.skipUnless(sys.platform != 'win32',
+                           "Don't support pipes for Windows")
     # select, poll and kqueue don't support character devices (PTY) on Mac OS X
     # older than 10.6 (Snow Leopard)
     @support.requires_mac_ver(10, 6)
