@@ -121,7 +121,7 @@ class SubprocessMixin:
         else:
             self.assertEqual(-signal.SIGTERM, returncode)
 
-    @unittest.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
+    @test_utils.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
     def test_send_signal(self):
         args = PROGRAM_BLOCKED
         create = asyncio.create_subprocess_exec(*args, loop=self.loop)
@@ -182,14 +182,14 @@ if sys.platform != 'win32':
             self.loop.close()
             policy.set_event_loop(None)
 
-    class SubprocessSafeWatcherTests(SubprocessWatcherMixin, unittest.TestCase):
+    class SubprocessSafeWatcherTests(SubprocessWatcherMixin, test_utils.TestCase):
         Watcher = unix_events.SafeChildWatcher
 
-    class SubprocessFastWatcherTests(SubprocessWatcherMixin, unittest.TestCase):
+    class SubprocessFastWatcherTests(SubprocessWatcherMixin, test_utils.TestCase):
         Watcher = unix_events.FastChildWatcher
 else:
     # Windows
-    class SubprocessProactorTests(SubprocessMixin, unittest.TestCase):
+    class SubprocessProactorTests(SubprocessMixin, test_utils.TestCase):
         def setUp(self):
             policy = asyncio.get_event_loop_policy()
             self.loop = asyncio.ProactorEventLoop()

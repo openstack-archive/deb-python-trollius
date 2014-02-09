@@ -25,6 +25,7 @@ from .py33_exceptions import (
     reraise, wrap_error,
     BlockingIOError, BrokenPipeError, ConnectionResetError,
     InterruptedError, ChildProcessError)
+from .compat import flatten_bytes
 
 
 __all__ = ['SelectorEventLoop',
@@ -304,9 +305,7 @@ class _UnixWritePipeTransport(selector_events._FlowControlMixin,
             self._close()
 
     def write(self, data):
-        assert isinstance(data, (bytes, bytearray, memoryview)), repr(data)
-        if isinstance(data, bytearray):
-            data = memoryview(data)
+        data = flatten_bytes(data)
         if not data:
             return
 
