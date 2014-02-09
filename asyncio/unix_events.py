@@ -181,6 +181,15 @@ def _set_nonblocking(fd):
     flags = flags | os.O_NONBLOCK
     fcntl.fcntl(fd, fcntl.F_SETFL, flags)
 
+def _set_cloexec_flag(fd, cloexec):
+    cloexec_flag = getattr(fcntl, 'FD_CLOEXEC', 1)
+
+    old = fcntl.fcntl(fd, fcntl.F_GETFD)
+    if cloexec:
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | cloexec_flag)
+    else:
+        fcntl.fcntl(fd, fcntl.F_SETFD, old & ~cloexec_flag)
+
 
 class _UnixReadPipeTransport(transports.ReadTransport):
 
@@ -413,6 +422,7 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             # other end).  Notably this is needed on AIX, and works
             # just fine on other platforms.
             stdin, stdin_w = self._loop._socketpair()
+            _set_cloexec_flag(stdin_w.fileno(), True)
         self._proc = subprocess.Popen(
             args, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr,
             universal_newlines=False, bufsize=bufsize, **kwargs)
