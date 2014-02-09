@@ -325,7 +325,7 @@ class IocpProactor(object):
         else:
             # RegisterWaitForSingleObject() has a resolution of 1 millisecond,
             # round away from zero to wait *at least* timeout seconds.
-            ms = math.ceil(timeout * 1e3)
+            ms = int(math.ceil(timeout * 1e3))
 
         # We only create ov so we can use ov.address as a key for the cache.
         ov = _overlapped.Overlapped(NULL)
@@ -398,7 +398,7 @@ class IocpProactor(object):
         else:
             # GetQueuedCompletionStatus() has a resolution of 1 millisecond,
             # round away from zero to wait *at least* timeout seconds.
-            ms = math.ceil(timeout * 1e3)
+            ms = int(math.ceil(timeout * 1e3))
             if ms >= INFINITE:
                 raise ValueError("timeout too big")
         while True:

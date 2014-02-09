@@ -368,7 +368,7 @@ if hasattr(select, 'poll'):
             else:
                 # poll() has a resolution of 1 millisecond, round away from
                 # zero to wait *at least* timeout seconds.
-                timeout = math.ceil(timeout * 1e3)
+                timeout = int(math.ceil(timeout * 1e3))
             ready = []
             try:
                 fd_event_list = wrap_error(self._poll.poll, timeout)
