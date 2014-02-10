@@ -1,4 +1,4 @@
-python-trollius (0.1.4-1) unstable; urgency=low
+python-trollius (0.1.4+20140210+git+6f1f9233b1-1) unstable; urgency=low
 
   * Initial release. (Closes: #738511)
 
