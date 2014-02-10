@@ -422,26 +422,6 @@ class Response:
         return default
 
     @asyncio.coroutine
-    def readexactly(self, nbytes):
-        """Wrapper for readexactly() that raise EOFError if not enough data.
-
-        This also logs (at the vvv level) while it is reading.
-        """
-        blocks = []
-        nread = 0
-        while nread < nbytes:
-            self.log(3, 'reading block', len(blocks),
-                     'with', nbytes - nread, 'bytes remaining')
-            block = yield self.reader.read(nbytes-nread)
-            self.log(3, 'read', len(block), 'bytes')
-            if not block:
-                raise EOFError('EOF with %d more bytes expected' %
-                               (nbytes - nread))
-            blocks.append(block)
-            nread += len(block)
-        raise asyncio.Return(b''.join(blocks))
-
-    @asyncio.coroutine
     def read(self):
         """Read the response body.
 
@@ -466,7 +446,7 @@ class Response:
                     size = int(parts[0], 16)
                     if size:
                         self.log(3, 'reading chunk of', size, 'bytes')
-                        block = yield self.readexactly(size)
+                        block = yield self.reader.readexactly(size)
                         assert len(block) == size, (len(block), size)
                         blocks.append(block)
                     crlf = yield self.reader.readline()
@@ -482,7 +462,7 @@ class Response:
                 # TODO: Should make sure not to recycle the connection
                 # in this case.
         else:
-            body = yield self.readexactly(nbytes)
+            body = yield self.reader.readexactly(nbytes)
         raise asyncio.Return(body)
 
 
@@ -885,6 +865,7 @@ def main():
     finally:
         crawler.report()
         crawler.close()
+        loop.close()
 
 
 if __name__ == '__main__':

@@ -7,10 +7,7 @@ except ImportError:
 import threading
 import unittest
 
-from asyncio import executor
-from asyncio import events
-from asyncio import futures
-from asyncio import tasks
+import asyncio
 from asyncio import test_utils
 from asyncio.test_utils import mock
 
@@ -26,13 +23,13 @@ class FutureTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
-        events.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()
 
     def test_initial_state(self):
-        f = futures.Future(loop=self.loop)
+        f = asyncio.Future(loop=self.loop)
         self.assertFalse(f.cancelled())
         self.assertFalse(f.done())
         f.cancel()
@@ -40,77 +37,82 @@ class FutureTests(test_utils.TestCase):
 
     def test_init_constructor_default_loop(self):
         try:
-            events.set_event_loop(self.loop)
-            f = futures.Future()
+            asyncio.set_event_loop(self.loop)
+            f = asyncio.Future()
             self.assertIs(f._loop, self.loop)
         finally:
-            events.set_event_loop(None)
+            asyncio.set_event_loop(None)
 
     def test_cancel(self):
-        f = futures.Future(loop=self.loop)
+        f = asyncio.Future(loop=self.loop)
         self.assertTrue(f.cancel())
         self.assertTrue(f.cancelled())
         self.assertTrue(f.done())
-        self.assertRaises(futures.CancelledError, f.result)
-        self.assertRaises(futures.CancelledError, f.exception)
-        self.assertRaises(futures.InvalidStateError, f.set_result, None)
-        self.assertRaises(futures.InvalidStateError, f.set_exception, None)
+        self.assertRaises(asyncio.CancelledError, f.result)
+        self.assertRaises(asyncio.CancelledError, f.exception)
+        self.assertRaises(asyncio.InvalidStateError, f.set_result, None)
+        self.assertRaises(asyncio.InvalidStateError, f.set_exception, None)
         self.assertFalse(f.cancel())
 
     def test_result(self):
-        f = futures.Future(loop=self.loop)
-        self.assertRaises(futures.InvalidStateError, f.result)
+        f = asyncio.Future(loop=self.loop)
+        self.assertRaises(asyncio.InvalidStateError, f.result)
 
         f.set_result(42)
         self.assertFalse(f.cancelled())
         self.assertTrue(f.done())
         self.assertEqual(f.result(), 42)
         self.assertEqual(f.exception(), None)
-        self.assertRaises(futures.InvalidStateError, f.set_result, None)
-        self.assertRaises(futures.InvalidStateError, f.set_exception, None)
+        self.assertRaises(asyncio.InvalidStateError, f.set_result, None)
+        self.assertRaises(asyncio.InvalidStateError, f.set_exception, None)
         self.assertFalse(f.cancel())
 
     def test_exception(self):
         exc = RuntimeError()
-        f = futures.Future(loop=self.loop)
-        self.assertRaises(futures.InvalidStateError, f.exception)
+        f = asyncio.Future(loop=self.loop)
+        self.assertRaises(asyncio.InvalidStateError, f.exception)
 
         f.set_exception(exc)
         self.assertFalse(f.cancelled())
         self.assertTrue(f.done())
         self.assertRaises(RuntimeError, f.result)
         self.assertEqual(f.exception(), exc)
-        self.assertRaises(futures.InvalidStateError, f.set_result, None)
-        self.assertRaises(futures.InvalidStateError, f.set_exception, None)
+        self.assertRaises(asyncio.InvalidStateError, f.set_result, None)
+        self.assertRaises(asyncio.InvalidStateError, f.set_exception, None)
         self.assertFalse(f.cancel())
 
+    def test_exception_class(self):
+        f = asyncio.Future(loop=self.loop)
+        f.set_exception(RuntimeError)
+        self.assertIsInstance(f.exception(), RuntimeError)
+
     def test_repr(self):
-        f_pending = futures.Future(loop=self.loop)
+        f_pending = asyncio.Future(loop=self.loop)
         self.assertEqual(repr(f_pending), 'Future<PENDING>')
         f_pending.cancel()
 
-        f_cancelled = futures.Future(loop=self.loop)
+        f_cancelled = asyncio.Future(loop=self.loop)
         f_cancelled.cancel()
         self.assertEqual(repr(f_cancelled), 'Future<CANCELLED>')
 
-        f_result = futures.Future(loop=self.loop)
+        f_result = asyncio.Future(loop=self.loop)
         f_result.set_result(4)
         self.assertEqual(repr(f_result), 'Future<result=4>')
         self.assertEqual(f_result.result(), 4)
 
         exc = RuntimeError()
-        f_exception = futures.Future(loop=self.loop)
+        f_exception = asyncio.Future(loop=self.loop)
         f_exception.set_exception(exc)
         self.assertEqual(repr(f_exception), 'Future<exception=RuntimeError()>')
         self.assertIs(f_exception.exception(), exc)
 
-        f_few_callbacks = futures.Future(loop=self.loop)
+        f_few_callbacks = asyncio.Future(loop=self.loop)
         f_few_callbacks.add_done_callback(_fakefunc)
         self.assertIn('Future<PENDING, [<function _fakefunc',
                       repr(f_few_callbacks))
         f_few_callbacks.cancel()
 
-        f_many_callbacks = futures.Future(loop=self.loop)
+        f_many_callbacks = asyncio.Future(loop=self.loop)
         for i in range(20):
             f_many_callbacks.add_done_callback(_fakefunc)
         r = repr(f_many_callbacks)
@@ -121,45 +123,45 @@ class FutureTests(test_utils.TestCase):
     def test_copy_state(self):
         # Test the internal _copy_state method since it's being directly
         # invoked in other modules.
-        f = futures.Future(loop=self.loop)
+        f = asyncio.Future(loop=self.loop)
         f.set_result(10)
 
-        newf = futures.Future(loop=self.loop)
+        newf = asyncio.Future(loop=self.loop)
         newf._copy_state(f)
         self.assertTrue(newf.done())
         self.assertEqual(newf.result(), 10)
 
-        f_exception = futures.Future(loop=self.loop)
+        f_exception = asyncio.Future(loop=self.loop)
         f_exception.set_exception(RuntimeError())
 
-        newf_exception = futures.Future(loop=self.loop)
+        newf_exception = asyncio.Future(loop=self.loop)
         newf_exception._copy_state(f_exception)
         self.assertTrue(newf_exception.done())
         self.assertRaises(RuntimeError, newf_exception.result)
 
-        f_cancelled = futures.Future(loop=self.loop)
+        f_cancelled = asyncio.Future(loop=self.loop)
         f_cancelled.cancel()
 
-        newf_cancelled = futures.Future(loop=self.loop)
+        newf_cancelled = asyncio.Future(loop=self.loop)
         newf_cancelled._copy_state(f_cancelled)
         self.assertTrue(newf_cancelled.cancelled())
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_abandoned(self, m_log):
-        fut = futures.Future(loop=self.loop)
+        fut = asyncio.Future(loop=self.loop)
         del fut
         self.assertFalse(m_log.error.called)
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_result_unretrieved(self, m_log):
-        fut = futures.Future(loop=self.loop)
+        fut = asyncio.Future(loop=self.loop)
         fut.set_result(42)
         del fut
         self.assertFalse(m_log.error.called)
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_result_retrieved(self, m_log):
-        fut = futures.Future(loop=self.loop)
+        fut = asyncio.Future(loop=self.loop)
         fut.set_result(42)
         fut.result()
         del fut
@@ -167,7 +169,7 @@ class FutureTests(test_utils.TestCase):
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_exception_unretrieved(self, m_log):
-        fut = futures.Future(loop=self.loop)
+        fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
         del fut
         test_utils.run_briefly(self.loop)
@@ -175,7 +177,7 @@ class FutureTests(test_utils.TestCase):
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_exception_retrieved(self, m_log):
-        fut = futures.Future(loop=self.loop)
+        fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
         fut.exception()
         del fut
@@ -183,7 +185,7 @@ class FutureTests(test_utils.TestCase):
 
     @mock.patch('asyncio.futures.logger')
     def test_tb_logger_exception_result_retrieved(self, m_log):
-        fut = futures.Future(loop=self.loop)
+        fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
         self.assertRaises(RuntimeError, fut.result)
         del fut
@@ -196,15 +198,15 @@ class FutureTests(test_utils.TestCase):
             return (arg, get_thread_ident())
         ex = concurrent.futures.ThreadPoolExecutor(1)
         f1 = ex.submit(run, 'oi')
-        f2 = futures.wrap_future(f1, loop=self.loop)
+        f2 = asyncio.wrap_future(f1, loop=self.loop)
         res, ident = self.loop.run_until_complete(f2)
-        self.assertIsInstance(f2, futures.Future)
+        self.assertIsInstance(f2, asyncio.Future)
         self.assertEqual(res, 'oi')
         self.assertNotEqual(ident, get_thread_ident())
 
     def test_wrap_future_future(self):
-        f1 = futures.Future(loop=self.loop)
-        f2 = futures.wrap_future(f1)
+        f1 = asyncio.Future(loop=self.loop)
+        f2 = asyncio.wrap_future(f1)
         self.assertIs(f1, f2)
 
     @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
@@ -214,13 +216,13 @@ class FutureTests(test_utils.TestCase):
             return (arg, get_thread_ident())
         ex = concurrent.futures.ThreadPoolExecutor(1)
         f1 = ex.submit(run, 'oi')
-        f2 = futures.wrap_future(f1)
+        f2 = asyncio.wrap_future(f1)
         self.assertIs(m_events.get_event_loop.return_value, f2._loop)
 
     @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel(self):
         f1 = concurrent.futures.Future()
-        f2 = futures.wrap_future(f1, loop=self.loop)
+        f2 = asyncio.wrap_future(f1, loop=self.loop)
         f2.cancel()
         test_utils.run_briefly(self.loop)
         self.assertTrue(f1.cancelled())
@@ -229,7 +231,7 @@ class FutureTests(test_utils.TestCase):
     @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel2(self):
         f1 = concurrent.futures.Future()
-        f2 = futures.wrap_future(f1, loop=self.loop)
+        f2 = asyncio.wrap_future(f1, loop=self.loop)
         f1.set_result(42)
         f2.cancel()
         test_utils.run_briefly(self.loop)
@@ -242,7 +244,7 @@ class FutureDoneCallbackTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = test_utils.TestLoop()
-        events.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()
@@ -257,7 +259,7 @@ class FutureDoneCallbackTests(test_utils.TestCase):
         return bag_appender
 
     def _new_future(self):
-        return futures.Future(loop=self.loop)
+        return asyncio.Future(loop=self.loop)
 
     def test_callbacks_invoked_on_set_result(self):
         bag = []

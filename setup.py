@@ -1,4 +1,5 @@
 # Release procedure:
+#  - run maybe update_tulip.sh
 #  - run unit tests with concurrent.futures
 #  - run unit tests without concurrent.futures
 #  - run unit tests without ssl: set sys.modules['ssl']=None at startup
@@ -47,7 +48,7 @@ install_options = {
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',
 
-    "description": "Experimental port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
+    "description": "Port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
     "long_description": long_description,
     "url": "https://bitbucket.org/enovance/trollius/",
 

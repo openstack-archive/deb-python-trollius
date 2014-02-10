@@ -33,7 +33,7 @@ from . import futures
 from . import tasks
 from .executor import get_default_executor
 from .log import logger
-from .time_monotonic import time_monotonic
+from .time_monotonic import time_monotonic, time_monotonic_resolution
 
 
 __all__ = ['BaseEventLoop', 'Server']
@@ -553,9 +553,14 @@ class BaseEventLoop(events.AbstractEventLoop):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=False, shell=True, bufsize=0,
                          **kwargs):
-        assert not universal_newlines, "universal_newlines must be False"
-        assert shell, "shell must be True"
-        assert isinstance(cmd, str), cmd
+        if not isinstance(cmd, str):
+            raise ValueError("cmd must be a string")
+        if universal_newlines:
+            raise ValueError("universal_newlines must be False")
+        if not shell:
+            raise ValueError("shell must be True")
+        if bufsize != 0:
+            raise ValueError("bufsize must be 0")
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
             protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs)
@@ -569,11 +574,12 @@ class BaseEventLoop(events.AbstractEventLoop):
         universal_newlines = kwargs.pop('universal_newlines', False)
         shell = kwargs.pop('shell', False)
         bufsize = kwargs.pop('bufsize', 0)
-        if kwargs:
-            raise TypeError("unexpected keyword")
-
-        assert not universal_newlines, "universal_newlines must be False"
-        assert not shell, "shell must be False"
+        if universal_newlines:
+            raise ValueError("universal_newlines must be False")
+        if shell:
+            raise ValueError("shell must be False")
+        if bufsize != 0:
+            raise ValueError("bufsize must be 0")
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
             protocol, args, False, stdin, stdout, stderr, bufsize, **kwargs)

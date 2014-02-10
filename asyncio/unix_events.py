@@ -1,4 +1,6 @@
 """Selector eventloop for Unix with signal handling."""
+from __future__ import absolute_import
+
 
 import errno
 import fcntl
@@ -21,18 +23,15 @@ from . import transports
 from .log import logger
 from .py33_exceptions import (
     reraise, wrap_error,
-    BlockingIOError, InterruptedError, ChildProcessError)
+    BlockingIOError, BrokenPipeError, ConnectionResetError,
+    InterruptedError, ChildProcessError)
+from .compat import flatten_bytes
 
 
-__all__ = ['SelectorEventLoop', 'STDIN', 'STDOUT', 'STDERR',
+__all__ = ['SelectorEventLoop',
            'AbstractChildWatcher', 'SafeChildWatcher',
            'FastChildWatcher', 'DefaultEventLoopPolicy',
            ]
-
-STDIN = 0
-STDOUT = 1
-STDERR = 2
-
 
 if sys.platform == 'win32':  # pragma: no cover
     raise ImportError('Signals are not really supported on Windows')
@@ -167,7 +166,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         with events.get_child_watcher() as watcher:
             transp = _UnixSubprocessTransport(self, protocol, args, shell,
                                               stdin, stdout, stderr, bufsize,
-                                              extra=None, **kwargs)
+                                              extra=extra, **kwargs)
             yield transp._post_init()
             watcher.add_child_handler(transp.get_pid(),
                                       self._child_watcher_callback, transp)
@@ -177,14 +176,20 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
     def _child_watcher_callback(self, pid, returncode, transp):
         self.call_soon_threadsafe(transp._process_exited, returncode)
 
-    def _subprocess_closed(self, transp):
-        pass
-
 
 def _set_nonblocking(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     flags = flags | os.O_NONBLOCK
     fcntl.fcntl(fd, fcntl.F_SETFL, flags)
+
+def _set_cloexec_flag(fd, cloexec):
+    cloexec_flag = getattr(fcntl, 'FD_CLOEXEC', 1)
+
+    old = fcntl.fcntl(fd, fcntl.F_GETFD)
+    if cloexec:
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | cloexec_flag)
+    else:
+        fcntl.fcntl(fd, fcntl.F_SETFD, old & ~cloexec_flag)
 
 
 class _UnixReadPipeTransport(transports.ReadTransport):
@@ -257,7 +262,8 @@ class _UnixReadPipeTransport(transports.ReadTransport):
             self._loop = None
 
 
-class _UnixWritePipeTransport(transports.WriteTransport):
+class _UnixWritePipeTransport(selector_events._FlowControlMixin,
+                              transports.WriteTransport):
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
         super(_UnixWritePipeTransport, self).__init__(extra)
@@ -267,9 +273,11 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         self._fileno = pipe.fileno()
         mode = os.fstat(self._fileno).st_mode
         is_socket = stat.S_ISSOCK(mode)
-        is_pipe = stat.S_ISFIFO(mode)
-        if not (is_socket or is_pipe):
-            raise ValueError("Pipe transport is for pipes/sockets only.")
+        if not (is_socket or
+                stat.S_ISFIFO(mode) or
+                stat.S_ISCHR(mode)):
+            raise ValueError("Pipe transport is only for "
+                             "pipes, sockets and character devices")
         _set_nonblocking(self._fileno)
         self._protocol = protocol
         self._buffer = []
@@ -286,12 +294,18 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         if waiter is not None:
             self._loop.call_soon(waiter.set_result, None)
 
+    def get_write_buffer_size(self):
+        return sum(len(data) for data in self._buffer)
+
     def _read_ready(self):
         # Pipe was closed by peer.
-        self._close()
+        if self._buffer:
+            self._close(BrokenPipeError())
+        else:
+            self._close()
 
     def write(self, data):
-        assert isinstance(data, bytes), repr(data)
+        data = flatten_bytes(data)
         if not data:
             return
 
@@ -319,6 +333,7 @@ class _UnixWritePipeTransport(transports.WriteTransport):
             self._loop.add_writer(self._fileno, self._write_ready)
 
         self._buffer.append(data)
+        self._maybe_pause_protocol()
 
     def _write_ready(self):
         data = b''.join(self._buffer)
@@ -338,7 +353,8 @@ class _UnixWritePipeTransport(transports.WriteTransport):
         else:
             if n == len(data):
                 self._loop.remove_writer(self._fileno)
-                if self._closing:
+                self._maybe_resume_protocol()  # May append to buffer.
+                if not self._buffer and self._closing:
                     self._loop.remove_reader(self._fileno)
                     self._call_connection_lost(None)
                 return
@@ -372,7 +388,8 @@ class _UnixWritePipeTransport(transports.WriteTransport):
 
     def _fatal_error(self, exc):
         # should be called by exception handler only
-        logger.exception('Fatal error for %s', self)
+        if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+            logger.exception('Fatal error for %s', self)
         self._close(exc)
 
     def _close(self, exc=None):
@@ -404,6 +421,7 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             # other end).  Notably this is needed on AIX, and works
             # just fine on other platforms.
             stdin, stdin_w = self._loop._socketpair()
+            _set_cloexec_flag(stdin_w.fileno(), True)
         self._proc = subprocess.Popen(
             args, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr,
             universal_newlines=False, bufsize=bufsize, **kwargs)
@@ -655,22 +673,16 @@ class FastChildWatcher(BaseChildWatcher):
 
     def add_child_handler(self, pid, callback, *args):
         assert self._forks, "Must use the context manager"
+        with self._lock:
+            try:
+                returncode = self._zombies.pop(pid)
+            except KeyError:
+                # The child is running.
+                self._callbacks[pid] = callback, args
+                return
 
-        self._callbacks[pid] = callback, args
-
-        try:
-            # Ensure that the child is not already terminated.
-            # (raise KeyError if still alive)
-            returncode = self._zombies.pop(pid)
-
-            # Child is dead, therefore we can fire the callback immediately.
-            # First we remove it from the dict.
-            # (raise KeyError if .remove_child_handler() was called in-between)
-            del self._callbacks[pid]
-        except KeyError:
-            pass
-        else:
-            callback(pid, returncode, *args)
+        # The child is dead already. We can fire the callback.
+        callback(pid, returncode, *args)
 
     def remove_child_handler(self, pid):
         try:
@@ -695,16 +707,18 @@ class FastChildWatcher(BaseChildWatcher):
 
                 returncode = self._compute_returncode(status)
 
-            try:
-                callback, args = self._callbacks.pop(pid)
-            except KeyError:
-                # unknown child
-                with self._lock:
+            with self._lock:
+                try:
+                    callback, args = self._callbacks.pop(pid)
+                except KeyError:
+                    # unknown child
                     if self._forks:
                         # It may not be registered yet.
                         self._zombies[pid] = returncode
                         continue
+                    callback = None
 
+            if callback is None:
                 logger.warning(
                     "Caught subprocess termination from unknown pid: "
                     "%d -> %d", pid, returncode)

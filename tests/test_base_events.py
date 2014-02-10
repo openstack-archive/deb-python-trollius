@@ -5,13 +5,10 @@ import logging
 import socket
 import unittest
 
+import asyncio
 from asyncio import Return
 from asyncio import base_events
 from asyncio import constants
-from asyncio import events
-from asyncio import futures
-from asyncio import protocols
-from asyncio import tasks
 from asyncio import test_utils
 from asyncio.py33_exceptions import BlockingIOError
 from asyncio.test_utils import mock
@@ -24,7 +21,7 @@ class BaseEventLoopTests(test_utils.TestCase):
     def setUp(self):
         self.loop = base_events.BaseEventLoop()
         self.loop._selector = mock.Mock()
-        events.set_event_loop(None)
+        asyncio.set_event_loop(None)
 
     def test_not_implemented(self):
         m = mock.Mock()
@@ -53,20 +50,20 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.assertRaises(NotImplementedError, next, iter(gen))
 
     def test__add_callback_handle(self):
-        h = events.Handle(lambda: False, ())
+        h = asyncio.Handle(lambda: False, ())
 
         self.loop._add_callback(h)
         self.assertFalse(self.loop._scheduled)
         self.assertIn(h, self.loop._ready)
 
     def test__add_callback_timer(self):
-        h = events.TimerHandle(time_monotonic()+10, lambda: False, ())
+        h = asyncio.TimerHandle(time_monotonic()+10, lambda: False, ())
 
         self.loop._add_callback(h)
         self.assertIn(h, self.loop._scheduled)
 
     def test__add_callback_cancelled_handle(self):
-        h = events.Handle(lambda: False, ())
+        h = asyncio.Handle(lambda: False, ())
         h.cancel()
 
         self.loop._add_callback(h)
@@ -92,7 +89,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
         h = self.loop.call_soon(cb)
         self.assertEqual(h._callback, cb)
-        self.assertIsInstance(h, events.Handle)
+        self.assertIsInstance(h, asyncio.Handle)
         self.assertIn(h, self.loop._ready)
 
     def test_call_later(self):
@@ -100,7 +97,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             pass
 
         h = self.loop.call_later(10.0, cb)
-        self.assertIsInstance(h, events.TimerHandle)
+        self.assertIsInstance(h, asyncio.TimerHandle)
         self.assertIn(h, self.loop._scheduled)
         self.assertNotIn(h, self.loop._ready)
 
@@ -121,12 +118,19 @@ class BaseEventLoopTests(test_utils.TestCase):
             self.loop.stop()
 
         self.loop._process_events = mock.Mock()
-        when = self.loop.time() + 0.1
+        delay = 0.1
+
+        when = self.loop.time() + delay
         self.loop.call_at(when, cb)
         t0 = self.loop.time()
         self.loop.run_forever()
-        t1 = self.loop.time()
-        self.assertTrue(0.09 <= t1-t0 <= 0.9, t1-t0)
+        dt = self.loop.time() - t0
+
+        # 50 ms: maximum granularity of the event loop
+        self.assertGreaterEqual(dt, delay - 0.050, dt)
+        # tolerate a difference of +800 ms because some Python buildbots
+        # are really slow
+        self.assertLessEqual(dt, 0.9, dt)
 
     def test_run_once_in_executor_handle(self):
         def cb():
@@ -134,27 +138,27 @@ class BaseEventLoopTests(test_utils.TestCase):
 
         self.assertRaises(
             AssertionError, self.loop.run_in_executor,
-            None, events.Handle(cb, ()), ('',))
+            None, asyncio.Handle(cb, ()), ('',))
         self.assertRaises(
             AssertionError, self.loop.run_in_executor,
-            None, events.TimerHandle(10, cb, ()))
+            None, asyncio.TimerHandle(10, cb, ()))
 
     def test_run_once_in_executor_cancelled(self):
         def cb():
             pass
-        h = events.Handle(cb, ())
+        h = asyncio.Handle(cb, ())
         h.cancel()
 
         f = self.loop.run_in_executor(None, h)
-        self.assertIsInstance(f, futures.Future)
+        self.assertIsInstance(f, asyncio.Future)
         self.assertTrue(f.done())
         self.assertIsNone(f.result())
 
     def test_run_once_in_executor_plain(self):
         def cb():
             pass
-        h = events.Handle(cb, ())
-        f = futures.Future(loop=self.loop)
+        h = asyncio.Handle(cb, ())
+        f = asyncio.Future(loop=self.loop)
         executor = mock.Mock()
         executor.submit.return_value = f
 
@@ -172,8 +176,8 @@ class BaseEventLoopTests(test_utils.TestCase):
         f.cancel()  # Don't complain about abandoned Future.
 
     def test__run_once(self):
-        h1 = events.TimerHandle(time_monotonic() + 5.0, lambda: True, ())
-        h2 = events.TimerHandle(time_monotonic() + 10.0, lambda: True, ())
+        h1 = asyncio.TimerHandle(time_monotonic() + 5.0, lambda: True, ())
+        h2 = asyncio.TimerHandle(time_monotonic() + 10.0, lambda: True, ())
 
         h1.cancel()
 
@@ -189,7 +193,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
     @mock.patch('asyncio.base_events.time_monotonic')
     @mock.patch('asyncio.base_events.logger')
-    def test__run_once_logging(self, m_logging, m_time_monotonic):
+    def test__run_once_logging(self, m_logger, m_time_monotonic):
         # Log to INFO level if timeout > 1.0 sec.
         non_local = {
             'idx': -1,
@@ -201,20 +205,18 @@ class BaseEventLoopTests(test_utils.TestCase):
             return non_local['data'][non_local['idx']]
 
         m_time_monotonic.side_effect = time_monotonic
-        m_logging.INFO = logging.INFO
-        m_logging.DEBUG = logging.DEBUG
 
         self.loop._scheduled.append(
-            events.TimerHandle(11.0, lambda: True, ()))
+            asyncio.TimerHandle(11.0, lambda: True, ()))
         self.loop._process_events = mock.Mock()
         self.loop._run_once()
-        self.assertEqual(logging.INFO, m_logging.log.call_args[0][0])
+        self.assertEqual(logging.INFO, m_logger.log.call_args[0][0])
 
         non_local['idx'] = -1
         non_local['data'] = [10.0, 10.0, 10.3, 13.0]
-        self.loop._scheduled = [events.TimerHandle(11.0, lambda:True, ())]
+        self.loop._scheduled = [asyncio.TimerHandle(11.0, lambda:True, ())]
         self.loop._run_once()
-        self.assertEqual(logging.DEBUG, m_logging.log.call_args[0][0])
+        self.assertEqual(logging.DEBUG, m_logger.log.call_args[0][0])
 
     def test__run_once_schedule_handle(self):
         non_local = {'handle': None, 'processed': False}
@@ -223,7 +225,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             non_local['processed'] = True
             non_local['handle'] = loop.call_soon(lambda: True)
 
-        h = events.TimerHandle(time_monotonic() - 1, cb, (self.loop,))
+        h = asyncio.TimerHandle(time_monotonic() - 1, cb, (self.loop,))
 
         self.loop._process_events = mock.Mock()
         self.loop._scheduled.append(h)
@@ -237,14 +239,14 @@ class BaseEventLoopTests(test_utils.TestCase):
             TypeError, self.loop.run_until_complete, 'blah')
 
 
-class MyProto(protocols.Protocol):
+class MyProto(asyncio.Protocol):
     done = None
 
     def __init__(self, create_future=False):
         self.state = 'INITIAL'
         self.nbytes = 0
         if create_future:
-            self.done = futures.Future()
+            self.done = asyncio.Future()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -267,14 +269,14 @@ class MyProto(protocols.Protocol):
             self.done.set_result(None)
 
 
-class MyDatagramProto(protocols.DatagramProtocol):
+class MyDatagramProto(asyncio.DatagramProtocol):
     done = None
 
     def __init__(self, create_future=False):
         self.state = 'INITIAL'
         self.nbytes = 0
         if create_future:
-            self.done = futures.Future()
+            self.done = asyncio.Future()
 
     def connection_made(self, transport):
         self.transport = transport
@@ -298,8 +300,8 @@ class MyDatagramProto(protocols.DatagramProtocol):
 class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = events.new_event_loop()
-        events.set_event_loop(None)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(None)
 
     def tearDown(self):
         self.loop.close()
@@ -307,16 +309,16 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
     @mock.patch('asyncio.base_events.socket')
     def test_create_connection_multiple_errors(self, m_socket):
 
-        class MyProto(protocols.Protocol):
+        class MyProto(asyncio.Protocol):
             pass
 
-        @tasks.coroutine
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             raise Return([(2, 1, 6, '', ('107.6.106.82', 80)),
                           (2, 1, 6, '', ('107.6.106.82', 80))])
 
         def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
 
         non_local = {
             'idx': -1,
@@ -349,12 +351,12 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def test_create_connection_no_getaddrinfo(self):
         def getaddrinfo(*args, **kw):
-            fut = futures.Future(loop=self.loop)
+            fut = asyncio.Future(loop=self.loop)
             fut.set_result([])
             return fut
 
         self.loop.getaddrinfo = getaddrinfo
-        f = futures.Future(loop=self.loop)
+        f = asyncio.Future(loop=self.loop)
         f.set_result([])
 
         self.loop.getaddrinfo.return_value = f
@@ -364,7 +366,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def test_create_connection_connect_err(self):
         def getaddrinfo(*args, **kw):
-            fut = futures.Future(loop=self.loop)
+            fut = asyncio.Future(loop=self.loop)
             fut.set_result([(2, 1, 6, '', ('107.6.106.82', 80))])
             return fut
 
@@ -377,13 +379,13 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
             socket.error, self.loop.run_until_complete, coro)
 
     def test_create_connection_multiple(self):
-        @tasks.coroutine
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             return [(2, 1, 6, '', ('0.0.0.1', 80)),
                     (2, 1, 6, '', ('0.0.0.2', 80))]
 
         def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
 
         self.loop.getaddrinfo = getaddrinfo_task
         self.loop.sock_connect = mock.Mock()
@@ -406,13 +408,13 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         m_socket.error = socket.error
         m_socket.socket.return_value.bind = bind
 
-        @tasks.coroutine
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             return [(2, 1, 6, '', ('0.0.0.1', 80)),
                     (2, 1, 6, '', ('0.0.0.2', 80))]
 
         def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
 
         self.loop.getaddrinfo = getaddrinfo_task
         self.loop.sock_connect = mock.Mock()
@@ -428,7 +430,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertTrue(m_socket.socket.return_value.close.called)
 
     def test_create_connection_no_local_addr(self):
-        @tasks.coroutine
+        @asyncio.coroutine
         def getaddrinfo(host, *args, **kw):
             if host == 'example.com':
                 return [(2, 1, 6, '', ('107.6.106.82', 80)),
@@ -437,7 +439,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
                 return []
 
         def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
         self.loop.getaddrinfo = getaddrinfo_task
 
         coro = self.loop.create_connection(
@@ -450,14 +452,14 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop.getaddrinfo = mock.Mock()
 
         def mock_getaddrinfo(*args, **kwds):
-            f = futures.Future(loop=self.loop)
+            f = asyncio.Future(loop=self.loop)
             f.set_result([(socket.AF_INET, socket.SOCK_STREAM,
                            socket.SOL_TCP, '', ('1.2.3.4', 80))])
             return f
 
         self.loop.getaddrinfo.side_effect = mock_getaddrinfo
         self.loop.sock_connect = mock.Mock()
-        f = futures.Future(loop=self.loop)
+        f = asyncio.Future(loop=self.loop)
         f.set_result(())
         self.loop.sock_connect.return_value = f
         self.loop._make_ssl_transport = mock.Mock()
@@ -531,13 +533,13 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         # if host is empty string use None instead
         non_local = {'host': object()}
 
-        @tasks.coroutine
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             non_local['host'] = args[0]
             raise Return([])
 
         def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
 
         self.loop.getaddrinfo = getaddrinfo_task
         fut = self.loop.create_server(MyProto, '', 0)
@@ -554,12 +556,12 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(ValueError, self.loop.run_until_complete, fut)
 
     def test_create_server_no_getaddrinfo(self):
-        @tasks.coroutine
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             raise Return([])
 
         def getaddrinfo_task(*args, **kwds):
-            return tasks.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
 
         self.loop.getaddrinfo = getaddrinfo_task
 
@@ -607,7 +609,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop.sock_connect.side_effect = socket.error
 
         coro = self.loop.create_datagram_endpoint(
-            protocols.DatagramProtocol, remote_addr=('127.0.0.1', 0))
+            asyncio.DatagramProtocol, remote_addr=('127.0.0.1', 0))
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
 
@@ -618,19 +620,19 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         m_socket.socket.side_effect = socket.error
 
         coro = self.loop.create_datagram_endpoint(
-            protocols.DatagramProtocol, family=socket.AF_INET)
+            asyncio.DatagramProtocol, family=socket.AF_INET)
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
 
         coro = self.loop.create_datagram_endpoint(
-            protocols.DatagramProtocol, local_addr=('127.0.0.1', 0))
+            asyncio.DatagramProtocol, local_addr=('127.0.0.1', 0))
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
 
     @test_utils.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
     def test_create_datagram_endpoint_no_matching_family(self):
         coro = self.loop.create_datagram_endpoint(
-            protocols.DatagramProtocol,
+            asyncio.DatagramProtocol,
             remote_addr=('127.0.0.1', 0), local_addr=('::1', 0))
         self.assertRaises(
             ValueError, self.loop.run_until_complete, coro)
@@ -641,7 +643,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         m_socket.socket.return_value.setblocking.side_effect = socket.error
 
         coro = self.loop.create_datagram_endpoint(
-            protocols.DatagramProtocol, family=socket.AF_INET)
+            asyncio.DatagramProtocol, family=socket.AF_INET)
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
         self.assertTrue(
@@ -649,7 +651,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def test_create_datagram_endpoint_noaddr_nofamily(self):
         coro = self.loop.create_datagram_endpoint(
-            protocols.DatagramProtocol)
+            asyncio.DatagramProtocol)
         self.assertRaises(ValueError, self.loop.run_until_complete, coro)
 
     @mock.patch('asyncio.base_events.socket')

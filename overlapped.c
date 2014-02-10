@@ -57,9 +57,9 @@ typedef struct {
     /* Type of operation */
     DWORD type;
     union {
-        /* Buffer used for reading (optional) */
+        /* Buffer used for reading: TYPE_READ and TYPE_ACCEPT */
         PyObject *read_buffer;
-        /* Buffer used for writing (optional) */
+        /* Buffer used for writing: TYPE_WRITE */
         Py_buffer write_buffer;
     };
 } OverlappedObject;
@@ -588,13 +588,15 @@ Overlapped_dealloc(OverlappedObject *self)
     if (self->overlapped.hEvent != NULL)
         CloseHandle(self->overlapped.hEvent);
 
-    if (self->write_buffer.obj)
-        PyBuffer_Release(&self->write_buffer);
-
     switch (self->type) {
-        case TYPE_READ:
-        case TYPE_ACCEPT:
-            Py_CLEAR(self->read_buffer);
+    case TYPE_READ:
+    case TYPE_ACCEPT:
+        Py_CLEAR(self->read_buffer);
+        break;
+    case TYPE_WRITE:
+        if (self->write_buffer.obj)
+            PyBuffer_Release(&self->write_buffer);
+        break;
     }
     PyObject_Del(self);
     SetLastError(olderr);
@@ -668,7 +670,7 @@ Overlapped_getresult(OverlappedObject *self, PyObject *args)
         case ERROR_MORE_DATA:
             break;
         case ERROR_BROKEN_PIPE:
-            if (self->read_buffer != NULL)
+            if ((self->type == TYPE_READ || self->type == TYPE_ACCEPT) && self->read_buffer != NULL)
                 break;
             /* fall through */
         default:

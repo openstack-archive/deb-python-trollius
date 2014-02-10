@@ -49,6 +49,7 @@ Differences between Trollius and Tulip
 * If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
   uses a synchronous executor instead of a pool of threads. It blocks until the
   function returns, and so DNS resolutions are blocking.
+* asyncio.subprocess has no DEVNULL constant
 
 
 Usage
@@ -66,10 +67,10 @@ To run coverage (coverage package is required):
 On Windows, things are a little more complicated.  Assume 'P' is your
 Python binary (for example C:\Python33\python.exe).
 
-You must first build the _overlapped.pyd extension and have it placed
-in the asyncio directory, as follows:
+You must first build the _overlapped.pyd extension (it will be placed
+in the asyncio directory):
 
-    C> P setup.py build_ext --inplace
+    C> P setup.py build_ext
 
 Then you can run the tests as follows:
 
@@ -118,6 +119,27 @@ grow in heavy, wet clay soils.
 
 Change log
 ==========
+
+Development version
+
+- Merge with Tulip:
+
+  * New asyncio.subprocess module
+  * _UnixWritePipeTransport now also supports character devices, as
+    _UnixReadPipeTransport. Patch written by Jonathan Slenders.
+  * StreamReader.readexactly() now raises an IncompleteReadError if the
+    end of stream is reached before we received enough bytes, instead of
+    returning less bytes than requested.
+  * poll and epoll selectors now round the timeout away from zero (instead of
+    rounding towards zero) to fix a performance issue
+  * asyncio.queue: Empty renamed to QueueEmpty, Full to QueueFull
+  * _fatal_error() of _UnixWritePipeTransport and _ProactorBasePipeTransport
+    don't log BrokenPipeError nor ConnectionResetError
+  * Future.set_exception(exc) now instanciate exc if it is a class
+  * streams.StreamReader: Use bytearray instead of deque of bytes for internal
+    buffer
+
+- Fix test_wait_for() unit test
 
 2014-01-22: version 0.1.4
 

@@ -9,6 +9,36 @@ from . import futures
 from .coroutine import Return, coroutine
 
 
+class _ContextManager:
+    """Context manager.
+
+    This enables the following idiom for acquiring and releasing a
+    lock around a block:
+
+        with (yield from lock):
+            <block>
+
+    while failing loudly when accidentally using:
+
+        with lock:
+            <block>
+    """
+
+    def __init__(self, lock):
+        self._lock = lock
+
+    def __enter__(self):
+        # We have no use for the "as ..."  clause in the with
+        # statement for locks.
+        return None
+
+    def __exit__(self, *args):
+        try:
+            self._lock.release()
+        finally:
+            self._lock = None  # Crudely prevent reuse.
+
+
 class Lock(object):
     """Primitive lock objects.
 
@@ -91,14 +121,14 @@ class Lock(object):
         """
         if not self._waiters and not self._locked:
             self._locked = True
-            raise Return(True)
+            raise Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield fut
             self._locked = True
-            raise Return(True)
+            raise Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -124,13 +154,13 @@ class Lock(object):
             raise RuntimeError('Lock is not acquired.')
 
     def __enter__(self):
-        if not self._locked:
-            raise RuntimeError(
-                '"yield from" should be used as context manager expression')
-        return True
+        raise RuntimeError(
+            '"yield from" should be used as context manager expression')
 
     def __exit__(self, *args):
-        self.release()
+        # This must exist because __enter__ exists, even though that
+        # always raises; that's how the with-statement works.
+        pass
 
 
 class Event(object):
@@ -188,13 +218,13 @@ class Event(object):
         set() to set the flag to true, then return True.
         """
         if self._value:
-            raise Return(True)
+            raise Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield fut
-            raise Return(True)
+            raise Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -307,10 +337,11 @@ class Condition(object):
         self.notify(len(self._waiters))
 
     def __enter__(self):
-        return self._lock.__enter__()
+        raise RuntimeError(
+            '"yield from" should be used as context manager expression')
 
     def __exit__(self, *args):
-        return self._lock.__exit__(*args)
+        pass
 
 
 class Semaphore(object):
@@ -333,7 +364,6 @@ class Semaphore(object):
             raise ValueError("Semaphore initial value must be >= 0")
         self._value = value
         self._waiters = collections.deque()
-        self._locked = (value == 0)
         if loop is not None:
             self._loop = loop
         else:
@@ -341,7 +371,7 @@ class Semaphore(object):
 
     def __repr__(self):
         res = super(Semaphore, self).__repr__()
-        extra = 'locked' if self._locked else 'unlocked,value:{0}'.format(
+        extra = 'locked' if self.locked() else 'unlocked,value:{0}'.format(
             self._value)
         if self._waiters:
             extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
@@ -349,7 +379,7 @@ class Semaphore(object):
 
     def locked(self):
         """Returns True if semaphore can not be acquired immediately."""
-        return self._locked
+        return self._value == 0
 
     @coroutine
     def acquire(self):
@@ -363,18 +393,14 @@ class Semaphore(object):
         """
         if not self._waiters and self._value > 0:
             self._value -= 1
-            if self._value == 0:
-                self._locked = True
-            raise Return(True)
+            raise Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield fut
             self._value -= 1
-            if self._value == 0:
-                self._locked = True
-            raise Return(True)
+            raise Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -384,19 +410,17 @@ class Semaphore(object):
         become larger than zero again, wake up that coroutine.
         """
         self._value += 1
-        self._locked = False
         for waiter in self._waiters:
             if not waiter.done():
                 waiter.set_result(True)
                 break
 
     def __enter__(self):
-        # TODO: This is questionable.  How do we know the user actually
-        # wrote "with (yield sema)" instead of "with sema"?
-        return True
+        raise RuntimeError(
+            '"yield from" should be used as context manager expression')
 
     def __exit__(self, *args):
-        self.release()
+        pass
 
 
 class BoundedSemaphore(Semaphore):

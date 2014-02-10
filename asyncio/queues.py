@@ -1,15 +1,10 @@
 """Queues"""
 
 __all__ = ['Queue', 'PriorityQueue', 'LifoQueue', 'JoinableQueue',
-           'Full', 'Empty']
+           'QueueFull', 'QueueEmpty']
 
 import collections
 import heapq
-try:
-    import queue
-except ImportError:
-    # Python 2
-    import Queue as queue
 
 from . import events
 from . import futures
@@ -17,9 +12,14 @@ from . import locks
 from .tasks import coroutine, Return
 
 
-# Re-export queue.Full and .Empty exceptions.
-Full = queue.Full
-Empty = queue.Empty
+class QueueEmpty(Exception):
+    'Exception raised by Queue.get(block=0)/get_nowait().'
+    pass
+
+
+class QueueFull(Exception):
+    'Exception raised by Queue.put(block=0)/put_nowait().'
+    pass
 
 
 class Queue(object):
@@ -138,7 +138,7 @@ class Queue(object):
     def put_nowait(self, item):
         """Put an item into the queue without blocking.
 
-        If no free slot is immediately available, raise Full.
+        If no free slot is immediately available, raise QueueFull.
         """
         self._consume_done_getters()
         if self._getters:
@@ -153,7 +153,7 @@ class Queue(object):
             getter.set_result(self._get())
 
         elif self._maxsize > 0 and self._maxsize == self.qsize():
-            raise Full
+            raise QueueFull
         else:
             self._put(item)
 
@@ -189,7 +189,7 @@ class Queue(object):
     def get_nowait(self):
         """Remove and return an item from the queue.
 
-        Return an item if one is immediately available, else raise Empty.
+        Return an item if one is immediately available, else raise QueueEmpty.
         """
         self._consume_done_putters()
         if self._putters:
@@ -204,7 +204,7 @@ class Queue(object):
         elif self.qsize():
             return self._get()
         else:
-            raise Empty
+            raise QueueEmpty
 
 
 class PriorityQueue(Queue):

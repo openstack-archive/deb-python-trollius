@@ -1,9 +1,10 @@
-
+import functools
 import gc
+import os.path
+import platform
 import socket
 import sys
 import time
-import os.path
 
 # TEST_HOME_DIR refers to the top level directory of the "test" package
 # that contains Python's regression test suite
@@ -27,6 +28,14 @@ def _is_ipv6_enabled():
     return False
 
 IPV6_ENABLED = _is_ipv6_enabled()
+
+
+# A constant likely larger than the underlying OS pipe buffer size, to
+# make writes blocking.
+# Windows limit seems to be around 512 B, and many Unix kernels have a
+# 64 KiB pipe buffer size or 16 * PAGE_SIZE: take a few megs to be sure.
+# (see issue #17835 for a discussion of this number).
+PIPE_MAX_SIZE = 4 * 1024 * 1024 + 1
 
 
 class TestFailed(Exception):
@@ -58,7 +67,7 @@ def bind_port(sock, host="127.0.0.1"):
                 if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 1:
                     raise TestFailed("tests should never set the SO_REUSEPORT "   \
                                      "socket option on TCP/IP sockets!")
-            except OSError:
+            except EnvironmentError:
                 # Python's socket module was compiled using modern headers
                 # thus defining SO_REUSEPORT but this process is running
                 # under an older kernel that does not support SO_REUSEPORT.
@@ -152,3 +161,32 @@ def gc_collect():
         time.sleep(0.1)
     gc.collect()
     gc.collect()
+
+def requires_mac_ver(*min_version):
+    """Decorator raising SkipTest if the OS is Mac OS X and the OS X
+    version if less than min_version.
+
+    For example, @requires_mac_ver(10, 5) raises SkipTest if the OS X version
+    is lesser than 10.5.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kw):
+            if sys.platform == 'darwin':
+                version_txt = platform.mac_ver()[0]
+                try:
+                    version = tuple(map(int, version_txt.split('.')))
+                except ValueError:
+                    pass
+                else:
+                    if version < min_version:
+                        min_version_txt = '.'.join(map(str, min_version))
+                        raise unittest.SkipTest(
+                            "Mac OS X %s or higher required, not %s"
+                            % (min_version_txt, version_txt))
+            return func(*args, **kw)
+        wrapper.min_version = min_version
+        return wrapper
+    return decorator
+
+
