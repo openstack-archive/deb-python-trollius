@@ -67,7 +67,7 @@ def bind_port(sock, host="127.0.0.1"):
                 if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 1:
                     raise TestFailed("tests should never set the SO_REUSEPORT "   \
                                      "socket option on TCP/IP sockets!")
-            except OSError:
+            except EnvironmentError:
                 # Python's socket module was compiled using modern headers
                 # thus defining SO_REUSEPORT but this process is running
                 # under an older kernel that does not support SO_REUSEPORT.
