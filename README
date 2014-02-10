@@ -120,9 +120,9 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Development version
+2014-01-22: version 0.1.5
 
-- Merge with Tulip:
+- Merge with Tulip 0.3.1:
 
   * New asyncio.subprocess module
   * _UnixWritePipeTransport now also supports character devices, as
