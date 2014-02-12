@@ -8,6 +8,11 @@ from asyncio import test_utils
 from asyncio.test_utils import mock
 
 
+@asyncio.coroutine
+def coroutine_function():
+    pass
+
+
 class Dummy:
 
     def __repr__(self):
@@ -1317,6 +1322,27 @@ class TaskTests(test_utils.TestCase):
         child2.set_result(2)
         test_utils.run_briefly(self.loop)
 
+    def test_as_completed_invalid_args(self):
+        fut = asyncio.Future(loop=self.loop)
+
+        # as_completed() expects a list of futures, not a future instance
+        self.assertRaises(TypeError, self.loop.run_until_complete,
+            asyncio.as_completed(fut, loop=self.loop))
+        self.assertRaises(TypeError, self.loop.run_until_complete,
+            asyncio.as_completed(coroutine_function(), loop=self.loop))
+
+    def test_wait_invalid_args(self):
+        fut = asyncio.Future(loop=self.loop)
+
+        # wait() expects a list of futures, not a future instance
+        self.assertRaises(TypeError, self.loop.run_until_complete,
+            asyncio.wait(fut, loop=self.loop))
+        self.assertRaises(TypeError, self.loop.run_until_complete,
+            asyncio.wait(coroutine_function(), loop=self.loop))
+
+        # wait() expects at least a future
+        self.assertRaises(ValueError, self.loop.run_until_complete,
+            asyncio.wait([], loop=self.loop))
 
 class GatherTestsBase:
 
@@ -1335,7 +1361,7 @@ class GatherTestsBase:
     def _check_success(self, **kwargs):
         a, b, c = [asyncio.Future(loop=self.one_loop) for i in range(3)]
         fut = asyncio.gather(*self.wrap_futures(a, b, c), **kwargs)
-        cb = mock.Mock()
+        cb = test_utils.MockCallback()
         fut.add_done_callback(cb)
         b.set_result(1)
         a.set_result(2)
@@ -1357,7 +1383,7 @@ class GatherTestsBase:
     def test_one_exception(self):
         a, b, c, d, e = [asyncio.Future(loop=self.one_loop) for i in range(5)]
         fut = asyncio.gather(*self.wrap_futures(a, b, c, d, e))
-        cb = mock.Mock()
+        cb = test_utils.MockCallback()
         fut.add_done_callback(cb)
         exc = ZeroDivisionError()
         a.set_result(1)
@@ -1376,7 +1402,7 @@ class GatherTestsBase:
         a, b, c, d = [asyncio.Future(loop=self.one_loop) for i in range(4)]
         fut = asyncio.gather(*self.wrap_futures(a, b, c, d),
                              return_exceptions=True)
-        cb = mock.Mock()
+        cb = test_utils.MockCallback()
         fut.add_done_callback(cb)
         exc = ZeroDivisionError()
         exc2 = RuntimeError()
@@ -1437,7 +1463,7 @@ class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
     def test_one_cancellation(self):
         a, b, c, d, e = [asyncio.Future(loop=self.one_loop) for i in range(5)]
         fut = asyncio.gather(a, b, c, d, e)
-        cb = mock.Mock()
+        cb = test_utils.MockCallback()
         fut.add_done_callback(cb)
         a.set_result(1)
         b.cancel()
@@ -1456,7 +1482,7 @@ class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
         a, b, c, d, e, f = [asyncio.Future(loop=self.one_loop)
                             for i in range(6)]
         fut = asyncio.gather(a, b, c, d, e, f, return_exceptions=True)
-        cb = mock.Mock()
+        cb = test_utils.MockCallback()
         fut.add_done_callback(cb)
         a.set_result(1)
         zde = ZeroDivisionError()

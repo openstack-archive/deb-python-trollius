@@ -162,6 +162,42 @@ def gc_collect():
     gc.collect()
     gc.collect()
 
+def _requires_unix_version(sysname, min_version):
+    """Decorator raising SkipTest if the OS is `sysname` and the version is less
+    than `min_version`.
+
+    For example, @_requires_unix_version('FreeBSD', (7, 2)) raises SkipTest if
+    the FreeBSD version is less than 7.2.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kw):
+            if platform.system() == sysname:
+                version_txt = platform.release().split('-', 1)[0]
+                try:
+                    version = tuple(map(int, version_txt.split('.')))
+                except ValueError:
+                    pass
+                else:
+                    if version < min_version:
+                        min_version_txt = '.'.join(map(str, min_version))
+                        raise unittest.SkipTest(
+                            "%s version %s or higher required, not %s"
+                            % (sysname, min_version_txt, version_txt))
+            return func(*args, **kw)
+        wrapper.min_version = min_version
+        return wrapper
+    return decorator
+
+def requires_freebsd_version(*min_version):
+    """Decorator raising SkipTest if the OS is FreeBSD and the FreeBSD version is
+    less than `min_version`.
+
+    For example, @requires_freebsd_version(7, 2) raises SkipTest if the FreeBSD
+    version is less than 7.2.
+    """
+    return _requires_unix_version('FreeBSD', min_version)
+
 def requires_mac_ver(*min_version):
     """Decorator raising SkipTest if the OS is Mac OS X and the OS X
     version if less than min_version.
@@ -188,5 +224,3 @@ def requires_mac_ver(*min_version):
         wrapper.min_version = min_version
         return wrapper
     return decorator
-
-

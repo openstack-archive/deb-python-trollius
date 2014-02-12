@@ -3,6 +3,8 @@
 import errno
 import logging
 import socket
+import sys
+import time
 import unittest
 
 import asyncio
@@ -235,8 +237,57 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.assertEqual([non_local['handle']], list(self.loop._ready))
 
     def test_run_until_complete_type_error(self):
-        self.assertRaises(
-            TypeError, self.loop.run_until_complete, 'blah')
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, 'blah')
+
+    def test_subprocess_exec_invalid_args(self):
+        args = [sys.executable, '-c', 'pass']
+
+        # missing program parameter (empty args)
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_exec,
+            asyncio.SubprocessProtocol)
+
+        # exepected multiple arguments, not a list
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_exec,
+            asyncio.SubprocessProtocol, args)
+
+        # program arguments must be strings, not int
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_exec,
+            asyncio.SubprocessProtocol, sys.executable, 123)
+
+        # universal_newlines, shell, bufsize must not be set
+        self.assertRaises(TypeError,
+        self.loop.run_until_complete, self.loop.subprocess_exec,
+            asyncio.SubprocessProtocol, *args, universal_newlines=True)
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_exec,
+            asyncio.SubprocessProtocol, *args, shell=True)
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_exec,
+            asyncio.SubprocessProtocol, *args, bufsize=4096)
+
+    def test_subprocess_shell_invalid_args(self):
+        # exepected a string, not an int or a list
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_shell,
+            asyncio.SubprocessProtocol, 123)
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_shell,
+            asyncio.SubprocessProtocol, [sys.executable, '-c', 'pass'])
+
+        # universal_newlines, shell, bufsize must not be set
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_shell,
+            asyncio.SubprocessProtocol, 'exit 0', universal_newlines=True)
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_shell,
+            asyncio.SubprocessProtocol, 'exit 0', shell=True)
+        self.assertRaises(TypeError,
+            self.loop.run_until_complete, self.loop.subprocess_shell,
+            asyncio.SubprocessProtocol, 'exit 0', bufsize=4096)
 
 
 class MyProto(asyncio.Protocol):
@@ -577,6 +628,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         m_socket.error = socket.error
         m_socket.getaddrinfo.return_value = [
             (2, 1, 6, '', ('127.0.0.1', 10100))]
+        m_socket.getaddrinfo._is_coroutine = False
         m_sock = m_socket.socket.return_value = mock.Mock()
         m_sock.bind.side_effect = Err
 
@@ -588,6 +640,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
     def test_create_datagram_endpoint_no_addrinfo(self, m_socket):
         m_socket.error = socket.error
         m_socket.getaddrinfo.return_value = []
+        m_socket.getaddrinfo._is_coroutine = False
 
         coro = self.loop.create_datagram_endpoint(
             MyDatagramProto, local_addr=('localhost', 0))
@@ -694,6 +747,22 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
                                                 # self.loop._start_serving
                                                 mock.ANY,
                                                 MyProto, sock, None, None)
+
+    def test_call_coroutine(self):
+        @asyncio.coroutine
+        def coroutine_function():
+            pass
+
+        with self.assertRaises(TypeError):
+            self.loop.call_soon(coroutine_function)
+        with self.assertRaises(TypeError):
+            self.loop.call_soon_threadsafe(coroutine_function)
+        with self.assertRaises(TypeError):
+            self.loop.call_later(60, coroutine_function)
+        with self.assertRaises(TypeError):
+            self.loop.call_at(self.loop.time() + 60, coroutine_function)
+        with self.assertRaises(TypeError):
+            self.loop.run_in_executor(None, coroutine_function)
 
 
 if __name__ == '__main__':

@@ -963,6 +963,8 @@ class EventLoopTestsMixin(object):
     # select, poll and kqueue don't support character devices (PTY) on Mac OS X
     # older than 10.6 (Snow Leopard)
     @support.requires_mac_ver(10, 6)
+    # Issue #20495: The test hangs on FreeBSD 7.2 but pass on FreeBSD 9
+    @support.requires_freebsd_version(8)
     def test_read_pty_output(self):
         non_local = {'proto': None}
 
@@ -1176,13 +1178,19 @@ class EventLoopTestsMixin(object):
             loop = self.loop
             yield asyncio.sleep(1e-2, loop=loop)
             yield asyncio.sleep(1e-4, loop=loop)
+            yield asyncio.sleep(1e-6, loop=loop)
+            yield asyncio.sleep(1e-8, loop=loop)
+            yield asyncio.sleep(1e-10, loop=loop)
 
         self.loop.run_until_complete(wait())
-        # The ideal number of call is 10, but on some platforms, the selector
+        # The ideal number of call is 22, but on some platforms, the selector
         # may sleep at little bit less than timeout depending on the resolution
-        # of the clock used by the kernel. Tolerate 2 useless calls on these
-        # platforms.
-        self.assertLessEqual(self.loop._run_once_counter, 12)
+        # of the clock used by the kernel. Tolerate a few useless calls on
+        # these platforms.
+        self.assertLessEqual(self.loop._run_once_counter, 30,
+            {'calls': self.loop._run_once_counter,
+             'clock_resolution': self.loop._clock_resolution,
+             'selector': self.loop._selector.__class__.__name__})
 
 
 class SubprocessTestsMixin(object):
