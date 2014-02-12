@@ -18,9 +18,9 @@ PY34 = sys.version_info >= (3, 4)
 if PY3:
     BYTES_TYPES = (bytes, bytearray, memoryview)
 elif PY26:
-    BYTES_TYPES = (bytes, bytearray, buffer)
-else:
-    BYTES_TYPES = (bytes, bytearray, memoryview, buffer)
+    BYTES_TYPES = (str, bytearray, buffer)
+else: # Python 2.7
+    BYTES_TYPES = (str, bytearray, memoryview, buffer)
 
 def flatten_bytes(data):
     """
@@ -37,7 +37,7 @@ def flatten_bytes(data):
     if not data:
         return b''
     if not PY3 and isinstance(data, (buffer, bytearray)):
-        return bytes(data)
+        return str(data)
     elif not PY26 and isinstance(data, memoryview):
         return data.tobytes()
     else:
