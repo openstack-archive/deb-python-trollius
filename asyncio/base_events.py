@@ -28,6 +28,7 @@ except ImportError:
     # Python 2.6: use ordereddict backport
     from ordereddict import OrderedDict
 
+from . import compat
 from . import events
 from . import futures
 from . import tasks
@@ -560,7 +561,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=False, shell=True, bufsize=0,
                          **kwargs):
-        if not isinstance(cmd, (str, unicode)):
+        if not isinstance(cmd, compat.string_types):
             raise ValueError("cmd must be a string")
         if universal_newlines:
             raise ValueError("universal_newlines must be False")
@@ -589,7 +590,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             raise ValueError("bufsize must be 0")
         popen_args = (program,) + args
         for arg in popen_args:
-            if not isinstance(arg, (str, unicode)):
+            if not isinstance(arg, compat.string_types ):
                 raise TypeError("program arguments must be "
                                 "a bytes or text string, not %s"
                                 % type(arg).__name__)
