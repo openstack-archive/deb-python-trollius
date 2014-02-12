@@ -188,7 +188,7 @@ def create_subprocess_shell(cmd, **kwds):
     raise tasks.Return(Process(transport, protocol, loop))
 
 @tasks.coroutine
-def create_subprocess_exec(*args, **kwds):
+def create_subprocess_exec(program, *args, **kwds):
     stdin = kwds.pop('stdin', None)
     stdout = kwds.pop('stdout', None)
     stderr = kwds.pop('stderr', None)
@@ -200,7 +200,8 @@ def create_subprocess_exec(*args, **kwds):
                                                         loop=loop)
     transport, protocol = yield loop.subprocess_exec(
                                        protocol_factory,
-                                       *args, stdin=stdin, stdout=stdout,
+                                       program, *args,
+                                       stdin=stdin, stdout=stdout,
                                        stderr=stderr, **kwds)
     yield protocol.waiter
     raise tasks.Return(Process(transport, protocol, loop))

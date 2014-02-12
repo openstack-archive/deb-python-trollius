@@ -98,6 +98,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._default_executor = None
         self._internal_fds = 0
         self._running = False
+        self._clock_resolution = time_monotonic_resolution
 
     def _make_socket_transport(self, sock, protocol, waiter=None,
                                extra=None, server=None):
@@ -228,6 +229,8 @@ class BaseEventLoop(events.AbstractEventLoop):
 
     def call_at(self, when, callback, *args):
         """Like call_later(), but uses an absolute time."""
+        if tasks.iscoroutinefunction(callback):
+            raise TypeError("coroutines cannot be used with call_at()")
         timer = events.TimerHandle(when, callback, args)
         heapq.heappush(self._scheduled, timer)
         return timer
@@ -242,6 +245,8 @@ class BaseEventLoop(events.AbstractEventLoop):
         Any positional arguments after the callback will be passed to
         the callback when it is called.
         """
+        if tasks.iscoroutinefunction(callback):
+            raise TypeError("coroutines cannot be used with call_soon()")
         handle = events.Handle(callback, args)
         self._ready.append(handle)
         return handle
@@ -253,6 +258,8 @@ class BaseEventLoop(events.AbstractEventLoop):
         return handle
 
     def run_in_executor(self, executor, callback, *args):
+        if tasks.iscoroutinefunction(callback):
+            raise TypeError("coroutines cannot be used with run_in_executor()")
         if isinstance(callback, events.Handle):
             assert not args
             assert not isinstance(callback, events.TimerHandle)
@@ -553,7 +560,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=False, shell=True, bufsize=0,
                          **kwargs):
-        if not isinstance(cmd, str):
+        if not isinstance(cmd, (str, unicode)):
             raise ValueError("cmd must be a string")
         if universal_newlines:
             raise ValueError("universal_newlines must be False")
@@ -567,7 +574,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
-    def subprocess_exec(self, protocol_factory, *args, **kwargs):
+    def subprocess_exec(self, protocol_factory, program, *args, **kwargs):
         stdin = kwargs.pop('stdin', subprocess.PIPE)
         stdout = kwargs.pop('stdout', subprocess.PIPE)
         stderr = kwargs.pop('stderr', subprocess.PIPE)
@@ -580,9 +587,15 @@ class BaseEventLoop(events.AbstractEventLoop):
             raise ValueError("shell must be False")
         if bufsize != 0:
             raise ValueError("bufsize must be 0")
+        popen_args = (program,) + args
+        for arg in popen_args:
+            if not isinstance(arg, (str, unicode)):
+                raise TypeError("program arguments must be "
+                                "a bytes or text string, not %s"
+                                % type(arg).__name__)
         protocol = protocol_factory()
         transport = yield self._make_subprocess_transport(
-            protocol, args, False, stdin, stdout, stderr, bufsize, **kwargs)
+            protocol, popen_args, False, stdin, stdout, stderr, bufsize, **kwargs)
         raise tasks.Return(transport, protocol)
 
     def _add_callback(self, handle):
@@ -642,10 +655,10 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._process_events(event_list)
 
         # Handle 'later' callbacks that are ready.
-        now = self.time()
+        end_time = self.time() + self._clock_resolution
         while self._scheduled:
             handle = self._scheduled[0]
-            if handle._when > now:
+            if handle._when >= end_time:
                 break
             handle = heapq.heappop(self._scheduled)
             self._ready.append(handle)

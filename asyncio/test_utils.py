@@ -156,7 +156,7 @@ def make_test_protocol(base):
         if name.startswith('__') and name.endswith('__'):
             # skip magic names
             continue
-        dct[name] = mock.Mock(return_value=None)
+        dct[name] = MockCallback(return_value=None)
     return type('TestProtocol', (base,) + base.__bases__, dct)()
 
 
@@ -212,6 +212,7 @@ class TestLoop(base_events.BaseEventLoop):
         self._gen = gen()
         next(self._gen)
         self._time = 0
+        self._clock_resolution = 1e-9
         self._timers = []
         self._selector = TestSelector()
 
@@ -294,3 +295,6 @@ class TestLoop(base_events.BaseEventLoop):
 
     def _write_to_self(self):
         pass
+
+def MockCallback(**kwargs):
+    return mock.Mock(spec=['__call__'], **kwargs)

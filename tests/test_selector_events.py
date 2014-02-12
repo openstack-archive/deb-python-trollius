@@ -61,8 +61,8 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
     def test_make_socket_transport(self):
         m = mock.Mock()
         self.loop.add_reader = mock.Mock()
-        self.assertIsInstance(
-            self.loop._make_socket_transport(m, m), _SelectorSocketTransport)
+        transport = self.loop._make_socket_transport(m, asyncio.Protocol())
+        self.assertIsInstance(transport, _SelectorSocketTransport)
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
     def test_make_ssl_transport(self):
@@ -71,8 +71,9 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         self.loop.add_writer = mock.Mock()
         self.loop.remove_reader = mock.Mock()
         self.loop.remove_writer = mock.Mock()
-        self.assertIsInstance(
-            self.loop._make_ssl_transport(m, m, m, m), _SelectorSslTransport)
+        waiter = asyncio.Future(loop=self.loop)
+        transport = self.loop._make_ssl_transport(m, asyncio.Protocol(), m, waiter)
+        self.assertIsInstance(transport, _SelectorSslTransport)
 
     @mock.patch('asyncio.selector_events.ssl', None)
     def test_make_ssl_transport_without_ssl_error(self):
