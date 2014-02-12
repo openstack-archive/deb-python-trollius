@@ -16,6 +16,15 @@ PY33 = (sys.version_info >= (3, 3))
 PY34 = sys.version_info >= (3, 4)
 
 if PY3:
+    bytes_type = bytes
+    text_type = str
+    string_types = (bytes, str)
+else:
+    bytes_type = str
+    text_type = unicode
+    string_types = basestring
+
+if PY3:
     BYTES_TYPES = (bytes, bytearray, memoryview)
 elif PY26:
     BYTES_TYPES = (str, bytearray, buffer)
@@ -42,4 +51,3 @@ def flatten_bytes(data):
         return data.tobytes()
     else:
         return data
-
