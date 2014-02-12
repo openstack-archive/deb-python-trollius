@@ -43,7 +43,7 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "0.1.5",
+    "version": "0.1.6",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',
