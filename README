@@ -124,6 +124,20 @@ Development version (will be 0.1.6)
 
 - Merge with Tulip
 
+  * Issue #129: BaseEventLoop.sock_connect() now raises an error if the address
+    is not resolved (hostname instead of an IP address) for AF_INET and
+    AF_INET6 address families.
+  * Issue #131: as_completed() and wait() now raises a TypeError if the list of
+    futures is not a list but a Future, Task or coroutine object
+  * Python issue #20495: Skip test_read_pty_output() of test_asyncio on FreeBSD
+    older than FreeBSD 8
+  * Issue #130: Add more checks on subprocess_exec/subprocess_shell parameters
+  * Issue #126: call_soon(), call_soon_threadsafe(), call_later(), call_at()
+    and run_in_executor() now raise a TypeError if the callback is a coroutine
+    function.
+  * Python issue #20505: BaseEventLoop uses again the resolution of the clock
+    to decide if scheduled tasks should be executed or not.
+
 2014-02-10: version 0.1.5
 
 - Merge with Tulip 0.3.1:
