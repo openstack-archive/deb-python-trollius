@@ -1448,8 +1448,8 @@ class GatherTestsBase:
         code = '\n'.join((
             'import sys',
             'sys.path.insert(0, %r)' % path,
-            'import asyncio.coroutine',
-            'print(asyncio.coroutine._DEBUG)'))
+            'import asyncio.coroutines',
+            'print(asyncio.coroutines._DEBUG)'))
 
         # Test with -E to not fail if the unit test was run with
         # PYTHONASYNCIODEBUG set to a non-empty string

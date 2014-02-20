@@ -31,7 +31,7 @@ MOCK_ANY = mock.ANY
 
 
 @test_utils.skipUnless(signal, 'Signals are not supported')
-class SelectorEventLoopSignalTests(unittest.TestCase):
+class SelectorEventLoopSignalTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = asyncio.SelectorEventLoop()
@@ -208,8 +208,8 @@ class SelectorEventLoopSignalTests(unittest.TestCase):
         m_signal.set_wakeup_fd.assert_called_once_with(-1)
 
 
-@unittest.skipUnless(hasattr(socket, 'AF_UNIX'),
-                     'UNIX Sockets are not supported')
+@test_utils.skipUnless(hasattr(socket, 'AF_UNIX'),
+                       'UNIX Sockets are not supported')
 class SelectorEventLoopUnixSocketTests(test_utils.TestCase):
 
     def setUp(self):

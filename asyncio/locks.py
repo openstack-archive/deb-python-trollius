@@ -6,7 +6,7 @@ import collections
 
 from . import events
 from . import futures
-from .coroutine import Return, coroutine
+from . import coroutines as tasks
 
 
 class _ContextManager:
@@ -112,7 +112,7 @@ class Lock(object):
         """Return True if lock is acquired."""
         return self._locked
 
-    @coroutine
+    @tasks.coroutine
     def acquire(self):
         """Acquire a lock.
 
@@ -121,14 +121,14 @@ class Lock(object):
         """
         if not self._waiters and not self._locked:
             self._locked = True
-            raise Return(_ContextManager(self))
+            raise tasks.Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield fut
             self._locked = True
-            raise Return(_ContextManager(self))
+            raise tasks.Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -209,7 +209,7 @@ class Event(object):
         to true again."""
         self._value = False
 
-    @coroutine
+    @tasks.coroutine
     def wait(self):
         """Block until the internal flag is true.
 
@@ -218,13 +218,13 @@ class Event(object):
         set() to set the flag to true, then return True.
         """
         if self._value:
-            raise Return(_ContextManager(self))
+            raise tasks.Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield fut
-            raise Return(_ContextManager(self))
+            raise tasks.Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -262,7 +262,7 @@ class Condition(object):
             extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
         return '<{0} [{1}]>'.format(res[1:-1], extra)
 
-    @coroutine
+    @tasks.coroutine
     def wait(self):
         """Wait until notified.
 
@@ -283,14 +283,14 @@ class Condition(object):
             self._waiters.append(fut)
             try:
                 yield fut
-                raise Return(True)
+                raise tasks.Return(True)
             finally:
                 self._waiters.remove(fut)
 
         finally:
             yield self.acquire()
 
-    @coroutine
+    @tasks.coroutine
     def wait_for(self, predicate):
         """Wait until a predicate becomes true.
 
@@ -302,7 +302,7 @@ class Condition(object):
         while not result:
             yield self.wait()
             result = predicate()
-        raise Return(result)
+        raise tasks.Return(result)
 
     def notify(self, n=1):
         """By default, wake up one coroutine waiting on this condition, if any.
@@ -381,7 +381,7 @@ class Semaphore(object):
         """Returns True if semaphore can not be acquired immediately."""
         return self._value == 0
 
-    @coroutine
+    @tasks.coroutine
     def acquire(self):
         """Acquire a semaphore.
 
@@ -393,14 +393,14 @@ class Semaphore(object):
         """
         if not self._waiters and self._value > 0:
             self._value -= 1
-            raise Return(_ContextManager(self))
+            raise tasks.Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield fut
             self._value -= 1
-            raise Return(_ContextManager(self))
+            raise tasks.Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 

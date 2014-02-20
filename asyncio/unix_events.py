@@ -226,7 +226,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
                 if exc.errno == errno.EADDRINUSE:
                     # Let's improve the error message by adding
                     # with what exact address it occurs.
-                    msg = 'Address {!r} is already in use'.format(path)
+                    msg = 'Address {0!r} is already in use'.format(path)
                     raise OSError(errno.EADDRINUSE, msg)
                 else:
                     raise
@@ -237,7 +237,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
 
             if sock.family != socket.AF_UNIX:
                 raise ValueError(
-                    'A UNIX Domain Socket was expected, got {!r}'.format(sock))
+                    'A UNIX Domain Socket was expected, got {0!r}'.format(sock))
 
         server = base_events.Server(self, [sock])
         sock.listen(backlog)

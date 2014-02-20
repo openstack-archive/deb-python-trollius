@@ -648,7 +648,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         """
         if handler is not None and not callable(handler):
             raise TypeError('A callable object or None is expected, '
-                            'got {!r}'.format(handler))
+                            'got {0!r}'.format(handler))
         self._exception_handler = handler
 
     def default_exception_handler(self, context):
@@ -674,9 +674,9 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         log_lines = [message]
         for key in sorted(context):
-            if key in {'message', 'exception'}:
+            if key in ('message', 'exception'):
                 continue
-            log_lines.append('{}: {!r}'.format(key, context[key]))
+            log_lines.append('{0}: {1!r}'.format(key, context[key]))
 
         logger.error('\n'.join(log_lines), exc_info=exc_info)
 
