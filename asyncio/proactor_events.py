@@ -18,7 +18,8 @@ from .py33_exceptions import (BrokenPipeError,
     ConnectionAbortedError, ConnectionResetError)
 
 
-class _ProactorBasePipeTransport(transports.BaseTransport):
+class _ProactorBasePipeTransport(transports._FlowControlMixin,
+                                 transports.BaseTransport):
     """Base class for pipe and socket transports."""
 
     def __init__(self, loop, sock, protocol, waiter=None,
@@ -36,8 +37,6 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
         self._conn_lost = 0
         self._closing = False  # Set when close() called.
         self._eof_written = False
-        self._protocol_paused = False
-        self.set_write_buffer_limits()
         if self._server is not None:
             self._server.attach(self)
         self._loop.call_soon(self._protocol.connection_made, self)
@@ -57,9 +56,14 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
         if self._read_fut is not None:
             self._read_fut.cancel()
 
-    def _fatal_error(self, exc):
+    def _fatal_error(self, exc, message='Fatal error on pipe transport'):
         if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
-            logger.exception('Fatal error for %s', self)
+            self._loop.call_exception_handler({
+                'message': message,
+                'exception': exc,
+                'transport': self,
+                'protocol': self._protocol,
+            })
         self._force_close(exc)
 
     def _force_close(self, exc):
@@ -91,46 +95,6 @@ class _ProactorBasePipeTransport(transports.BaseTransport):
             if server is not None:
                 server.detach(self)
                 self._server = None
-
-    # XXX The next four methods are nearly identical to corresponding
-    # ones in _SelectorTransport.  Maybe refactor buffer management to
-    # share the implementations?  (Also these are really only needed
-    # by _ProactorWritePipeTransport but since _buffer is defined on
-    # the base class I am putting it here for now.)
-
-    def _maybe_pause_protocol(self):
-        size = self.get_write_buffer_size()
-        if size <= self._high_water:
-            return
-        if not self._protocol_paused:
-            self._protocol_paused = True
-            try:
-                self._protocol.pause_writing()
-            except Exception:
-                logger.exception('pause_writing() failed')
-
-    def _maybe_resume_protocol(self):
-        if (self._protocol_paused and
-            self.get_write_buffer_size() <= self._low_water):
-            self._protocol_paused = False
-            try:
-                self._protocol.resume_writing()
-            except Exception:
-                logger.exception('resume_writing() failed')
-
-    def set_write_buffer_limits(self, high=None, low=None):
-        if high is None:
-            if low is None:
-                high = 64*1024
-            else:
-                high = 4*low
-        if low is None:
-            low = high // 4
-        if not high >= low >= 0:
-            raise ValueError('high (%r) must be >= low (%r) must be >= 0' %
-                             (high, low))
-        self._high_water = high
-        self._low_water = low
 
     def get_write_buffer_size(self):
         size = self._pending_write
@@ -191,11 +155,11 @@ class _ProactorReadPipeTransport(_ProactorBasePipeTransport,
             self._read_fut = self._loop._proactor.recv(self._sock, 4096)
         except ConnectionAbortedError as exc:
             if not self._closing:
-                self._fatal_error(exc)
+                self._fatal_error(exc, 'Fatal read error on pipe transport')
         except ConnectionResetError as exc:
             self._force_close(exc)
         except OSError as exc:
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal read error on pipe transport')
         except futures.CancelledError:
             if not self._closing:
                 raise
@@ -284,7 +248,7 @@ class _ProactorBaseWritePipeTransport(_ProactorBasePipeTransport,
         except ConnectionResetError as exc:
             self._force_close(exc)
         except OSError as exc:
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal write error on pipe transport')
 
     def can_write_eof(self):
         return True
@@ -313,7 +277,7 @@ class _ProactorWritePipeTransport(_ProactorBaseWritePipeTransport):
         assert fut is self._read_fut, (fut, self._read_fut)
         self._read_fut = None
         if self._write_fut is not None:
-            self._force_close(exc)
+            self._force_close(BrokenPipeError())
         else:
             self.close()
 
@@ -470,9 +434,13 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
                         conn, protocol,
                         extra={'peername': addr}, server=server)
                 f = self._proactor.accept(sock)
-            except OSError:
+            except OSError as exc:
                 if sock.fileno() != -1:
-                    logger.exception('Accept failed')
+                    self.call_exception_handler({
+                        'message': 'Accept failed',
+                        'exception': exc,
+                        'socket': sock,
+                    })
                     sock.close()
             except futures.CancelledError:
                 sock.close()

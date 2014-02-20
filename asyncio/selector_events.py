@@ -135,7 +135,11 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
                 # Some platforms (e.g. Linux keep reporting the FD as
                 # ready, so we remove the read handler temporarily.
                 # We'll try again in a while.
-                logger.exception('Accept out of system resource (%s)', exc)
+                self.call_exception_handler({
+                    'message': 'socket.accept() out of system resource',
+                    'exception': exc,
+                    'socket': sock,
+                })
                 self.remove_reader(sock.fileno())
                 self.call_later(constants.ACCEPT_RETRY_DELAY,
                                 self._start_serving,
@@ -155,7 +159,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
     def add_reader(self, fd, callback, *args):
         """Add a reader callback."""
-        handle = events.Handle(callback, args)
+        handle = events.Handle(callback, args, self)
         try:
             key = self._selector.get_key(fd)
         except KeyError:
@@ -190,7 +194,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
     def add_writer(self, fd, callback, *args):
         """Add a writer callback.."""
-        handle = events.Handle(callback, args)
+        handle = events.Handle(callback, args, self)
         try:
             key = self._selector.get_key(fd)
         except KeyError:
@@ -232,7 +236,7 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
     def _sock_recv(self, fut, registered, sock, n):
         # _sock_recv() can add itself as an I/O callback if the operation can't
-        # be done immediatly. Don't use it directly, call sock_recv().
+        # be done immediately. Don't use it directly, call sock_recv().
         fd = sock.fileno()
         if registered:
             # Remove the callback early.  It should be rare that the
@@ -354,67 +358,8 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
         sock.close()
 
 
-class _FlowControlMixin(transports.Transport):
-    """All the logic for (write) flow control in a mix-in base class.
-
-    The subclass must implement get_write_buffer_size().  It must call
-    _maybe_pause_protocol() whenever the write buffer size increases,
-    and _maybe_resume_protocol() whenever it decreases.  It may also
-    override set_write_buffer_limits() (e.g. to specify different
-    defaults).
-
-    The subclass constructor must call super().__init__(extra).  This
-    will call set_write_buffer_limits().
-
-    The user may call set_write_buffer_limits() and
-    get_write_buffer_size(), and their protocol's pause_writing() and
-    resume_writing() may be called.
-    """
-
-    def __init__(self, extra=None):
-        super(_FlowControlMixin, self).__init__(extra)
-        self._protocol_paused = False
-        self.set_write_buffer_limits()
-
-    def _maybe_pause_protocol(self):
-        size = self.get_write_buffer_size()
-        if size <= self._high_water:
-            return
-        if not self._protocol_paused:
-            self._protocol_paused = True
-            try:
-                self._protocol.pause_writing()
-            except Exception:
-                logger.exception('pause_writing() failed')
-
-    def _maybe_resume_protocol(self):
-        if (self._protocol_paused and
-            self.get_write_buffer_size() <= self._low_water):
-            self._protocol_paused = False
-            try:
-                self._protocol.resume_writing()
-            except Exception:
-                logger.exception('resume_writing() failed')
-
-    def set_write_buffer_limits(self, high=None, low=None):
-        if high is None:
-            if low is None:
-                high = 64*1024
-            else:
-                high = 4*low
-        if low is None:
-            low = high // 4
-        if not high >= low >= 0:
-            raise ValueError('high (%r) must be >= low (%r) must be >= 0' %
-                             (high, low))
-        self._high_water = high
-        self._low_water = low
-
-    def get_write_buffer_size(self):
-        raise NotImplementedError
-
-
-class _SelectorTransport(_FlowControlMixin, transports.Transport):
+class _SelectorTransport(transports._FlowControlMixin,
+                         transports.Transport):
 
     max_size = 256 * 1024  # Buffer size passed to recv().
 
@@ -452,10 +397,15 @@ class _SelectorTransport(_FlowControlMixin, transports.Transport):
             self._conn_lost += 1
             self._loop.call_soon(self._call_connection_lost, None)
 
-    def _fatal_error(self, exc):
+    def _fatal_error(self, exc, message='Fatal error on transport'):
         # Should be called from exception handler only.
         if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
-            logger.exception('Fatal error for %s', self)
+            self._loop.call_exception_handler({
+                'message': message,
+                'exception': exc,
+                'transport': self,
+                'protocol': self._protocol,
+            })
         self._force_close(exc)
 
     def _force_close(self, exc):
@@ -522,7 +472,7 @@ class _SelectorSocketTransport(_SelectorTransport):
         except (BlockingIOError, InterruptedError):
             pass
         except Exception as exc:
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal read error on socket transport')
         else:
             if data:
                 self._protocol.data_received(data)
@@ -554,7 +504,7 @@ class _SelectorSocketTransport(_SelectorTransport):
             except (BlockingIOError, InterruptedError):
                 pass
             except Exception as exc:
-                self._fatal_error(exc)
+                self._fatal_error(exc, 'Fatal write error on socket transport')
                 return
             else:
                 data = data[n:]
@@ -578,7 +528,7 @@ class _SelectorSocketTransport(_SelectorTransport):
         except Exception as exc:
             self._loop.remove_writer(self._sock_fd)
             del self._buffer[:]
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal write error on socket transport')
         else:
             if n:
                 del self._buffer[:n]
@@ -756,7 +706,7 @@ class _SelectorSslTransport(_SelectorTransport):
             self._loop.remove_reader(self._sock_fd)
             self._loop.add_writer(self._sock_fd, self._write_ready)
         except Exception as exc:
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal read error on SSL transport')
         else:
             if data:
                 self._protocol.data_received(data)
@@ -790,7 +740,7 @@ class _SelectorSslTransport(_SelectorTransport):
             except Exception as exc:
                 self._loop.remove_writer(self._sock_fd)
                 del self._buffer[:]
-                self._fatal_error(exc)
+                self._fatal_error(exc, 'Fatal write error on SSL transport')
                 return
 
             if n:
@@ -846,7 +796,7 @@ class _SelectorDatagramTransport(_SelectorTransport):
         except OSError as exc:
             self._protocol.error_received(exc)
         except Exception as exc:
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal read error on datagram transport')
         else:
             self._protocol.datagram_received(data, addr)
 
@@ -879,7 +829,8 @@ class _SelectorDatagramTransport(_SelectorTransport):
                 self._protocol.error_received(exc)
                 return
             except Exception as exc:
-                self._fatal_error(exc)
+                self._fatal_error(exc,
+                                  'Fatal write error on datagram transport')
                 return
 
         # Ensure that what we buffer is immutable.
@@ -901,7 +852,8 @@ class _SelectorDatagramTransport(_SelectorTransport):
                 self._protocol.error_received(exc)
                 return
             except Exception as exc:
-                self._fatal_error(exc)
+                self._fatal_error(exc,
+                                  'Fatal write error on datagram transport')
                 return
 
         self._maybe_resume_protocol()  # May append to buffer.

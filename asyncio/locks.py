@@ -15,7 +15,7 @@ class _ContextManager:
     This enables the following idiom for acquiring and releasing a
     lock around a block:
 
-        with (yield from lock):
+        with (yield lock):
             <block>
 
     while failing loudly when accidentally using:
@@ -61,7 +61,7 @@ class Lock(object):
     release() call resets the state to unlocked; first coroutine which
     is blocked in acquire() is being processed.
 
-    acquire() is a coroutine and should be called with 'yield from'.
+    acquire() is a coroutine and should be called with 'yield'.
 
     Locks also support the context manager protocol.  '(yield lock)'
     should be used as context manager expression.
@@ -155,7 +155,7 @@ class Lock(object):
 
     def __enter__(self):
         raise RuntimeError(
-            '"yield from" should be used as context manager expression')
+            '"yield" should be used as context manager expression')
 
     def __exit__(self, *args):
         # This must exist because __enter__ exists, even though that
@@ -338,7 +338,7 @@ class Condition(object):
 
     def __enter__(self):
         raise RuntimeError(
-            '"yield from" should be used as context manager expression')
+            '"yield" should be used as context manager expression')
 
     def __exit__(self, *args):
         pass
@@ -417,7 +417,7 @@ class Semaphore(object):
 
     def __enter__(self):
         raise RuntimeError(
-            '"yield from" should be used as context manager expression')
+            '"yield" should be used as context manager expression')
 
     def __exit__(self, *args):
         pass

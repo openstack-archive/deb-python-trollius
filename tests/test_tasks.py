@@ -1,10 +1,12 @@
 """Tests for tasks.py."""
 
 import gc
+import os.path
 import unittest
 
 import asyncio
 from asyncio import test_utils
+from asyncio.test_support import assert_python_ok
 from asyncio.test_utils import mock
 
 
@@ -895,6 +897,7 @@ class TaskTests(test_utils.TestCase):
         self.assertEqual(set(f.result() for f in done), set(('a', 'b')))
 
     def test_as_completed_duplicate_coroutines(self):
+
         @asyncio.coroutine
         def coro(s):
             return s
@@ -903,7 +906,8 @@ class TaskTests(test_utils.TestCase):
         def runner():
             result = []
             c = coro('ham')
-            for f in asyncio.as_completed([c, c, coro('spam')], loop=self.loop):
+            for f in asyncio.as_completed([c, c, coro('spam')],
+                                          loop=self.loop):
                 result.append((yield f))
             raise asyncio.Return(result)
 
@@ -1437,6 +1441,32 @@ class GatherTestsBase:
         self.assertTrue(fut.done())
         cb.assert_called_once_with(fut)
         self.assertEqual(fut.result(), [3, 1, exc, exc2])
+
+    def test_env_var_debug(self):
+        path = os.path.dirname(asyncio.__file__)
+        path = os.path.normpath(os.path.join(path, '..'))
+        code = '\n'.join((
+            'import sys',
+            'sys.path.insert(0, %r)' % path,
+            'import asyncio.coroutine',
+            'print(asyncio.coroutine._DEBUG)'))
+
+        # Test with -E to not fail if the unit test was run with
+        # PYTHONASYNCIODEBUG set to a non-empty string
+        sts, stdout, stderr = assert_python_ok('-E', '-c', code)
+        self.assertEqual(stdout.rstrip(), b'False')
+
+        sts, stdout, stderr = assert_python_ok('-c', code,
+                                               PYTHONASYNCIODEBUG='')
+        self.assertEqual(stdout.rstrip(), b'False')
+
+        sts, stdout, stderr = assert_python_ok('-c', code,
+                                               PYTHONASYNCIODEBUG='1')
+        self.assertEqual(stdout.rstrip(), b'True')
+
+        sts, stdout, stderr = assert_python_ok('-E', '-c', code,
+                                               PYTHONASYNCIODEBUG='1')
+        self.assertEqual(stdout.rstrip(), b'False')
 
 
 class FutureGatherTests(GatherTestsBase, test_utils.TestCase):

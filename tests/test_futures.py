@@ -146,20 +146,20 @@ class FutureTests(test_utils.TestCase):
         newf_cancelled._copy_state(f_cancelled)
         self.assertTrue(newf_cancelled.cancelled())
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_abandoned(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_result_unretrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(42)
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_result_retrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(42)
@@ -167,7 +167,7 @@ class FutureTests(test_utils.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_exception_unretrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -175,7 +175,7 @@ class FutureTests(test_utils.TestCase):
         test_utils.run_briefly(self.loop)
         self.assertTrue(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_exception_retrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -183,7 +183,7 @@ class FutureTests(test_utils.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_exception_result_retrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))

@@ -18,6 +18,10 @@ from asyncio.test_support import find_unused_port, IPV6_ENABLED
 from asyncio.time_monotonic import time_monotonic
 
 
+MOCK_ANY = mock.ANY
+PY34 = sys.version_info >= (3, 4)
+
+
 class BaseEventLoopTests(test_utils.TestCase):
 
     def setUp(self):
@@ -52,20 +56,21 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.assertRaises(NotImplementedError, next, iter(gen))
 
     def test__add_callback_handle(self):
-        h = asyncio.Handle(lambda: False, ())
+        h = asyncio.Handle(lambda: False, (), self.loop)
 
         self.loop._add_callback(h)
         self.assertFalse(self.loop._scheduled)
         self.assertIn(h, self.loop._ready)
 
     def test__add_callback_timer(self):
-        h = asyncio.TimerHandle(time_monotonic()+10, lambda: False, ())
+        h = asyncio.TimerHandle(time_monotonic()+10, lambda: False, (),
+                                self.loop)
 
         self.loop._add_callback(h)
         self.assertIn(h, self.loop._scheduled)
 
     def test__add_callback_cancelled_handle(self):
-        h = asyncio.Handle(lambda: False, ())
+        h = asyncio.Handle(lambda: False, (), self.loop)
         h.cancel()
 
         self.loop._add_callback(h)
@@ -140,15 +145,15 @@ class BaseEventLoopTests(test_utils.TestCase):
 
         self.assertRaises(
             AssertionError, self.loop.run_in_executor,
-            None, asyncio.Handle(cb, ()), ('',))
+            None, asyncio.Handle(cb, (), self.loop), ('',))
         self.assertRaises(
             AssertionError, self.loop.run_in_executor,
-            None, asyncio.TimerHandle(10, cb, ()))
+            None, asyncio.TimerHandle(10, cb, (), self.loop))
 
     def test_run_once_in_executor_cancelled(self):
         def cb():
             pass
-        h = asyncio.Handle(cb, ())
+        h = asyncio.Handle(cb, (), self.loop)
         h.cancel()
 
         f = self.loop.run_in_executor(None, h)
@@ -159,7 +164,7 @@ class BaseEventLoopTests(test_utils.TestCase):
     def test_run_once_in_executor_plain(self):
         def cb():
             pass
-        h = asyncio.Handle(cb, ())
+        h = asyncio.Handle(cb, (), self.loop)
         f = asyncio.Future(loop=self.loop)
         executor = mock.Mock()
         executor.submit.return_value = f
@@ -178,8 +183,10 @@ class BaseEventLoopTests(test_utils.TestCase):
         f.cancel()  # Don't complain about abandoned Future.
 
     def test__run_once(self):
-        h1 = asyncio.TimerHandle(time_monotonic() + 5.0, lambda: True, ())
-        h2 = asyncio.TimerHandle(time_monotonic() + 10.0, lambda: True, ())
+        h1 = asyncio.TimerHandle(time_monotonic() + 5.0, lambda: True, (),
+                                 self.loop)
+        h2 = asyncio.TimerHandle(time_monotonic() + 10.0, lambda: True, (),
+                                 self.loop)
 
         h1.cancel()
 
@@ -192,6 +199,12 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.assertTrue(9.5 < t < 10.5, t)
         self.assertEqual([h2], self.loop._scheduled)
         self.assertTrue(self.loop._process_events.called)
+
+    def test_set_debug(self):
+        self.loop.set_debug(True)
+        self.assertTrue(self.loop.get_debug())
+        self.loop.set_debug(False)
+        self.assertFalse(self.loop.get_debug())
 
     @mock.patch('asyncio.base_events.time_monotonic')
     @mock.patch('asyncio.base_events.logger')
@@ -209,14 +222,15 @@ class BaseEventLoopTests(test_utils.TestCase):
         m_time_monotonic.side_effect = time_monotonic
 
         self.loop._scheduled.append(
-            asyncio.TimerHandle(11.0, lambda: True, ()))
+            asyncio.TimerHandle(11.0, lambda: True, (), self.loop))
         self.loop._process_events = mock.Mock()
         self.loop._run_once()
         self.assertEqual(logging.INFO, m_logger.log.call_args[0][0])
 
         non_local['idx'] = -1
         non_local['data'] = [10.0, 10.0, 10.3, 13.0]
-        self.loop._scheduled = [asyncio.TimerHandle(11.0, lambda:True, ())]
+        self.loop._scheduled = [asyncio.TimerHandle(11.0, lambda: True, (),
+                                                    self.loop)]
         self.loop._run_once()
         self.assertEqual(logging.DEBUG, m_logger.log.call_args[0][0])
 
@@ -227,7 +241,8 @@ class BaseEventLoopTests(test_utils.TestCase):
             non_local['processed'] = True
             non_local['handle'] = loop.call_soon(lambda: True)
 
-        h = asyncio.TimerHandle(time_monotonic() - 1, cb, (self.loop,))
+        h = asyncio.TimerHandle(time_monotonic() - 1, cb, (self.loop,),
+                                self.loop)
 
         self.loop._process_events = mock.Mock()
         self.loop._scheduled.append(h)
@@ -270,7 +285,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             asyncio.SubprocessProtocol, *args, bufsize=4096)
 
     def test_subprocess_shell_invalid_args(self):
-        # exepected a string, not an int or a list
+        # expected a string, not an int or a list
         self.assertRaises(TypeError,
             self.loop.run_until_complete, self.loop.subprocess_shell,
             asyncio.SubprocessProtocol, 123)
@@ -288,6 +303,163 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.assertRaises(TypeError,
             self.loop.run_until_complete, self.loop.subprocess_shell,
             asyncio.SubprocessProtocol, 'exit 0', bufsize=4096)
+
+    def test_default_exc_handler_callback(self):
+        self.loop._process_events = mock.Mock()
+
+        def zero_error(fut):
+            fut.set_result(True)
+            1/0
+
+        # Test call_soon (events.Handle)
+        with mock.patch('asyncio.base_events.logger') as log:
+            fut = asyncio.Future(loop=self.loop)
+            self.loop.call_soon(zero_error, fut)
+            fut.add_done_callback(lambda fut: self.loop.stop())
+            self.loop.run_forever()
+            log.error.assert_called_with(
+                test_utils.MockPattern('Exception in callback.*zero'),
+                exc_info=(ZeroDivisionError, MOCK_ANY, MOCK_ANY))
+
+        # Test call_later (events.TimerHandle)
+        with mock.patch('asyncio.base_events.logger') as log:
+            fut = asyncio.Future(loop=self.loop)
+            self.loop.call_later(0.01, zero_error, fut)
+            fut.add_done_callback(lambda fut: self.loop.stop())
+            self.loop.run_forever()
+            log.error.assert_called_with(
+                test_utils.MockPattern('Exception in callback.*zero'),
+                exc_info=(ZeroDivisionError, MOCK_ANY, MOCK_ANY))
+
+    def test_default_exc_handler_coro(self):
+        self.loop._process_events = mock.Mock()
+
+        @asyncio.coroutine
+        def zero_error_coro():
+            yield asyncio.sleep(0.01, loop=self.loop)
+            1/0
+
+        # Test Future.__del__
+        with mock.patch('asyncio.base_events.logger') as log:
+            fut = asyncio.async(zero_error_coro(), loop=self.loop)
+            fut.add_done_callback(lambda *args: self.loop.stop())
+            self.loop.run_forever()
+            fut = None # Trigger Future.__del__ or futures._TracebackLogger
+            if PY34:
+                # Future.__del__ in Python 3.4 logs error with
+                # an actual exception context
+                log.error.assert_called_with(
+                    test_utils.MockPattern('.*exception was never retrieved'),
+                    exc_info=(ZeroDivisionError, MOCK_ANY, MOCK_ANY))
+            else:
+                # futures._TracebackLogger logs only textual traceback
+                log.error.assert_called_with(
+                    test_utils.MockPattern(
+                        '.*exception was never retrieved.*ZeroDiv'),
+                    exc_info=False)
+
+    def test_set_exc_handler_invalid(self):
+        with self.assertRaisesRegex(TypeError, 'A callable object or None'):
+            self.loop.set_exception_handler('spam')
+
+    def test_set_exc_handler_custom(self):
+        def zero_error():
+            1/0
+
+        def run_loop():
+            self.loop.call_soon(zero_error)
+            self.loop._run_once()
+
+        self.loop._process_events = mock.Mock()
+
+        mock_handler = mock.Mock()
+        self.loop.set_exception_handler(mock_handler)
+        run_loop()
+        mock_handler.assert_called_with(self.loop, {
+            'exception': MOCK_ANY,
+            'message': test_utils.MockPattern(
+                                'Exception in callback.*zero_error'),
+            'handle': MOCK_ANY,
+        })
+        mock_handler.reset_mock()
+
+        self.loop.set_exception_handler(None)
+        with mock.patch('asyncio.base_events.logger') as log:
+            run_loop()
+            log.error.assert_called_with(
+                        test_utils.MockPattern(
+                                'Exception in callback.*zero'),
+                        exc_info=(ZeroDivisionError, MOCK_ANY, MOCK_ANY))
+
+        assert not mock_handler.called
+
+    def test_set_exc_handler_broken(self):
+        def run_loop():
+            def zero_error():
+                1/0
+            self.loop.call_soon(zero_error)
+            self.loop._run_once()
+
+        def handler(loop, context):
+            raise AttributeError('spam')
+
+        self.loop._process_events = mock.Mock()
+
+        self.loop.set_exception_handler(handler)
+
+        with mock.patch('asyncio.base_events.logger') as log:
+            run_loop()
+            log.error.assert_called_with(
+                test_utils.MockPattern(
+                    'Unhandled error in exception handler'),
+                exc_info=(AttributeError, MOCK_ANY, MOCK_ANY))
+
+    def test_default_exc_handler_broken(self):
+        contexts = []
+
+        class Loop(base_events.BaseEventLoop):
+
+            _selector = mock.Mock()
+            _process_events = mock.Mock()
+
+            def default_exception_handler(self, context):
+                contexts.append(context)
+                # Simulates custom buggy "default_exception_handler"
+                raise ValueError('spam')
+
+        loop = Loop()
+        asyncio.set_event_loop(loop)
+
+        def run_loop():
+            def zero_error():
+                1/0
+            loop.call_soon(zero_error)
+            loop._run_once()
+
+        with mock.patch('asyncio.base_events.logger') as log:
+            run_loop()
+            log.error.assert_called_with(
+                'Exception in default exception handler',
+                exc_info=True)
+
+        def custom_handler(loop, context):
+            raise ValueError('ham')
+
+        del contexts[:]
+        loop.set_exception_handler(custom_handler)
+        with mock.patch('asyncio.base_events.logger') as log:
+            run_loop()
+            log.error.assert_called_with(
+                test_utils.MockPattern('Exception in default exception.*'
+                                       'while handling.*in custom'),
+                exc_info=True)
+
+            # Check that original context was passed to default
+            # exception handler.
+            context = contexts[0]
+            self.assertIn('context', context)
+            self.assertIs(type(context['context']['exception']),
+                          ZeroDivisionError)
 
 
 class MyProto(asyncio.Protocol):
@@ -731,7 +903,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop._accept_connection(MyProto, sock)
         self.assertFalse(sock.close.called)
 
-    @mock.patch('asyncio.selector_events.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_accept_connection_exception(self, m_log):
         sock = mock.Mock()
         sock.fileno.return_value = 10
@@ -740,7 +912,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop.call_later = mock.Mock()
 
         self.loop._accept_connection(MyProto, sock)
-        self.assertTrue(m_log.exception.called)
+        self.assertTrue(m_log.error.called)
         self.assertFalse(sock.close.called)
         self.loop.remove_reader.assert_called_with(10)
         self.loop.call_later.assert_called_with(constants.ACCEPT_RETRY_DELAY,

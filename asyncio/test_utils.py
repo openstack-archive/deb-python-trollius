@@ -5,10 +5,20 @@ import contextlib
 import functools
 import io
 import os
+import re
+import socket
+try:
+    import socketserver
+    from http.server import HTTPServer
+except ImportError:
+    import SocketServer as socketserver
+    from BaseHTTPServer import HTTPServer
 import sys
+import tempfile
 import threading
 import time
-from wsgiref.simple_server import make_server, WSGIRequestHandler, WSGIServer
+from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
+
 try:
     import ssl
     from .py3_ssl import SSLContext, wrap_socket
@@ -31,7 +41,101 @@ try:
     skipIf = unittest.skipIf
     skipUnless = unittest.skipUnless
     SkipTest = unittest.SkipTest
-    TestCase = unittest.TestCase
+
+    class _BaseTestCaseContext:
+
+        def __init__(self, test_case):
+            self.test_case = test_case
+
+        def _raiseFailure(self, standardMsg):
+            msg = self.test_case._formatMessage(self.msg, standardMsg)
+            raise self.test_case.failureException(msg)
+
+
+    class _AssertRaisesBaseContext(_BaseTestCaseContext):
+
+        def __init__(self, expected, test_case, callable_obj=None,
+                     expected_regex=None):
+            _BaseTestCaseContext.__init__(self, test_case)
+            self.expected = expected
+            self.test_case = test_case
+            if callable_obj is not None:
+                try:
+                    self.obj_name = callable_obj.__name__
+                except AttributeError:
+                    self.obj_name = str(callable_obj)
+            else:
+                self.obj_name = None
+            if isinstance(expected_regex, (bytes, str)):
+                expected_regex = re.compile(expected_regex)
+            self.expected_regex = expected_regex
+            self.msg = None
+
+        def handle(self, name, callable_obj, args, kwargs):
+            """
+            If callable_obj is None, assertRaises/Warns is being used as a
+            context manager, so check for a 'msg' kwarg and return self.
+            If callable_obj is not None, call it passing args and kwargs.
+            """
+            if callable_obj is None:
+                self.msg = kwargs.pop('msg', None)
+                return self
+            with self:
+                callable_obj(*args, **kwargs)
+
+
+    class _AssertRaisesContext(_AssertRaisesBaseContext):
+        """A context manager used to implement TestCase.assertRaises* methods."""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, tb):
+            if exc_type is None:
+                try:
+                    exc_name = self.expected.__name__
+                except AttributeError:
+                    exc_name = str(self.expected)
+                if self.obj_name:
+                    self._raiseFailure("{} not raised by {}".format(exc_name,
+                                                                    self.obj_name))
+                else:
+                    self._raiseFailure("{} not raised".format(exc_name))
+            if not issubclass(exc_type, self.expected):
+                # let unexpected exceptions pass through
+                return False
+            self.exception = exc_value
+            if self.expected_regex is None:
+                return True
+
+            expected_regex = self.expected_regex
+            if not expected_regex.search(str(exc_value)):
+                self._raiseFailure('"{}" does not match "{}"'.format(
+                         expected_regex.pattern, str(exc_value)))
+            return True
+
+
+    class TestCase(unittest.TestCase):
+        if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
+            def assertRaisesRegex(self, expected_exception, expected_regex,
+                                  callable_obj=None, *args, **kwargs):
+                """Asserts that the message in a raised exception matches a regex.
+
+                Args:
+                    expected_exception: Exception class expected to be raised.
+                    expected_regex: Regex (re pattern object or string) expected
+                            to be found in error message.
+                    callable_obj: Function to be called.
+                    msg: Optional message used in case of failure. Can only be used
+                            when assertRaisesRegex is used as a context manager.
+                    args: Extra args.
+                    kwargs: Extra kwargs.
+                """
+                context = _AssertRaisesContext(expected_exception, self, callable_obj,
+                                               expected_regex)
+
+                return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
+
 except AttributeError:
     # Python 2.6: use the backported unittest module called "unittest2"
     import unittest2
@@ -91,42 +195,51 @@ def run_once(loop):
     loop.run_forever()
 
 
-@contextlib.contextmanager
-def run_test_server(host='127.0.0.1', port=0, use_ssl=False):
+class SilentWSGIRequestHandler(WSGIRequestHandler):
 
-    class SilentWSGIRequestHandler(WSGIRequestHandler):
-        def get_stderr(self):
-            return io.StringIO()
+    def get_stderr(self):
+        return io.StringIO()
 
-        def log_message(self, format, *args):
-            pass
+    def log_message(self, format, *args):
+        pass
 
-    class SilentWSGIServer(WSGIServer):
-        def handle_error(self, request, client_address):
-            pass
 
-    class SSLWSGIServer(SilentWSGIServer):
-        def finish_request(self, request, client_address):
-            # The relative location of our test directory (which
-            # contains the ssl key and certificate files) differs
-            # between the stdlib and stand-alone asyncio.
-            # Prefer our own if we can find it.
-            here = os.path.join(os.path.dirname(__file__), '..', 'tests')
-            if not os.path.isdir(here):
-                here = os.path.join(os.path.dirname(os.__file__),
-                                    'test', 'test_asyncio')
-            keyfile = os.path.join(here, 'ssl_key.pem')
-            certfile = os.path.join(here, 'ssl_cert.pem')
-            ssock = wrap_socket(request,
+class SilentWSGIServer(WSGIServer):
+
+    def handle_error(self, request, client_address):
+        pass
+
+
+class SSLWSGIServerMixin:
+
+    def finish_request(self, request, client_address):
+        # The relative location of our test directory (which
+        # contains the ssl key and certificate files) differs
+        # between the stdlib and stand-alone asyncio.
+        # Prefer our own if we can find it.
+        here = os.path.join(os.path.dirname(__file__), '..', 'tests')
+        if not os.path.isdir(here):
+            here = os.path.join(os.path.dirname(os.__file__),
+                                'test', 'test_asyncio')
+        keyfile = os.path.join(here, 'ssl_key.pem')
+        certfile = os.path.join(here, 'ssl_cert.pem')
+        ssock = ssl.wrap_socket(request,
                                 keyfile=keyfile,
                                 certfile=certfile,
                                 server_side=True)
-            try:
-                self.RequestHandlerClass(ssock, client_address, self)
-                ssock.close()
-            except OSError:
-                # maybe socket has been closed by peer
-                pass
+        try:
+            self.RequestHandlerClass(ssock, client_address, self)
+            ssock.close()
+        except OSError:
+            # maybe socket has been closed by peer
+            pass
+
+
+class SSLWSGIServer(SSLWSGIServerMixin, SilentWSGIServer):
+    pass
+
+
+def _run_test_server(address, use_ssl, server_cls, server_ssl_cls):
 
     def app(environ, start_response):
         status = '200 OK'
@@ -136,9 +249,9 @@ def run_test_server(host='127.0.0.1', port=0, use_ssl=False):
 
     # Run the test WSGI server in a separate thread in order not to
     # interfere with event handling in the main thread
-    server_class = SSLWSGIServer if use_ssl else SilentWSGIServer
-    httpd = make_server(host, port, app,
-                        server_class, SilentWSGIRequestHandler)
+    server_class = server_ssl_cls if use_ssl else server_cls
+    httpd = server_class(address, SilentWSGIRequestHandler)
+    httpd.set_app(app)
     httpd.address = httpd.server_address
     server_thread = threading.Thread(target=httpd.serve_forever)
     server_thread.start()
@@ -148,6 +261,77 @@ def run_test_server(host='127.0.0.1', port=0, use_ssl=False):
         httpd.shutdown()
         httpd.server_close()
         server_thread.join()
+
+
+if hasattr(socket, 'AF_UNIX'):
+
+    class UnixHTTPServer(socketserver.UnixStreamServer, HTTPServer, object):
+
+        def server_bind(self):
+            socketserver.UnixStreamServer.server_bind(self)
+            self.server_name = '127.0.0.1'
+            self.server_port = 80
+
+
+    class UnixWSGIServer(UnixHTTPServer, WSGIServer):
+
+        def server_bind(self):
+            UnixHTTPServer.server_bind(self)
+            self.setup_environ()
+
+        def get_request(self):
+            request, client_addr = super(UnixWSGIServer, self).get_request()
+            # Code in the stdlib expects that get_request
+            # will return a socket and a tuple (host, port).
+            # However, this isn't true for UNIX sockets,
+            # as the second return value will be a path;
+            # hence we return some fake data sufficient
+            # to get the tests going
+            return request, ('127.0.0.1', '')
+
+
+    class SilentUnixWSGIServer(UnixWSGIServer):
+
+        def handle_error(self, request, client_address):
+            pass
+
+
+    class UnixSSLWSGIServer(SSLWSGIServerMixin, SilentUnixWSGIServer):
+        pass
+
+
+    def gen_unix_socket_path():
+        with tempfile.NamedTemporaryFile() as file:
+            return file.name
+
+
+    @contextlib.contextmanager
+    def unix_socket_path():
+        path = gen_unix_socket_path()
+        try:
+            yield path
+        finally:
+            try:
+                os.unlink(path)
+            except OSError:
+                pass
+
+
+    @contextlib.contextmanager
+    def run_test_unix_server(use_ssl=False):
+        with unix_socket_path() as path:
+            for item in _run_test_server(address=path, use_ssl=use_ssl,
+                                         server_cls=SilentUnixWSGIServer,
+                                         server_ssl_cls=UnixSSLWSGIServer):
+                yield item
+
+
+@contextlib.contextmanager
+def run_test_server(host='127.0.0.1', port=0, use_ssl=False):
+    for item in _run_test_server(address=(host, port), use_ssl=use_ssl,
+                                 server_cls=SilentWSGIServer,
+                                 server_ssl_cls=SSLWSGIServer):
+        yield item
 
 
 def make_test_protocol(base):
@@ -195,7 +379,7 @@ class TestLoop(base_events.BaseEventLoop):
             when = yield ...
             ... = yield time_advance
 
-    Value retuned by yield is absolute time of next scheduled handler.
+    Value returned by yield is absolute time of next scheduled handler.
     Value passed to yield is time advance to move loop's time forward.
     """
 
@@ -238,7 +422,7 @@ class TestLoop(base_events.BaseEventLoop):
                 raise AssertionError("Time generator is not finished")
 
     def add_reader(self, fd, callback, *args):
-        self.readers[fd] = events.Handle(callback, args)
+        self.readers[fd] = events.Handle(callback, args, self)
 
     def remove_reader(self, fd):
         self.remove_reader_count[fd] += 1
@@ -257,7 +441,7 @@ class TestLoop(base_events.BaseEventLoop):
             handle._args, args)
 
     def add_writer(self, fd, callback, *args):
-        self.writers[fd] = events.Handle(callback, args)
+        self.writers[fd] = events.Handle(callback, args, self)
 
     def remove_writer(self, fd):
         self.remove_writer_count[fd] += 1
@@ -296,5 +480,19 @@ class TestLoop(base_events.BaseEventLoop):
     def _write_to_self(self):
         pass
 
+
 def MockCallback(**kwargs):
     return mock.Mock(spec=['__call__'], **kwargs)
+
+
+class MockPattern(str):
+    """A regex based str with a fuzzy __eq__.
+
+    Use this helper with 'mock.assert_called_with', or anywhere
+    where a regex comparison between strings is needed.
+
+    For instance:
+       mock_call.assert_called_with(MockPattern('spam.*ham'))
+    """
+    def __eq__(self, other):
+        return bool(re.search(str(self), other, re.S))
