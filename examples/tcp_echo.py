@@ -110,7 +110,7 @@ if __name__ == '__main__':
             asyncio.set_event_loop(loop)
         else:
             loop = asyncio.get_event_loop()
-        print ('Using backend: {}'.format(loop.__class__.__name__))
+        print ('Using backend: {0}'.format(loop.__class__.__name__))
 
         if signal is not None and sys.platform != 'win32':
             loop.add_signal_handler(signal.SIGINT, loop.stop)

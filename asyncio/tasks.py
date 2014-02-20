@@ -23,7 +23,7 @@ from . import events
 from . import executor
 from . import futures
 from .locks import Lock, Condition, Semaphore
-from .coroutine import Return, coroutine, iscoroutinefunction, iscoroutine
+from .coroutines import Return, coroutine, iscoroutinefunction, iscoroutine
 
 @coroutine
 def lock_coroutine(lock):

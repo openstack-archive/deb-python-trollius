@@ -41,7 +41,17 @@ try:
     skipIf = unittest.skipIf
     skipUnless = unittest.skipUnless
     SkipTest = unittest.SkipTest
+    _TestCase = unittest.TestCase
+except AttributeError:
+    # Python 2.6: use the backported unittest module called "unittest2"
+    import unittest2
+    skipIf = unittest2.skipIf
+    skipUnless = unittest2.skipUnless
+    SkipTest = unittest2.SkipTest
+    _TestCase = unittest2.TestCase
 
+
+if not hasattr(_TestCase, 'assertRaisesRegex'):
     class _BaseTestCaseContext:
 
         def __init__(self, test_case):
@@ -97,10 +107,10 @@ try:
                 except AttributeError:
                     exc_name = str(self.expected)
                 if self.obj_name:
-                    self._raiseFailure("{} not raised by {}".format(exc_name,
+                    self._raiseFailure("{0} not raised by {1}".format(exc_name,
                                                                     self.obj_name))
                 else:
-                    self._raiseFailure("{} not raised".format(exc_name))
+                    self._raiseFailure("{0} not raised".format(exc_name))
             if not issubclass(exc_type, self.expected):
                 # let unexpected exceptions pass through
                 return False
@@ -110,39 +120,33 @@ try:
 
             expected_regex = self.expected_regex
             if not expected_regex.search(str(exc_value)):
-                self._raiseFailure('"{}" does not match "{}"'.format(
+                self._raiseFailure('"{0}" does not match "{1}"'.format(
                          expected_regex.pattern, str(exc_value)))
             return True
 
 
-    class TestCase(unittest.TestCase):
-        if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
-            def assertRaisesRegex(self, expected_exception, expected_regex,
-                                  callable_obj=None, *args, **kwargs):
-                """Asserts that the message in a raised exception matches a regex.
+    class TestCase(_TestCase):
+        def assertRaisesRegex(self, expected_exception, expected_regex,
+                              callable_obj=None, *args, **kwargs):
+            """Asserts that the message in a raised exception matches a regex.
 
-                Args:
-                    expected_exception: Exception class expected to be raised.
-                    expected_regex: Regex (re pattern object or string) expected
-                            to be found in error message.
-                    callable_obj: Function to be called.
-                    msg: Optional message used in case of failure. Can only be used
-                            when assertRaisesRegex is used as a context manager.
-                    args: Extra args.
-                    kwargs: Extra kwargs.
-                """
-                context = _AssertRaisesContext(expected_exception, self, callable_obj,
-                                               expected_regex)
+            Args:
+                expected_exception: Exception class expected to be raised.
+                expected_regex: Regex (re pattern object or string) expected
+                        to be found in error message.
+                callable_obj: Function to be called.
+                msg: Optional message used in case of failure. Can only be used
+                        when assertRaisesRegex is used as a context manager.
+                args: Extra args.
+                kwargs: Extra kwargs.
+            """
+            context = _AssertRaisesContext(expected_exception, self, callable_obj,
+                                           expected_regex)
 
-                return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
+            return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
+else:
+    TestCase = _TestCase
 
-except AttributeError:
-    # Python 2.6: use the backported unittest module called "unittest2"
-    import unittest2
-    skipIf = unittest2.skipIf
-    skipUnless = unittest2.skipUnless
-    SkipTest = unittest2.SkipTest
-    TestCase = unittest2.TestCase
 
 try:
     from unittest import mock

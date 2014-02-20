@@ -69,7 +69,7 @@ class MyServer:
                 arg1 = float(args[0])
                 arg2 = float(args[1])
                 retval = arg1 + arg2
-                client_writer.write("{!r}\n".format(retval).encode("utf-8"))
+                client_writer.write("{0!r}\n".format(retval).encode("utf-8"))
             elif cmd == 'repeat':
                 times = int(args[0])
                 msg = args[1]
@@ -79,7 +79,7 @@ class MyServer:
                                         .encode("utf-8"))
                 client_writer.write("end\n".encode("utf-8"))
             else:
-                print("Bad command {!r}".format(data), file=sys.stderr)
+                print("Bad command {0!r}".format(data), file=sys.stderr)
 
             # This enables us to have flow control in our connection.
             yield client_writer.drain()
