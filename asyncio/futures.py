@@ -8,10 +8,6 @@ __all__ = ['CancelledError', 'TimeoutError',
 import logging
 import sys
 import traceback
-try:
-    import concurrent.futures
-except ImportError:
-    concurrent = None
 
 from . import events
 from . import executor
