@@ -2,6 +2,8 @@
 
 """Fuzz tester for as_completed(), by Glenn Langford."""
 
+from __future__ import print_function
+
 import asyncio
 import itertools
 import random
