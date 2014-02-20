@@ -8,9 +8,10 @@ __all__ = ['coroutine', 'Task',
            'gather', 'shield', 'Return',
            ]
 
-import collections
 import functools
 import linecache
+import os
+import sys
 import traceback
 try:
     from weakref import WeakSet
@@ -103,7 +104,7 @@ class Task(futures.Future):
 
         The frames are always ordered from oldest to newest.
 
-        The optional limit gives the maximum nummber of frames to
+        The optional limit gives the maximum number of frames to
         return; by default all available frames are returned.  Its
         meaning differs depending on whether a stack or a traceback is
         returned: the newest frames of a stack are returned, but the
@@ -388,10 +389,10 @@ def as_completed(fs, loop=None, timeout=None):
     This differs from PEP 3148; the proper way to use this is:
 
         for f in as_completed(fs):
-            result = yield f  # The 'yield from' may raise.
+            result = yield f  # The 'yield' may raise.
             # Use result.
 
-    If a timeout is specified, the 'yield from' will raise
+    If a timeout is specified, the 'yield' will raise
     TimeoutError when the timeout occurs before all Futures are done.
 
     Note: The futures 'f' are not necessarily members of fs.
@@ -399,7 +400,6 @@ def as_completed(fs, loop=None, timeout=None):
     if isinstance(fs, futures.Future) or iscoroutine(fs):
         raise TypeError("expect a list of futures, not %s" % type(fs).__name__)
     loop = loop if loop is not None else events.get_event_loop()
-    deadline = None if timeout is None else loop.time() + timeout
     todo = set(async(f, loop=loop) for f in set(fs))
     from .queues import Queue  # Import here to avoid circular import problem.
     done = Queue(loop=loop)

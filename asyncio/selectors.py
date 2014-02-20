@@ -5,9 +5,8 @@ This module allows high-level and efficient I/O multiplexing, built upon the
 """
 
 
-from abc import ABCMeta, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod
 from collections import namedtuple, Mapping
-import functools
 import math
 import select
 import sys
@@ -87,7 +86,7 @@ class BaseSelector(object):
 
     A selector can use various implementations (select(), poll(), epoll()...)
     depending on the platform. The default `Selector` class uses the most
-    performant implementation on the current platform.
+    efficient implementation on the current platform.
     """
     __metaclass__ = ABCMeta
 

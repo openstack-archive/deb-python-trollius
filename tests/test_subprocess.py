@@ -28,6 +28,7 @@ else:
 PROGRAM_CAT = [sys.executable, '-c', PROGRAM_CAT]
 
 class SubprocessMixin:
+
     def test_stdin_stdout(self):
         args = PROGRAM_CAT
 
@@ -143,6 +144,7 @@ class SubprocessMixin:
 if sys.platform != 'win32':
     # Unix
     class SubprocessWatcherMixin(SubprocessMixin):
+
         Watcher = None
 
         def setUp(self):
@@ -162,14 +164,20 @@ if sys.platform != 'win32':
             self.loop.close()
             policy.set_event_loop(None)
 
-    class SubprocessSafeWatcherTests(SubprocessWatcherMixin, test_utils.TestCase):
+    class SubprocessSafeWatcherTests(SubprocessWatcherMixin,
+                                     test_utils.TestCase):
+
         Watcher = unix_events.SafeChildWatcher
 
-    class SubprocessFastWatcherTests(SubprocessWatcherMixin, test_utils.TestCase):
+    class SubprocessFastWatcherTests(SubprocessWatcherMixin,
+                                     test_utils.TestCase):
+
         Watcher = unix_events.FastChildWatcher
+
 else:
     # Windows
     class SubprocessProactorTests(SubprocessMixin, test_utils.TestCase):
+
         def setUp(self):
             policy = asyncio.get_event_loop_policy()
             self.loop = asyncio.ProactorEventLoop()

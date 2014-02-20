@@ -40,6 +40,9 @@ else:
         memoryview = buffer
 
 
+MOCK_ANY = mock.ANY
+
+
 class TestBaseSelectorEventLoop(BaseSelectorEventLoop):
 
     def _make_self_pipe(self):
@@ -72,7 +75,8 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         self.loop.remove_reader = mock.Mock()
         self.loop.remove_writer = mock.Mock()
         waiter = asyncio.Future(loop=self.loop)
-        transport = self.loop._make_ssl_transport(m, asyncio.Protocol(), m, waiter)
+        transport = self.loop._make_ssl_transport(
+            m, asyncio.Protocol(), m, waiter)
         self.assertIsInstance(transport, _SelectorSslTransport)
 
     @mock.patch('asyncio.selector_events.ssl', None)
@@ -659,14 +663,18 @@ class SelectorTransportTests(test_utils.TestCase):
         self.assertFalse(self.loop.readers)
         self.assertEqual(1, self.loop.remove_reader_count[7])
 
-    @mock.patch('asyncio.log.logger.exception')
+    @mock.patch('asyncio.log.logger.error')
     def test_fatal_error(self, m_exc):
         exc = OSError()
         tr = _SelectorTransport(self.loop, self.sock, self.protocol, None)
         tr._force_close = mock.Mock()
         tr._fatal_error(exc)
 
-        m_exc.assert_called_with('Fatal error for %s', tr)
+        m_exc.assert_called_with(
+            test_utils.MockPattern(
+                'Fatal error on transport\nprotocol:.*\ntransport:.*'),
+            exc_info=(OSError, MOCK_ANY, MOCK_ANY))
+
         tr._force_close.assert_called_with(exc)
 
     def test_connection_lost(self):
@@ -798,7 +806,9 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         transport._fatal_error = mock.Mock()
         transport._read_ready()
 
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal read error on socket transport')
 
     def test_write(self):
         data = b'data'
@@ -911,7 +921,9 @@ class SelectorSocketTransportTests(test_utils.TestCase):
             self.loop, self.sock, self.protocol)
         transport._fatal_error = mock.Mock()
         transport.write(data)
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal write error on socket transport')
         transport._conn_lost = 1
 
         self.sock.reset_mock()
@@ -1014,9 +1026,11 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         transport._fatal_error = mock.Mock()
         transport._buffer.extend(b'data')
         transport._write_ready()
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal write error on socket transport')
 
-    @mock.patch('asyncio.selector_events.logger')
+    @mock.patch('asyncio.base_events.logger')
     def test_write_ready_exception_and_close(self, m_log):
         self.sock.send.side_effect = OSError()
         remove_writer = self.loop.remove_writer = mock.Mock()
@@ -1256,7 +1270,9 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport = self._make_one()
         transport._fatal_error = mock.Mock()
         transport._read_ready()
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal read error on SSL transport')
 
     def test_write_ready_send(self):
         self.sslsock.send.return_value = 4
@@ -1338,7 +1354,9 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._buffer = list_to_buffer([b'data'])
         transport._fatal_error = mock.Mock()
         transport._write_ready()
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal write error on SSL transport')
         self.assertEqual(list_to_buffer(), transport._buffer)
 
     def test_write_ready_read_wants_write(self):
@@ -1426,7 +1444,9 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         transport._fatal_error = mock.Mock()
         transport._read_ready()
 
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal read error on datagram transport')
 
     def test_read_ready_oserr(self):
         transport = _SelectorDatagramTransport(
@@ -1536,7 +1556,9 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         transport.sendto(data, ())
 
         self.assertTrue(transport._fatal_error.called)
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal write error on datagram transport')
         transport._conn_lost = 1
 
         transport._address = ('123',)
@@ -1652,7 +1674,9 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         transport._buffer.append((b'data', ()))
         transport._sendto_ready()
 
-        transport._fatal_error.assert_called_with(err)
+        transport._fatal_error.assert_called_with(
+                                   err,
+                                   'Fatal write error on datagram transport')
 
     def test_sendto_ready_error_received(self):
         self.sock.sendto.side_effect = ConnectionRefusedError
@@ -1677,14 +1701,17 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         self.assertFalse(transport._fatal_error.called)
         self.assertTrue(self.protocol.error_received.called)
 
-    @mock.patch('asyncio.log.logger.exception')
+    @mock.patch('asyncio.base_events.logger.error')
     def test_fatal_error_connected(self, m_exc):
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol, ('0.0.0.0', 1))
         err = ConnectionRefusedError()
         transport._fatal_error(err)
         self.assertFalse(self.protocol.error_received.called)
-        m_exc.assert_called_with('Fatal error for %s', transport)
+        m_exc.assert_called_with(
+            test_utils.MockPattern(
+                'Fatal error on transport\nprotocol:.*\ntransport:.*'),
+            exc_info=(ConnectionRefusedError, MOCK_ANY, MOCK_ANY))
 
 
 if __name__ == '__main__':

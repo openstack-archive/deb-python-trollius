@@ -11,12 +11,13 @@ import traceback
 
 from . import events
 from . import executor
-from .log import logger
 
 # States for Future.
 _PENDING = 'PENDING'
 _CANCELLED = 'CANCELLED'
 _FINISHED = 'FINISHED'
+
+_PY34 = sys.version_info >= (3, 4)
 
 Error = executor.Error
 CancelledError = executor.CancelledError
@@ -72,7 +73,7 @@ class _TracebackLogger(object):
     immediately format the exception; we only do the work when
     activate() is called, which call is delayed until after all the
     Future's callbacks have run.  Since usually a Future has at least
-    one callback (typically set by 'yield from') and usually that
+    one callback (typically set by 'yield') and usually that
     callback extracts the callback, thereby removing the need to
     format the exception.
 
@@ -80,9 +81,10 @@ class _TracebackLogger(object):
     in a discussion about closing files when they are collected.
     """
 
-    __slots__ = ['exc', 'tb']
+    __slots__ = ['exc', 'tb', 'loop']
 
-    def __init__(self, exc):
+    def __init__(self, exc, loop):
+        self.loop = loop
         self.exc = exc
         self.tb = None
 
@@ -99,8 +101,11 @@ class _TracebackLogger(object):
 
     def __del__(self):
         if self.tb:
-            logger.error('Future/Task exception was never retrieved:\n%s',
-                         ''.join(self.tb))
+            msg = 'Future/Task exception was never retrieved:\n{tb}'
+            context = {
+                'message': msg.format(tb=''.join(self.tb)),
+            }
+            self.loop.call_exception_handler(context)
 
 
 class Future(object):
@@ -159,6 +164,20 @@ class Future(object):
         else:
             res += '<{0}>'.format(self._state)
         return res
+
+    if _PY34:
+        def __del__(self):
+            if not self._log_traceback:
+                # set_exception() was not called, or result() or exception()
+                # has consumed the exception
+                return
+            exc = self._exception
+            context = {
+                'message': 'Future/Task exception was never retrieved',
+                'exception': exc,
+                'future': self,
+            }
+            self._loop.call_exception_handler(context)
 
     def cancel(self):
         """Cancel the future and schedule callbacks.
@@ -288,7 +307,7 @@ class Future(object):
         self._exception = exception
 
         # FIXME: delay when the traceback is formatted
-        self._tb_logger = _TracebackLogger(exception)
+        self._tb_logger = _TracebackLogger(exception, self._loop)
         frame = sys._getframe(1)
         tb = ['Traceback (most recent call last):\n'] + traceback.format_stack(frame)
         tb.extend(traceback.format_exception_only(type(exception), exception))
@@ -297,9 +316,14 @@ class Future(object):
         self._tb_logger.exc = None
         self._state = _FINISHED
         self._schedule_callbacks()
-        # Arrange for the logger to be activated after all callbacks
-        # have had a chance to call result() or exception().
-        # FIXME: self._loop.call_soon(self._tb_logger.activate)
+        # FIXME: remove this code? only format the traceback in debug mode?
+        #if _PY34:
+        #    self._log_traceback = True
+        #else:
+        #    self._tb_logger = _TracebackLogger(exception, self._loop)
+        #    # Arrange for the logger to be activated after all callbacks
+        #    # have had a chance to call result() or exception().
+        #    self._loop.call_soon(self._tb_logger.activate)
 
     # Truly internal methods.
 

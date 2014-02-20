@@ -150,7 +150,6 @@ class Process:
 
     @tasks.coroutine
     def communicate(self, input=None):
-        loop = self._transport._loop
         if input:
             stdin = self._feed_stdin(input)
         else:
@@ -164,7 +163,7 @@ class Process:
         else:
             stderr = self._noop()
         stdin, stdout, stderr = yield tasks.gather(stdin, stdout, stderr,
-                                                   loop=loop)
+                                                   loop=self._loop)
         yield self.wait()
         raise tasks.Return(stdout, stderr)
 

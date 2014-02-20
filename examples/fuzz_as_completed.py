@@ -9,19 +9,19 @@ import sys
 
 @asyncio.coroutine
 def sleeper(time):
-    yield from asyncio.sleep(time)
-    return time
+    yield asyncio.sleep(time)
+    raise asyncio.Return(time)
 
 @asyncio.coroutine
 def watcher(tasks,delay=False):
     res = []
     for t in asyncio.as_completed(tasks):
-        r = yield from t
+        r = yield t
         res.append(r)
         if delay:
             # simulate processing delay
             process_time = random.random() / 10
-            yield from asyncio.sleep(process_time)
+            yield asyncio.sleep(process_time)
     #print(res)
     #assert(sorted(res) == res)
     if sorted(res) != res:

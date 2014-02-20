@@ -1,18 +1,22 @@
 import functools
 import inspect
+import os
+import sys
+
 from asyncio import futures
 from .log import logger
 
 # If you set _DEBUG to true, @coroutine will wrap the resulting
 # generator objects in a CoroWrapper instance (defined below).  That
 # instance will log a message when the generator is never iterated
-# over, which may happen when you forget to use "yield from" with a
+# over, which may happen when you forget to use "yield" with a
 # coroutine call.  Note that the value of the _DEBUG flag is taken
 # when the decorator is used, so to be of any use it must be set
 # before you define your coroutines.  A downside of using this feature
 # is that tracebacks show entries for the CoroWrapper.__next__ method
 # when _DEBUG is true.
-_DEBUG = False
+_DEBUG = (not sys.flags.ignore_environment
+          and bool(os.environ.get('PYTHONASYNCIODEBUG')))
 
 
 class Return(StopIteration):

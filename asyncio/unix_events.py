@@ -1,6 +1,5 @@
-"""Selector eventloop for Unix with signal handling."""
+"""Selector event loop for Unix with signal handling."""
 from __future__ import absolute_import
-
 
 import errno
 import fcntl
@@ -13,10 +12,10 @@ import sys
 import threading
 
 
+from . import base_events
 from . import base_subprocess
 from . import constants
 from . import events
-from . import protocols
 from . import selector_events
 from . import tasks
 from . import transports
@@ -38,9 +37,9 @@ if sys.platform == 'win32':  # pragma: no cover
 
 
 class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
-    """Unix event loop
+    """Unix event loop.
 
-    Adds signal handling to SelectorEventLoop
+    Adds signal handling and UNIX Domain Socket support to SelectorEventLoop.
     """
 
     def __init__(self, selector=None):
@@ -71,7 +70,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         except ValueError as exc:
             raise RuntimeError(str(exc))
 
-        handle = events.Handle(callback, args)
+        handle = events.Handle(callback, args, self)
         self._signal_handlers[sig] = handle
 
         try:
@@ -176,6 +175,76 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
     def _child_watcher_callback(self, pid, returncode, transp):
         self.call_soon_threadsafe(transp._process_exited, returncode)
 
+    @tasks.coroutine
+    def create_unix_connection(self, protocol_factory, path,
+                               ssl=None, sock=None,
+                               server_hostname=None):
+        assert server_hostname is None or isinstance(server_hostname, str)
+        if ssl:
+            if server_hostname is None:
+                raise ValueError(
+                    'you have to pass server_hostname when using ssl')
+        else:
+            if server_hostname is not None:
+                raise ValueError('server_hostname is only meaningful with ssl')
+
+        if path is not None:
+            if sock is not None:
+                raise ValueError(
+                    'path and sock can not be specified at the same time')
+
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
+            try:
+                sock.setblocking(False)
+                yield self.sock_connect(sock, path)
+            except:
+                sock.close()
+                raise
+
+        else:
+            if sock is None:
+                raise ValueError('no path and sock were specified')
+            sock.setblocking(False)
+
+        transport, protocol = yield self._create_connection_transport(
+            sock, protocol_factory, ssl, server_hostname)
+        raise tasks.Return(transport, protocol)
+
+    @tasks.coroutine
+    def create_unix_server(self, protocol_factory, path=None,
+                           sock=None, backlog=100, ssl=None):
+        if isinstance(ssl, bool):
+            raise TypeError('ssl argument must be an SSLContext or None')
+
+        if path is not None:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+
+            try:
+                sock.bind(path)
+            except socket.error as exc:
+                sock.close()
+                if exc.errno == errno.EADDRINUSE:
+                    # Let's improve the error message by adding
+                    # with what exact address it occurs.
+                    msg = 'Address {!r} is already in use'.format(path)
+                    raise OSError(errno.EADDRINUSE, msg)
+                else:
+                    raise
+        else:
+            if sock is None:
+                raise ValueError(
+                    'path was not specified, and no sock specified')
+
+            if sock.family != socket.AF_UNIX:
+                raise ValueError(
+                    'A UNIX Domain Socket was expected, got {!r}'.format(sock))
+
+        server = base_events.Server(self, [sock])
+        sock.listen(backlog)
+        sock.setblocking(False)
+        self._start_serving(protocol_factory, sock, ssl, server)
+        return server
+
 
 def _set_nonblocking(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -194,7 +263,7 @@ def _set_cloexec_flag(fd, cloexec):
 
 class _UnixReadPipeTransport(transports.ReadTransport):
 
-    max_size = 256 * 1024  # max bytes we read in one eventloop iteration
+    max_size = 256 * 1024  # max bytes we read in one event loop iteration
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
         super(_UnixReadPipeTransport, self).__init__(extra)
@@ -221,7 +290,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
         except (BlockingIOError, InterruptedError):
             pass
         except OSError as exc:
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal read error on pipe transport')
         else:
             if data:
                 self._protocol.data_received(data)
@@ -241,10 +310,15 @@ class _UnixReadPipeTransport(transports.ReadTransport):
         if not self._closing:
             self._close(None)
 
-    def _fatal_error(self, exc):
+    def _fatal_error(self, exc, message='Fatal error on pipe transport'):
         # should be called by exception handler only
         if not (isinstance(exc, OSError) and exc.errno == errno.EIO):
-            logger.exception('Fatal error for %s', self)
+            self._loop.call_exception_handler({
+                'message': message,
+                'exception': exc,
+                'transport': self,
+                'protocol': self._protocol,
+            })
         self._close(exc)
 
     def _close(self, exc):
@@ -262,7 +336,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
             self._loop = None
 
 
-class _UnixWritePipeTransport(selector_events._FlowControlMixin,
+class _UnixWritePipeTransport(transports._FlowControlMixin,
                               transports.WriteTransport):
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
@@ -324,7 +398,7 @@ class _UnixWritePipeTransport(selector_events._FlowControlMixin,
                 n = 0
             except Exception as exc:
                 self._conn_lost += 1
-                self._fatal_error(exc)
+                self._fatal_error(exc, 'Fatal write error on pipe transport')
                 return
             if n == len(data):
                 return
@@ -349,7 +423,7 @@ class _UnixWritePipeTransport(selector_events._FlowControlMixin,
             # Remove writer here, _fatal_error() doesn't it
             # because _buffer is empty.
             self._loop.remove_writer(self._fileno)
-            self._fatal_error(exc)
+            self._fatal_error(exc, 'Fatal write error on pipe transport')
         else:
             if n == len(data):
                 self._loop.remove_writer(self._fileno)
@@ -386,10 +460,15 @@ class _UnixWritePipeTransport(selector_events._FlowControlMixin,
     def abort(self):
         self._close(None)
 
-    def _fatal_error(self, exc):
+    def _fatal_error(self, exc, message='Fatal error on pipe transport'):
         # should be called by exception handler only
         if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
-            logger.exception('Fatal error for %s', self)
+            self._loop.call_exception_handler({
+                'message': message,
+                'exception': exc,
+                'transport': self,
+                'protocol': self._protocol,
+            })
         self._close(exc)
 
     def _close(self, exc=None):
@@ -539,8 +618,14 @@ class BaseChildWatcher(AbstractChildWatcher):
     def _sig_chld(self):
         try:
             self._do_waitpid_all()
-        except Exception:
-            logger.exception('Unknown exception in SIGCHLD handler')
+        except Exception as exc:
+            # self._loop should always be available here
+            # as '_sig_chld' is added as a signal handler
+            # in 'attach_loop'
+            self._loop.call_exception_handler({
+                'message': 'Unknown exception in SIGCHLD handler',
+                'exception': exc,
+            })
 
     def _compute_returncode(self, status):
         if os.WIFSIGNALED(status):

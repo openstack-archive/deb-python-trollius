@@ -1,8 +1,14 @@
 """Stream-related things."""
 
 __all__ = ['StreamReader', 'StreamWriter', 'StreamReaderProtocol',
-           'open_connection', 'start_server', 'IncompleteReadError',
+           'open_connection', 'start_server',
+           'IncompleteReadError',
            ]
+
+import socket
+
+if hasattr(socket, 'AF_UNIX'):
+    __all__.extend(['open_unix_connection', 'start_unix_server'])
 
 from . import events
 from . import futures
@@ -93,6 +99,39 @@ def start_server(client_connected_cb, host=None, port=None,
 
     result = yield loop.create_server(factory, host, port, **kwds)
     raise tasks.Return(result)
+
+
+if hasattr(socket, 'AF_UNIX'):
+    # UNIX Domain Sockets are supported on this platform
+
+    @tasks.coroutine
+    def open_unix_connection(path=None,
+                             loop=None, limit=_DEFAULT_LIMIT, **kwds):
+        """Similar to `open_connection` but works with UNIX Domain Sockets."""
+        if loop is None:
+            loop = events.get_event_loop()
+        reader = StreamReader(limit=limit, loop=loop)
+        protocol = StreamReaderProtocol(reader, loop=loop)
+        transport, _ = yield loop.create_unix_connection(
+            lambda: protocol, path, **kwds)
+        writer = StreamWriter(transport, protocol, reader, loop)
+        raise tasks.Return(reader, writer)
+
+
+    @tasks.coroutine
+    def start_unix_server(client_connected_cb, path=None,
+                          loop=None, limit=_DEFAULT_LIMIT, **kwds):
+        """Similar to `start_server` but works with UNIX Domain Sockets."""
+        if loop is None:
+            loop = events.get_event_loop()
+
+        def factory():
+            reader = StreamReader(limit=limit, loop=loop)
+            protocol = StreamReaderProtocol(reader, client_connected_cb,
+                                            loop=loop)
+            return protocol
+
+        raise tasks.Return((yield loop.create_unix_server(factory, path, **kwds)))
 
 
 class FlowControlMixin(protocols.Protocol):
