@@ -68,7 +68,7 @@ except ImportError:
 
     def get_default_executor():
         logger.error("concurrent.futures module is missing: "
-                  "use a synchrounous executor as fallback!")
+                     "use a synchrounous executor as fallback!")
         return SynchronousExecutor()
 else:
     FIRST_COMPLETED = concurrent.futures.FIRST_COMPLETED
