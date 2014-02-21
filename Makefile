@@ -1,6 +1,6 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-PYTHON=python3
+PYTHON=python
 VERBOSE=$(V)
 V=	0
 FLAGS=
