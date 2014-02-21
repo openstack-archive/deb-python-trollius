@@ -3,6 +3,7 @@ Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
 Mac OS X, FreeBSD and OpenIndiana.
 
 * Website: https://bitbucket.org/enovance/trollius
+* Documentation: http://trollius.readthedocs.org/
 * Tulip project: http://code.google.com/p/tulip/
 * Copyright/license: Open source, Apache 2.0. Enjoy.
 * `Trollius project in the Python Cheeseshop (PyPI)
