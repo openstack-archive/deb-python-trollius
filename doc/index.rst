@@ -5,6 +5,8 @@ Mac OS X, FreeBSD and OpenIndiana.
 * Website: https://bitbucket.org/enovance/trollius
 * Tulip project: http://code.google.com/p/tulip/
 * Copyright/license: Open source, Apache 2.0. Enjoy.
+* `Trollius project in the Python Cheeseshop (PyPI)
+  <https://pypi.python.org/pypi/trollius>`_
 
 WARNING: The source code of the Trollius project is in the ``trollius`` branch
 of the Mercurial repository, not in the default branch. The default branch is
@@ -57,6 +59,14 @@ Projects working on Trollius and Tulip:
 
 Install Trollius
 ================
+
+Packages for Linux
+------------------
+
+* `Debian package (0.1.4 available in Sid)
+  <https://packages.debian.org/fr/sid/python-trollius>`_
+* `Proposition of package for Fedora/RHEL
+  <https://bugzilla.redhat.com/show_bug.cgi?id=1066238>`_
 
 Runtime Dependencies
 --------------------
