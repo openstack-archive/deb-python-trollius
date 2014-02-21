@@ -153,21 +153,52 @@ Change log
 Development version (will be 0.1.6)
 -----------------------------------
 
-- Merge with Tulip
+Trollius changes:
 
-  * Issue #129: BaseEventLoop.sock_connect() now raises an error if the address
-    is not resolved (hostname instead of an IP address) for AF_INET and
-    AF_INET6 address families.
-  * Issue #131: as_completed() and wait() now raises a TypeError if the list of
-    futures is not a list but a Future, Task or coroutine object
-  * Python issue #20495: Skip test_read_pty_output() of test_asyncio on FreeBSD
-    older than FreeBSD 8
-  * Issue #130: Add more checks on subprocess_exec/subprocess_shell parameters
-  * Issue #126: call_soon(), call_soon_threadsafe(), call_later(), call_at()
-    and run_in_executor() now raise a TypeError if the callback is a coroutine
-    function.
-  * Python issue #20505: BaseEventLoop uses again the resolution of the clock
-    to decide if scheduled tasks should be executed or not.
+* Add a new Sphinx documentation
+* tox: pass posargs to nosetests. Patch contributed by Ian Wienand.
+
+Merge with Tulip, major changes:
+
+* Issue #81: Add support for UNIX Domain Sockets. New APIs:
+
+  - loop.create_unix_connection()
+  - loop.create_unix_server()
+  - streams.open_unix_connection()
+  - streams.start_unix_server()
+
+* Issue #80: Add new event loop exception handling API. New APIs:
+
+  - loop.set_exception_handler()
+  - loop.call_exception_handler()
+  - loop.default_exception_handler()
+
+* Issue #136: Add get_debug() and set_debug() methods to BaseEventLoopTests.
+  Add also a ``PYTHONASYNCIODEBUG`` environment variable to debug coroutines
+  since Python startup, to be able to debug coroutines defined directly in the
+  asyncio module.
+
+Merge with Tulip, other changes:
+
+* asyncio.subprocess: Fix a race condition in communicate()
+* Fix _ProactorWritePipeTransport._pipe_closed()
+* Issue #139: Improve error messages on "fatal errors".
+* Issue #140: WriteTransport.set_write_buffer_size() to call
+  _maybe_pause_protocol()
+* Issue #129: BaseEventLoop.sock_connect() now raises an error if the address
+  is not resolved (hostname instead of an IP address) for AF_INET and
+  AF_INET6 address families.
+* Issue #131: as_completed() and wait() now raises a TypeError if the list of
+  futures is not a list but a Future, Task or coroutine object
+* Python issue #20495: Skip test_read_pty_output() of test_asyncio on FreeBSD
+  older than FreeBSD 8
+* Issue #130: Add more checks on subprocess_exec/subprocess_shell parameters
+* Issue #126: call_soon(), call_soon_threadsafe(), call_later(), call_at()
+  and run_in_executor() now raise a TypeError if the callback is a coroutine
+  function.
+* Python issue #20505: BaseEventLoop uses again the resolution of the clock
+  to decide if scheduled tasks should be executed or not.
+
 
 2014-02-10: version 0.1.5
 -------------------------
