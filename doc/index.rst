@@ -26,18 +26,19 @@ online: `asyncio - Asynchronous I/O, event loop, coroutines and tasks
 Differences between Trollius and Tulip
 ======================================
 
-* Trollius coroutines use "yield" and "raise Return(value)",
-  whereas Tulip coroutines use "yield from" and "return".
-  "return x, y" must be converted to "raise Return(x, y)".
-* On Python 2.7, asyncio.SSLContext has less features than the ssl.SSLContext
-  of Python 3.3: no options, verify_mode cannot be modified (fixed to
-  CERT_NONE), no set_default_verify_paths() method, no SNI, etc. The SSL
-  transport has "compression" extra info in Python 2.
+* Trollius coroutines use ``yield`` and ``raise Return(value)``,
+  whereas Tulip coroutines use ``yield from`` and ``return value``.
+  ``return x, y`` must be converted to ``raise Return(x, y)``.
+* On Python 2.7, ``asyncio.SSLContext`` has less features than the
+  ``ssl.SSLContext`` of Python 3.3: no options, verify_mode cannot be modified
+  (fixed to ``CERT_NONE``), no set_default_verify_paths() method, no SNI, etc.
+  The SSL transport does not have the ``compression`` extra info in Python 2.
 * Python 2 does not support keyword-only parameters.
-* If the concurrent.futures module is missing, BaseEventLoop.run_in_executor()
-  uses a synchronous executor instead of a pool of threads. It blocks until the
-  function returns, and so DNS resolutions are blocking.
-* asyncio.subprocess has no DEVNULL constant
+* If the ``concurrent.futures`` module is missing,
+  ``BaseEventLoop.run_in_executor()`` uses a synchronous executor instead of a
+  pool of threads. It blocks until the function returns, and so DNS resolutions
+  are blocking.
+* ``asyncio.subprocess`` has no ``DEVNULL`` constant
 
 
 Write code working on Trollius and Tulip
@@ -60,49 +61,50 @@ Install Trollius
 Runtime Dependencies
 --------------------
 
-The futures project is needed on Python 2 to get a backport of
-concurrent.futures.
-https://pypi.python.org/pypi/futures
+On Python older than 3.2, the ``futures`` project is needed to get a backport
+of ``concurrent.futures``: https://pypi.python.org/pypi/futures
 
-Python 2.6 requires also ordereddict:
+Python 2.6 requires also ``ordereddict``:
 https://pypi.python.org/pypi/ordereddict
 
 
 Test Dependencies
 -----------------
 
-Unit tests require the mock module:
+On Python older than 3.3, unit tests require the ``mock`` module:
 https://pypi.python.org/pypi/mock
 
-Python 2.6 requires also unittest2:
+Python 2.6 requires also ``unittest2``:
 https://pypi.python.org/pypi/unittest2
 
 
 Usage
 -----
 
-The actual code lives in the 'asyncio' subdirectory.
-Tests are in the 'tests' subdirectory.
+The actual code lives in the ``asyncio`` subdirectory.
+Tests are in the ``tests`` subdirectory.
 
-To run tests:
-  - make test
+To run tests::
 
-To run coverage (coverage package is required):
-  - make coverage
+    make test
 
-On Windows, things are a little more complicated.  Assume 'P' is your
-Python binary (for example C:\Python33\python.exe).
+To run coverage (``coverage`` package is required)::
 
-You must first build the _overlapped.pyd extension (it will be placed
-in the asyncio directory):
+    make coverage
+
+On Windows, things are a little more complicated.  Assume ``P`` is your Python
+binary (for example ``C:\Python33\python.exe``).
+
+You must first build the ``_overlapped.pyd`` extension (it will be placed in
+the ``asyncio`` directory)::
 
     C> P setup.py build_ext
 
-Then you can run the tests as follows:
+Then you can run the tests as follows::
 
     C> P runtests.py
 
-And coverage as follows:
+And coverage as follows::
 
     C> P runtests.py --coverage
 
@@ -122,6 +124,7 @@ OSError                        3.3   asyncio.py33_exceptions
 _overlapped                    3.4   asyncio._overlapped
 _winapi                        3.3   asyncio.py33_winapi
 collections.OrderedDict   2.7, 3.1   ordereddict (PyPI)
+concurrent.futures             3.2   futures (PyPI)
 selectors                      3.4   asyncio.selectors
 ssl                       3.2, 3.3   asyncio.py3_ssl
 time.monotonic                 3.3   asyncio.time_monotonic
