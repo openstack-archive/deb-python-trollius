@@ -112,7 +112,9 @@ def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
     return isinstance(obj, CoroWrapper) or inspect.isgenerator(obj)
 
-class FromWrapper:
+class FromWrapper(object):
+    __slots__ = ('obj',)
+
     def __init__(self, obj):
         if isinstance(obj, FromWrapper):
             obj = obj.obj
