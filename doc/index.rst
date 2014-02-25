@@ -170,7 +170,8 @@ Change log
 
 Trollius changes:
 
-* Add a new Sphinx documentation
+* Add a new Sphinx documentation:
+  http://trollius.readthedocs.org/
 * tox: pass posargs to nosetests. Patch contributed by Ian Wienand.
 * Fix support of Python 3.2 and add py32 to tox.ini
 * Merge with Tulip 0.4.1
