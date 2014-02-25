@@ -16,20 +16,20 @@ PY33 = (sys.version_info >= (3, 3))
 PY34 = sys.version_info >= (3, 4)
 
 if PY3:
+    integer_types = (int,)
     bytes_type = bytes
     text_type = str
     string_types = (bytes, str)
+    BYTES_TYPES = (bytes, bytearray, memoryview)
 else:
+    integer_types = (int, long,)
     bytes_type = str
     text_type = unicode
     string_types = basestring
-
-if PY3:
-    BYTES_TYPES = (bytes, bytearray, memoryview)
-elif PY26:
-    BYTES_TYPES = (str, bytearray, buffer)
-else: # Python 2.7
-    BYTES_TYPES = (str, bytearray, memoryview, buffer)
+    if PY26:
+        BYTES_TYPES = (str, bytearray, buffer)
+    else: # Python 2.7
+        BYTES_TYPES = (str, bytearray, memoryview, buffer)
 
 def flatten_bytes(data):
     """
