@@ -58,7 +58,7 @@ Other differences:
 
 .. note::
 
-   Trollius O.1 used ``yield ...`` syntax in coroutines.
+   Trollius 0.1 used ``yield ...`` syntax in coroutines.
 
 
 Write code working on Trollius and Tulip
