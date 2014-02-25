@@ -670,8 +670,15 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         exception = context.get('exception')
         if exception is not None:
-            # FIXME: exc_info = (type(exception), exception, exception.__traceback__)
-            exc_info = (type(exception), exception, None)
+            if hasattr(exception, '__traceback__'):
+                # Python 3
+                tb = exception.__traceback__
+            else:
+                # call_exception_handler() is usually called indirectly
+                # from an except block. If it's not the case, the traceback
+                # is undefined...
+                tb = sys.exc_info()[2]
+            exc_info = (type(exception), exception, tb)
         else:
             exc_info = False
 
