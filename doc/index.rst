@@ -165,15 +165,17 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Development version (will be 0.1.6)
------------------------------------
+2014-02-25: version 0.1.6
+-------------------------
 
 Trollius changes:
 
 * Add a new Sphinx documentation
 * tox: pass posargs to nosetests. Patch contributed by Ian Wienand.
+* Fix support of Python 3.2 and add py32 to tox.ini
+* Merge with Tulip 0.4.1
 
-Merge with Tulip, major changes:
+Major changes of Tulip 0.4.1:
 
 * Issue #81: Add support for UNIX Domain Sockets. New APIs:
 
@@ -193,7 +195,7 @@ Merge with Tulip, major changes:
   since Python startup, to be able to debug coroutines defined directly in the
   asyncio module.
 
-Merge with Tulip, other changes:
+Other changes of Tulip 0.4.1:
 
 * asyncio.subprocess: Fix a race condition in communicate()
 * Fix _ProactorWritePipeTransport._pipe_closed()
