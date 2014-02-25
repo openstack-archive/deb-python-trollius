@@ -1,3 +1,4 @@
+import errno
 import ssl
 import sys
 from asyncio.py33_exceptions import _wrap_error
