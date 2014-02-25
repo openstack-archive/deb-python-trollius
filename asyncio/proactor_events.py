@@ -420,8 +420,6 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         self._csock.send(b'x')
 
     def _start_serving(self, protocol_factory, sock, ssl=None, server=None):
-        assert len(self._accept_futures)==0, self._accept_futures
-        self._accept_futures.clear()
         if ssl:
             raise ValueError('IocpEventLoop is incompatible with SSL.')
 
