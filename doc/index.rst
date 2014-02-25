@@ -168,7 +168,8 @@ Change log
 Development version (will be the version 0.1.7)
 -----------------------------------------------
 
-* No change yet
+* Fix unit tests on SSL sockets on Python older than 2.6.6. Example:Mac OS 10.6
+  with Python 2.6.1 or OpenIndiana 148 with Python 2.6.4.
 
 2014-02-25: version 0.1.6
 -------------------------
