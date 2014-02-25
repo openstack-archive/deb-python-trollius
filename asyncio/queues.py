@@ -9,6 +9,7 @@ import heapq
 from . import events
 from . import futures
 from . import locks
+from .coroutines import From
 from .tasks import coroutine, Return
 
 
@@ -26,7 +27,7 @@ class Queue(object):
     """A queue, useful for coordinating producer and consumer coroutines.
 
     If maxsize is less than or equal to zero, the queue size is infinite. If it
-    is an integer greater than 0, then "yield put()" will block when the
+    is an integer greater than 0, then "yield From(put())" will block when the
     queue reaches maxsize, until an item is removed by get().
 
     Unlike the standard library Queue, you can reliably know this Queue's size
@@ -111,7 +112,7 @@ class Queue(object):
     def put(self, item):
         """Put an item into the queue.
 
-        If you yield put(), wait until a free slot is available
+        If you yield From(put()), wait until a free slot is available
         before adding item.
         """
         self._consume_done_getters()
@@ -130,7 +131,7 @@ class Queue(object):
             waiter = futures.Future(loop=self._loop)
 
             self._putters.append((item, waiter))
-            yield waiter
+            yield From(waiter)
 
         else:
             self._put(item)
@@ -161,7 +162,7 @@ class Queue(object):
     def get(self):
         """Remove and return an item from the queue.
 
-        If you yield get(), wait until a item is available.
+        If you yield From(get()), wait until a item is available.
         """
         self._consume_done_putters()
         if self._putters:
@@ -183,7 +184,7 @@ class Queue(object):
             waiter = futures.Future(loop=self._loop)
 
             self._getters.append(waiter)
-            result = yield waiter
+            result = yield From(waiter)
             raise Return(result)
 
     def get_nowait(self):
@@ -286,4 +287,4 @@ class JoinableQueue(Queue):
         When the count of unfinished tasks drops to zero, join() unblocks.
         """
         if self._unfinished_tasks > 0:
-            yield self._finished.wait()
+            yield From(self._finished.wait())

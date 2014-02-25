@@ -37,6 +37,7 @@ try:
     import coverage
 except ImportError:
     coverage = None
+sys.exc_clear()
 
 try:
     import unittest

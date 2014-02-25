@@ -19,7 +19,6 @@ import heapq
 import logging
 import socket
 import subprocess
-import time
 import os
 import sys
 try:
@@ -32,6 +31,7 @@ from . import compat
 from . import events
 from . import futures
 from . import tasks
+from .coroutines import From
 from .executor import get_default_executor
 from .log import logger
 from .time_monotonic import time_monotonic, time_monotonic_resolution
@@ -116,7 +116,7 @@ class Server(events.AbstractServer):
             raise tasks.Return()
         waiter = futures.Future(loop=self.loop)
         self.waiters.append(waiter)
-        yield waiter
+        yield From(waiter)
 
 
 class BaseEventLoop(events.AbstractEventLoop):
@@ -358,7 +358,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             else:
                 f2 = None
 
-            yield tasks.wait(fs, loop=self)
+            yield From(tasks.wait(fs, loop=self))
 
             infos = f1.result()
             if not infos:
@@ -389,7 +389,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                             sock.close()
                             sock = None
                             continue
-                    yield self.sock_connect(sock, address)
+                    yield From(self.sock_connect(sock, address))
                 except socket.error as exc:
                     if sock is not None:
                         sock.close()
@@ -415,8 +415,8 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         sock.setblocking(False)
 
-        transport, protocol = yield self._create_connection_transport(
-            sock, protocol_factory, ssl, server_hostname)
+        transport, protocol = yield From(self._create_connection_transport(
+            sock, protocol_factory, ssl, server_hostname))
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
@@ -432,7 +432,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         else:
             transport = self._make_socket_transport(sock, protocol, waiter)
 
-        yield waiter
+        yield From(waiter)
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
@@ -452,9 +452,9 @@ class BaseEventLoop(events.AbstractEventLoop):
                     assert isinstance(addr, tuple) and len(addr) == 2, (
                         '2-tuple is expected')
 
-                    infos = yield self.getaddrinfo(
+                    infos = yield From(self.getaddrinfo(
                         *addr, family=family, type=socket.SOCK_DGRAM,
-                        proto=proto, flags=flags)
+                        proto=proto, flags=flags))
                     if not infos:
                         raise socket.error('getaddrinfo() returned empty list')
 
@@ -488,7 +488,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                 if local_addr:
                     sock.bind(local_address)
                 if remote_addr:
-                    yield self.sock_connect(sock, remote_address)
+                    yield From(self.sock_connect(sock, remote_address))
                     r_addr = remote_address
             except socket.error as exc:
                 if sock is not None:
@@ -526,9 +526,9 @@ class BaseEventLoop(events.AbstractEventLoop):
             if host == '':
                 host = None
 
-            infos = yield self.getaddrinfo(
+            infos = yield From(self.getaddrinfo(
                 host, port, family=family,
-                type=socket.SOCK_STREAM, proto=0, flags=flags)
+                type=socket.SOCK_STREAM, proto=0, flags=flags))
             if not infos:
                 raise socket.error('getaddrinfo() returned empty list')
 
@@ -582,7 +582,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         protocol = protocol_factory()
         waiter = futures.Future(loop=self)
         transport = self._make_read_pipe_transport(pipe, protocol, waiter)
-        yield waiter
+        yield From(waiter)
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
@@ -590,7 +590,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         protocol = protocol_factory()
         waiter = futures.Future(loop=self)
         transport = self._make_write_pipe_transport(pipe, protocol, waiter)
-        yield waiter
+        yield From(waiter)
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
@@ -607,8 +607,8 @@ class BaseEventLoop(events.AbstractEventLoop):
         if bufsize != 0:
             raise ValueError("bufsize must be 0")
         protocol = protocol_factory()
-        transport = yield self._make_subprocess_transport(
-            protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs)
+        transport = yield From(self._make_subprocess_transport(
+            protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs))
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine
@@ -632,9 +632,9 @@ class BaseEventLoop(events.AbstractEventLoop):
                                 "a bytes or text string, not %s"
                                 % type(arg).__name__)
         protocol = protocol_factory()
-        transport = yield self._make_subprocess_transport(
+        transport = yield From(self._make_subprocess_transport(
             protocol, popen_args, False, stdin, stdout, stderr,
-            bufsize, **kwargs)
+            bufsize, **kwargs))
         raise tasks.Return(transport, protocol)
 
     def set_exception_handler(self, handler):

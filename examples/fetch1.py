@@ -26,13 +26,15 @@ class Response:
     def read(self, reader):
         @coroutine
         def getline():
-            raise Return((yield reader.readline()).decode('latin-1').rstrip())
-        status_line = yield getline()
+            line = (yield From(reader.readline()))
+            line = line.decode('latin-1').rstrip()
+            raise Return(line)
+        status_line = yield From(getline())
         if self.verbose: print('<', status_line, file=sys.stderr)
         self.http_version, status, self.reason = status_line.split(None, 2)
         self.status = int(status)
         while True:
-            header_line = yield getline()
+            header_line = yield From(getline())
             if not header_line:
                 break
             if self.verbose: print('<', header_line, file=sys.stderr)
@@ -61,11 +63,11 @@ def fetch(url, verbose=True):
     request = 'GET %s HTTP/1.0\r\n\r\n' % path
     if verbose:
         print('>', request, file=sys.stderr, end='')
-    r, w = yield open_connection(parts.hostname, port, ssl=ssl)
+    r, w = yield From(open_connection(parts.hostname, port, ssl=ssl))
     w.write(request.encode('latin-1'))
     response = Response(verbose)
-    yield response.read(r)
-    body = yield r.read()
+    yield From(response.read(r))
+    body = yield From(r.read())
     raise Return(body)
 
 

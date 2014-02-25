@@ -46,9 +46,9 @@ class Request:
             print('* Connecting to %s:%s using %s' %
                   (self.hostname, self.port, 'ssl' if self.ssl else 'tcp'),
                   file=sys.stderr)
-        self.reader, self.writer = yield open_connection(self.hostname,
-                                                         self.port,
-                                                         ssl=self.ssl)
+        self.reader, self.writer = yield From(open_connection(self.hostname,
+                                                              self.port,
+                                                              ssl=self.ssl))
         if self.verbose:
             print('* Connected to %s' %
                   (self.writer.get_extra_info('peername'),),
@@ -73,7 +73,7 @@ class Request:
     @coroutine
     def get_response(self):
         response = Response(self.reader, self.verbose)
-        yield response.read_headers()
+        yield From(response.read_headers())
         raise Return(response)
 
 
@@ -89,11 +89,13 @@ class Response:
 
     @coroutine
     def getline(self):
-        raise Return((yield self.reader.readline()).decode('latin-1').rstrip())
+        line = (yield From(self.reader.readline()))
+        line = line.decode('latin-1').rstrip()
+        raise Return(line)
 
     @coroutine
     def read_headers(self):
-        status_line = yield self.getline()
+        status_line = yield From(self.getline())
         if self.verbose: print('<', status_line, file=sys.stderr)
         status_parts = status_line.split(None, 2)
         if len(status_parts) != 3:
@@ -101,7 +103,7 @@ class Response:
         self.http_version, status, self.reason = status_parts
         self.status = int(status)
         while True:
-            header_line = yield self.getline()
+            header_line = yield From(self.getline())
             if not header_line:
                 break
             if self.verbose: print('<', header_line, file=sys.stderr)
@@ -118,19 +120,19 @@ class Response:
                 nbytes = int(value)
                 break
         if nbytes is None:
-            body = yield self.reader.read()
+            body = yield From(self.reader.read())
         else:
-            body = yield self.reader.readexactly(nbytes)
+            body = yield From(self.reader.readexactly(nbytes))
         raise Return(body)
 
 
 @coroutine
 def fetch(url, verbose=True):
     request = Request(url, verbose)
-    yield request.connect()
-    yield request.send_request()
-    response = yield request.get_response()
-    body = yield response.read()
+    yield From(request.connect())
+    yield From(request.send_request())
+    response = yield From(request.get_response())
+    body = yield From(response.read())
     raise Return(body)
 
 

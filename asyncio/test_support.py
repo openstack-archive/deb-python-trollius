@@ -8,6 +8,7 @@ import socket
 import subprocess
 import sys
 import time
+from asyncio import test_utils
 
 # TEST_HOME_DIR refers to the top level directory of the "test" package
 # that contains Python's regression test suite
@@ -184,7 +185,7 @@ def _requires_unix_version(sysname, min_version):
                 else:
                     if version < min_version:
                         min_version_txt = '.'.join(map(str, min_version))
-                        raise unittest.SkipTest(
+                        raise test_utils.SkipTest(
                             "%s version %s or higher required, not %s"
                             % (sysname, min_version_txt, version_txt))
             return func(*args, **kw)
@@ -220,7 +221,7 @@ def requires_mac_ver(*min_version):
                 else:
                     if version < min_version:
                         min_version_txt = '.'.join(map(str, min_version))
-                        raise unittest.SkipTest(
+                        raise test_utils.SkipTest(
                             "Mac OS X %s or higher required, not %s"
                             % (min_version_txt, version_txt))
             return func(*args, **kw)

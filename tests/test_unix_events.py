@@ -2,7 +2,7 @@
 
 import collections
 import contextlib
-import gc
+#import gc
 import errno
 import io
 import os

@@ -5,25 +5,26 @@
 from __future__ import print_function
 
 import asyncio
+from asyncio import From
 import itertools
 import random
 import sys
 
 @asyncio.coroutine
 def sleeper(time):
-    yield asyncio.sleep(time)
+    yield From(asyncio.sleep(time))
     raise asyncio.Return(time)
 
 @asyncio.coroutine
 def watcher(tasks,delay=False):
     res = []
     for t in asyncio.as_completed(tasks):
-        r = yield t
+        r = yield From(t)
         res.append(r)
         if delay:
             # simulate processing delay
             process_time = random.random() / 10
-            yield asyncio.sleep(process_time)
+            yield From(asyncio.sleep(process_time))
     #print(res)
     #assert(sorted(res) == res)
     if sorted(res) != res:

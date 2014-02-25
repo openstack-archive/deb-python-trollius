@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Example showing how to attach a write pipe to a subprocess."""
 import asyncio
+from asyncio import From
 import os, sys
 from asyncio import subprocess
 
@@ -24,14 +25,14 @@ def task():
     kwargs = {'stdout': subprocess.PIPE}
     if sys.version_info >= (3, 2):
         kwargs['pass_fds'] = (rfd,)
-    proc = yield asyncio.create_subprocess_exec(*args, **kwargs)
+    proc = yield From(asyncio.create_subprocess_exec(*args, **kwargs))
 
     pipe = os.fdopen(wfd, 'wb', 0)
-    transport, _ = yield loop.connect_write_pipe(asyncio.Protocol,
-                                                 pipe)
+    transport, _ = yield From(loop.connect_write_pipe(asyncio.Protocol,
+                                                      pipe))
     transport.write(b'data')
 
-    stdout, stderr = yield proc.communicate()
+    stdout, stderr = yield From(proc.communicate())
     print("stdout = %r" % stdout.decode())
 
 loop.run_until_complete(task())

@@ -19,6 +19,7 @@ from . import events
 from . import selector_events
 from . import tasks
 from . import transports
+from .coroutines import From
 from .log import logger
 from .py33_exceptions import (
     reraise, wrap_error,
@@ -166,7 +167,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             transp = _UnixSubprocessTransport(self, protocol, args, shell,
                                               stdin, stdout, stderr, bufsize,
                                               extra=extra, **kwargs)
-            yield transp._post_init()
+            yield From(transp._post_init())
             watcher.add_child_handler(transp.get_pid(),
                                       self._child_watcher_callback, transp)
 
@@ -196,7 +197,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM, 0)
             try:
                 sock.setblocking(False)
-                yield self.sock_connect(sock, path)
+                yield From(self.sock_connect(sock, path))
             except:
                 sock.close()
                 raise
@@ -206,8 +207,8 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
                 raise ValueError('no path and sock were specified')
             sock.setblocking(False)
 
-        transport, protocol = yield self._create_connection_transport(
-            sock, protocol_factory, ssl, server_hostname)
+        transport, protocol = yield From(self._create_connection_transport(
+            sock, protocol_factory, ssl, server_hostname))
         raise tasks.Return(transport, protocol)
 
     @tasks.coroutine

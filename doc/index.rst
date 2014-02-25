@@ -33,9 +33,18 @@ online: `asyncio - Asynchronous I/O, event loop, coroutines and tasks
 Differences between Trollius and Tulip
 ======================================
 
-* Trollius coroutines use ``yield`` and ``raise Return(value)``,
-  whereas Tulip coroutines use ``yield from`` and ``return value``.
-  ``return x, y`` must be converted to ``raise Return(x, y)``.
+The major difference between Trollius and Tulip is the syntax of coroutines:
+
+==================  ======================
+Tulip               Trollius
+==================  ======================
+``yield from ...``  ``yield From(...)``
+``return x``        ``raise Return(x)``
+``return x, y``     ``raise Return(x, y)``
+==================  ======================
+
+Other differences:
+
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
   ``ssl.SSLContext`` of Python 3.3: no options, verify_mode cannot be modified
   (fixed to ``CERT_NONE``), no set_default_verify_paths() method, no SNI, etc.
@@ -47,13 +56,17 @@ Differences between Trollius and Tulip
   are blocking.
 * ``asyncio.subprocess`` has no ``DEVNULL`` constant
 
+.. note::
+
+   Trollius O.1 used ``yield ...`` syntax in coroutines.
+
 
 Write code working on Trollius and Tulip
 ========================================
 
-Trollius and Tulip are different, especially for coroutines (``yield`` vs
-``yield from``). It is possible to write code working on both projects if
-coroutines are not used but only callbacks.
+Trollius and Tulip are different, especially for coroutines (``yield
+From(...)`` vs ``yield from``). It is possible to write code working on both
+projects if coroutines are not used but only callbacks.
 
 Projects working on Trollius and Tulip:
 
@@ -165,9 +178,10 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Development version (will be the version 0.1.7)
------------------------------------------------
+Development version (will be the version 0.2)
+---------------------------------------------
 
+* Replace ``yield ...`` with ``yield From(...)``
 * Fix BaseEventLoop.default_exception_handler(): get the traceback from
   sys.exc_info()
 * Fix unit tests on SSL sockets on Python older than 2.6.6. Example:Mac OS 10.6

@@ -8,7 +8,6 @@ __all__ = ['BaseSelectorEventLoop']
 
 import collections
 import errno
-import functools
 import socket
 import sys
 try:
@@ -25,7 +24,7 @@ from . import events
 from . import futures
 from . import selectors
 from . import transports
-from .compat import PY3, PY26, flatten_bytes
+from .compat import flatten_bytes
 from .log import logger
 from .py33_exceptions import (wrap_error,
     BlockingIOError, InterruptedError, ConnectionAbortedError, BrokenPipeError,

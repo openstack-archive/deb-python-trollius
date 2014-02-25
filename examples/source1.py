@@ -59,7 +59,7 @@ def start(loop, args):
     if args.tls:
         d.print_('using dummy SSLContext')
         sslctx = test_utils.dummy_ssl_context()
-    r, w = yield open_connection(args.host, args.port, ssl=sslctx)
+    r, w = yield From(open_connection(args.host, args.port, ssl=sslctx))
     d.print_('r =', r)
     d.print_('w =', w)
     if args.stop:
@@ -76,7 +76,7 @@ def start(loop, args):
                 f = w.drain()
                 if f:
                     d.print_('pausing')
-                    yield f
+                    yield From(f)
         except (ConnectionResetError, BrokenPipeError) as exc:
             d.print_('caught', repr(exc))
 

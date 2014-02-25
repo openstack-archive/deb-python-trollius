@@ -1,6 +1,5 @@
 """Selector and proactor event loops for Windows."""
 
-import _winapi
 import errno
 import math
 import socket
@@ -16,6 +15,7 @@ from . import selector_events
 from . import tasks
 from . import windows_utils
 from . import _overlapped
+from .coroutines import From
 from .log import logger
 from .py33_exceptions import wrap_error, get_error_class, ConnectionRefusedError
 
@@ -133,7 +133,7 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
     @tasks.coroutine
     def create_pipe_connection(self, protocol_factory, address):
         f = self._proactor.connect_pipe(address)
-        pipe = yield f
+        pipe = yield From(f)
         protocol = protocol_factory()
         trans = self._make_duplex_pipe_transport(pipe, protocol,
                                                  extra={'addr': address})
@@ -180,7 +180,7 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
         transp = _WindowsSubprocessTransport(self, protocol, args, shell,
                                              stdin, stdout, stderr, bufsize,
                                              extra=extra, **kwargs)
-        yield transp._post_init()
+        yield From(transp._post_init())
         raise tasks.Return(transp)
 
 
@@ -253,7 +253,7 @@ class IocpProactor(object):
         def accept_coro(future, conn):
             # Coroutine closing the accept socket if the future is cancelled
             try:
-                yield future
+                yield From(future)
             except futures.CancelledError:
                 conn.close()
                 raise

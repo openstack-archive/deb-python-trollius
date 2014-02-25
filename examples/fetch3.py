@@ -31,7 +31,7 @@ class ConnectionPool:
     @coroutine
     def open_connection(self, host, port, ssl):
         port = port or (443 if ssl else 80)
-        ipaddrs = yield get_event_loop().getaddrinfo(host, port)
+        ipaddrs = yield From(get_event_loop().getaddrinfo(host, port))
         if self.verbose:
             print('* %s resolves to %s' %
                   (host, ', '.join(ip[4][0] for ip in ipaddrs)),
@@ -49,7 +49,7 @@ class ConnectionPool:
                 if self.verbose:
                     print('* Reusing pooled connection', key, file=sys.stderr)
                 raise Return(conn)
-        reader, writer = yield open_connection(host, port, ssl=ssl)
+        reader, writer = yield From(open_connection(host, port, ssl=ssl))
         parts = writer.get_extra_info('peername')
         host = parts[0]
         port = parts[1]
@@ -93,9 +93,9 @@ class Request:
         self.vprint('* Connecting to %s:%s using %s' %
                     (self.hostname, self.port, 'ssl' if self.ssl else 'tcp'))
         self.reader, self.writer = \
-                     yield pool.open_connection(self.hostname,
+                     yield From(pool.open_connection(self.hostname,
                                                      self.port,
-                                                     ssl=self.ssl)
+                                                     ssl=self.ssl))
         self.vprint('* Connected to %s' %
                     (self.writer.get_extra_info('peername'),))
 
@@ -103,23 +103,23 @@ class Request:
     def putline(self, line):
         self.vprint('>', line)
         self.writer.write(line.encode('latin-1') + b'\r\n')
-        ##yield self.writer.drain()
+        ##yield From(self.writer.drain())
 
     @coroutine
     def send_request(self):
         request = '%s %s %s' % (self.method, self.full_path, self.http_version)
-        yield self.putline(request)
+        yield From(self.putline(request))
         if 'host' not in {key.lower() for key, _ in self.headers}:
             self.headers.insert(0, ('Host', self.netloc))
         for key, value in self.headers:
             line = '%s: %s' % (key, value)
-            yield self.putline(line)
-        yield self.putline('')
+            yield From(self.putline(line))
+        yield From(self.putline(''))
 
     @coroutine
     def get_response(self):
         response = Response(self.reader, self.verbose)
-        yield response.read_headers()
+        yield From(response.read_headers())
         raise Return(response)
 
 
@@ -139,20 +139,21 @@ class Response:
 
     @coroutine
     def getline(self):
-        line = (yield self.reader.readline()).decode('latin-1').rstrip()
+        line = (yield From(self.reader.readline()))
+        line = line.decode('latin-1').rstrip()
         self.vprint('<', line)
         raise Return(line)
 
     @coroutine
     def read_headers(self):
-        status_line = yield self.getline()
+        status_line = yield From(self.getline())
         status_parts = status_line.split(None, 2)
         if len(status_parts) != 3:
             raise BadStatusLine(status_line)
         self.http_version, status, self.reason = status_parts
         self.status = int(status)
         while True:
-            header_line = yield self.getline()
+            header_line = yield From(self.getline())
             if not header_line:
                 break
             # TODO: Continuation lines.
@@ -183,22 +184,22 @@ class Response:
                 blocks = []
                 size = -1
                 while size:
-                    size_header = yield self.reader.readline()
+                    size_header = yield From(self.reader.readline())
                     if not size_header:
                         break
                     parts = size_header.split(b';')
                     size = int(parts[0], 16)
                     if size:
-                        block = yield self.reader.readexactly(size)
+                        block = yield From(self.reader.readexactly(size))
                         assert len(block) == size, (len(block), size)
                         blocks.append(block)
-                    crlf = yield self.reader.readline()
+                    crlf = yield From(self.reader.readline())
                     assert crlf == b'\r\n', repr(crlf)
                 body = b''.join(blocks)
             else:
-                body = yield self.reader.read()
+                body = yield From(self.reader.read())
         else:
-            body = yield self.reader.readexactly(nbytes)
+            body = yield From(self.reader.readexactly(nbytes))
         raise Return(body)
 
 
@@ -208,10 +209,10 @@ def fetch(url, verbose=True, max_redirect=10):
     try:
         for _ in range(max_redirect):
             request = Request(url, verbose)
-            yield request.connect(pool)
-            yield request.send_request()
-            response = yield request.get_response()
-            body = yield response.read()
+            yield From(request.connect(pool))
+            yield From(request.send_request())
+            response = yield From(request.get_response())
+            body = yield From(response.read())
             next_url = response.get_redirect_url()
             if not next_url:
                 break

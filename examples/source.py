@@ -75,11 +75,11 @@ def start(loop, host, port):
     sslctx = None
     if args.tls:
         sslctx = test_utils.dummy_ssl_context()
-    tr, pr = yield loop.create_connection(Client, host, port,
-                                          ssl=sslctx)
+    tr, pr = yield From(loop.create_connection(Client, host, port,
+                                               ssl=sslctx))
     dprint('tr =', tr)
     dprint('pr =', pr)
-    yield pr.waiter
+    yield From(pr.waiter)
 
 
 def main():

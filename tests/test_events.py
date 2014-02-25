@@ -18,7 +18,6 @@ else:
 import subprocess
 import sys
 import threading
-import time
 import errno
 import unittest
 try:
@@ -26,15 +25,14 @@ try:
 except ImportError:
     concurrent = None
 
-from asyncio import Return
+from asyncio import Return, From
 from asyncio import futures
 
 import asyncio
-from asyncio import events
 from asyncio import selector_events
 from asyncio import test_utils
 from asyncio.py33_exceptions import (wrap_error,
-    BlockingIOError, ConnectionRefusedError, ConnectionRefusedError,
+    BlockingIOError, ConnectionRefusedError,
     FileNotFoundError)
 from asyncio.test_utils import mock
 from asyncio.time_monotonic import time_monotonic
@@ -266,7 +264,7 @@ class EventLoopTestsMixin(object):
         @asyncio.coroutine
         def cb():
             self.loop.stop()
-            yield asyncio.sleep(0.1, loop=self.loop)
+            yield From(asyncio.sleep(0.1, loop=self.loop))
         task = cb()
         self.assertRaises(RuntimeError,
                           self.loop.run_until_complete, task)
@@ -1104,8 +1102,8 @@ class EventLoopTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            t, p = yield self.loop.connect_read_pipe(
-                lambda: proto, pipeobj)
+            t, p = yield From(self.loop.connect_read_pipe(
+                lambda: proto, pipeobj))
             self.assertIs(p, proto)
             self.assertIs(t, proto.transport)
             self.assertEqual(['INITIAL', 'CONNECTED'], proto.state)
@@ -1144,8 +1142,8 @@ class EventLoopTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            t, p = yield self.loop.connect_read_pipe(lambda: proto,
-                                                          master_read_obj)
+            t, p = yield From(self.loop.connect_read_pipe(lambda: proto,
+                                                          master_read_obj))
             self.assertIs(p, proto)
             self.assertIs(t, proto.transport)
             self.assertEqual(['INITIAL', 'CONNECTED'], proto.state)
@@ -1179,8 +1177,8 @@ class EventLoopTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            t, p = yield self.loop.connect_write_pipe(
-                        lambda: proto, pipeobj)
+            t, p = yield From(self.loop.connect_write_pipe(
+                        lambda: proto, pipeobj))
             self.assertIs(p, proto)
             self.assertIs(t, proto.transport)
             self.assertEqual('CONNECTED', proto.state)
@@ -1224,8 +1222,8 @@ class EventLoopTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            t, p = yield self.loop.connect_write_pipe(lambda: proto,
-                                                      pipeobj)
+            t, p = yield From(self.loop.connect_write_pipe(lambda: proto,
+                                                      pipeobj))
             self.assertIs(p, proto)
             self.assertIs(t, proto.transport)
             self.assertEqual('CONNECTED', proto.state)
@@ -1256,8 +1254,8 @@ class EventLoopTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            t, p = yield self.loop.connect_write_pipe(lambda: proto,
-                                                      slave_write_obj)
+            t, p = yield From(self.loop.connect_write_pipe(lambda: proto,
+                                                      slave_write_obj))
             self.assertIs(p, proto)
             self.assertIs(t, proto.transport)
             self.assertEqual('CONNECTED', proto.state)
@@ -1298,7 +1296,7 @@ class EventLoopTestsMixin(object):
         def main():
             try:
                 self.loop.call_soon(f.cancel)
-                yield f
+                yield From(f)
             except asyncio.CancelledError:
                 res = 'cancelled'
             else:
@@ -1334,11 +1332,11 @@ class EventLoopTestsMixin(object):
         @asyncio.coroutine
         def wait():
             loop = self.loop
-            yield asyncio.sleep(1e-2, loop=loop)
-            yield asyncio.sleep(1e-4, loop=loop)
-            yield asyncio.sleep(1e-6, loop=loop)
-            yield asyncio.sleep(1e-8, loop=loop)
-            yield asyncio.sleep(1e-10, loop=loop)
+            yield From(asyncio.sleep(1e-2, loop=loop))
+            yield From(asyncio.sleep(1e-4, loop=loop))
+            yield From(asyncio.sleep(1e-6, loop=loop))
+            yield From(asyncio.sleep(1e-8, loop=loop))
+            yield From(asyncio.sleep(1e-10, loop=loop))
 
         self.loop.run_until_complete(wait())
         # The ideal number of call is 22, but on some platforms, the selector
@@ -1392,9 +1390,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1416,9 +1414,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1446,9 +1444,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_shell(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
-                'echo Python')
+                'echo Python'))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1466,9 +1464,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            transp, non_local['proto'] = yield self.loop.subprocess_shell(
+            transp, non_local['proto'] = yield From(self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
-                'exit 7', stdin=None, stdout=None, stderr=None)
+                'exit 7', stdin=None, stdout=None, stderr=None))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1480,9 +1478,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_shell(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
-                'exit 7', stdin=None, stdout=None, stderr=None)
+                'exit 7', stdin=None, stdout=None, stderr=None))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1500,9 +1498,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1519,9 +1517,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1539,9 +1537,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1558,9 +1556,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1583,9 +1581,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog, stderr=subprocess.STDOUT)
+                sys.executable, prog, stderr=subprocess.STDOUT))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1611,9 +1609,9 @@ class SubprocessTestsMixin(object):
 
         @asyncio.coroutine
         def connect():
-            non_local['transp'], non_local['proto'] = yield self.loop.subprocess_exec(
+            non_local['transp'], non_local['proto'] = yield From(self.loop.subprocess_exec(
                 functools.partial(MySubprocessProtocol, self.loop),
-                sys.executable, prog)
+                sys.executable, prog))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1651,10 +1649,10 @@ class SubprocessTestsMixin(object):
         @asyncio.coroutine
         def connect():
             # start the new process in a new session
-            transp, non_local['proto'] = yield self.loop.subprocess_shell(
+            transp, non_local['proto'] = yield From(self.loop.subprocess_shell(
                 functools.partial(MySubprocessProtocol, self.loop),
                 'exit 7', stdin=None, stdout=None, stderr=None,
-                preexec_fn=start_new_session)
+                preexec_fn=start_new_session))
             self.assertIsInstance(non_local['proto'], MySubprocessProtocol)
 
         self.loop.run_until_complete(connect())
@@ -1664,9 +1662,9 @@ class SubprocessTestsMixin(object):
     def test_subprocess_exec_invalid_args(self):
         @asyncio.coroutine
         def connect(**kwds):
-            yield self.loop.subprocess_exec(
+            yield From(self.loop.subprocess_exec(
                 asyncio.SubprocessProtocol,
-                'pwd', **kwds)
+                'pwd', **kwds))
 
         with self.assertRaises(ValueError):
             self.loop.run_until_complete(connect(universal_newlines=True))
@@ -1680,9 +1678,9 @@ class SubprocessTestsMixin(object):
         def connect(cmd=None, **kwds):
             if not cmd:
                 cmd = 'pwd'
-            yield self.loop.subprocess_shell(
+            yield From(self.loop.subprocess_shell(
                 asyncio.SubprocessProtocol,
-                cmd, **kwds)
+                cmd, **kwds))
 
         with self.assertRaises(ValueError):
             self.loop.run_until_complete(connect(['ls', '-l']))

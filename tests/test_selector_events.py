@@ -1,9 +1,8 @@
 """Tests for selector_events.py"""
 
-import collections
 import errno
-import gc
-import pprint
+#import gc
+#import pprint
 import socket
 import sys
 import unittest

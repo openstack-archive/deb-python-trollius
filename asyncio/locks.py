@@ -7,6 +7,7 @@ import collections
 from . import events
 from . import futures
 from . import coroutines as tasks
+from .coroutines import From
 
 
 class _ContextManager:
@@ -15,7 +16,7 @@ class _ContextManager:
     This enables the following idiom for acquiring and releasing a
     lock around a block:
 
-        with (yield lock):
+        with (yield From(lock)):
             <block>
 
     while failing loudly when accidentally using:
@@ -63,14 +64,14 @@ class Lock(object):
 
     acquire() is a coroutine and should be called with 'yield'.
 
-    Locks also support the context manager protocol.  '(yield lock)'
+    Locks also support the context manager protocol.  '(yield From(lock))'
     should be used as context manager expression.
 
     Usage:
 
         lock = Lock()
         ...
-        yield lock
+        yield From(lock)
         try:
             ...
         finally:
@@ -80,13 +81,13 @@ class Lock(object):
 
         lock = Lock()
         ...
-        with (yield lock):
+        with (yield From(lock)):
              ...
 
     Lock objects can be tested for locking state:
 
         if not lock.locked():
-           yield lock
+           yield From(lock)
         else:
            # lock is acquired
            ...
@@ -126,7 +127,7 @@ class Lock(object):
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
-            yield fut
+            yield From(fut)
             self._locked = True
             raise tasks.Return(_ContextManager(self))
         finally:
@@ -223,7 +224,7 @@ class Event(object):
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
-            yield fut
+            yield From(fut)
             raise tasks.Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
@@ -282,13 +283,13 @@ class Condition(object):
             fut = futures.Future(loop=self._loop)
             self._waiters.append(fut)
             try:
-                yield fut
+                yield From(fut)
                 raise tasks.Return(True)
             finally:
                 self._waiters.remove(fut)
 
         finally:
-            yield self.acquire()
+            yield From(self.acquire())
 
     @tasks.coroutine
     def wait_for(self, predicate):
@@ -300,7 +301,7 @@ class Condition(object):
         """
         result = predicate()
         while not result:
-            yield self.wait()
+            yield From(self.wait())
             result = predicate()
         raise tasks.Return(result)
 
@@ -398,7 +399,7 @@ class Semaphore(object):
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
-            yield fut
+            yield From(fut)
             self._value -= 1
             raise tasks.Return(_ContextManager(self))
         finally:

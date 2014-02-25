@@ -1,32 +1,33 @@
 """Examples using create_subprocess_exec() and create_subprocess_shell()."""
 
 import asyncio
+from asyncio import From
 import signal
 from asyncio.subprocess import PIPE
 from asyncio.py33_exceptions import ProcessLookupError
 
 @asyncio.coroutine
 def cat(loop):
-    proc = yield asyncio.create_subprocess_shell("cat",
-                                                 stdin=PIPE,
-                                                 stdout=PIPE)
+    proc = yield From(asyncio.create_subprocess_shell("cat",
+                                                      stdin=PIPE,
+                                                      stdout=PIPE))
     print("pid: %s" % proc.pid)
 
     message = "Hello World!"
     print("cat write: %r" % message)
 
-    stdout, stderr = yield proc.communicate(message.encode('ascii'))
+    stdout, stderr = yield From(proc.communicate(message.encode('ascii')))
     print("cat read: %r" % stdout.decode('ascii'))
 
-    exitcode = yield proc.wait()
+    exitcode = yield From(proc.wait())
     print("(exit code %s)" % exitcode)
 
 @asyncio.coroutine
 def ls(loop):
-    proc = yield asyncio.create_subprocess_exec("ls",
-                                                stdout=PIPE)
+    proc = yield From(asyncio.create_subprocess_exec("ls",
+                                                     stdout=PIPE))
     while True:
-        line = yield proc.stdout.readline()
+        line = yield From(proc.stdout.readline())
         if not line:
             break
         print("ls>>", line.decode('ascii').rstrip())
@@ -39,8 +40,8 @@ def ls(loop):
 def test_call(*args, **kw):
     timeout = kw.pop('timeout', None)
     try:
-        proc = yield asyncio.create_subprocess_exec(*args)
-        exitcode = yield asyncio.wait_for(proc.wait(), timeout)
+        proc = yield From(asyncio.create_subprocess_exec(*args))
+        exitcode = yield From(asyncio.wait_for(proc.wait(), timeout))
         print("%s: exit code %s" % (' '.join(args), exitcode))
     except asyncio.TimeoutError:
         print("timeout! (%.1f sec)" % timeout)
