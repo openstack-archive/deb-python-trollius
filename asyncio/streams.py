@@ -14,6 +14,7 @@ from . import events
 from . import futures
 from . import protocols
 from . import tasks
+from .coroutines import From
 from .py33_exceptions import ConnectionResetError
 
 
@@ -58,8 +59,8 @@ def open_connection(host=None, port=None,
         loop = events.get_event_loop()
     reader = StreamReader(limit=limit, loop=loop)
     protocol = StreamReaderProtocol(reader, loop=loop)
-    transport, _ = yield loop.create_connection(
-        lambda: protocol, host, port, **kwds)
+    transport, _ = yield From(loop.create_connection(
+        lambda: protocol, host, port, **kwds))
     writer = StreamWriter(transport, protocol, reader, loop)
     raise tasks.Return(reader, writer)
 
@@ -97,7 +98,7 @@ def start_server(client_connected_cb, host=None, port=None,
                                         loop=loop)
         return protocol
 
-    result = yield loop.create_server(factory, host, port, **kwds)
+    result = yield From(loop.create_server(factory, host, port, **kwds))
     raise tasks.Return(result)
 
 
@@ -112,8 +113,8 @@ if hasattr(socket, 'AF_UNIX'):
             loop = events.get_event_loop()
         reader = StreamReader(limit=limit, loop=loop)
         protocol = StreamReaderProtocol(reader, loop=loop)
-        transport, _ = yield loop.create_unix_connection(
-            lambda: protocol, path, **kwds)
+        transport, _ = yield From(loop.create_unix_connection(
+            lambda: protocol, path, **kwds))
         writer = StreamWriter(transport, protocol, reader, loop)
         raise tasks.Return(reader, writer)
 
@@ -131,7 +132,8 @@ if hasattr(socket, 'AF_UNIX'):
                                             loop=loop)
             return protocol
 
-        raise tasks.Return((yield loop.create_unix_server(factory, path, **kwds)))
+        res = (yield From(loop.create_unix_server(factory, path, **kwds)))
+        raise tasks.Return(res)
 
 
 class FlowControlMixin(protocols.Protocol):
@@ -274,7 +276,7 @@ class StreamWriter(object):
         The intended use is to write
 
           w.write(data)
-          yield w.drain()
+          yield From(w.drain())
 
         When there's nothing to wait for, drain() returns (), and the
         yield-from continues immediately.  When the transport buffer
@@ -406,7 +408,7 @@ class StreamReader(object):
             if not_enough:
                 self._waiter = self._create_waiter('readline')
                 try:
-                    yield self._waiter
+                    yield From(self._waiter)
                 finally:
                     self._waiter = None
 
@@ -425,14 +427,14 @@ class StreamReader(object):
             while not self._eof:
                 self._waiter = self._create_waiter('read')
                 try:
-                    yield self._waiter
+                    yield From(self._waiter)
                 finally:
                     self._waiter = None
         else:
             if not self._buffer and not self._eof:
                 self._waiter = self._create_waiter('read')
                 try:
-                    yield self._waiter
+                    yield From(self._waiter)
                 finally:
                     self._waiter = None
 
@@ -461,7 +463,7 @@ class StreamReader(object):
 
         blocks = []
         while n > 0:
-            block = yield self.read(n)
+            block = yield From(self.read(n))
             if not block:
                 partial = b''.join(blocks)
                 raise IncompleteReadError(partial, len(partial) + n)

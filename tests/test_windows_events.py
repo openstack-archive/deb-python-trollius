@@ -8,7 +8,7 @@ if sys.platform != 'win32':
 
 import asyncio
 
-from asyncio import Return
+from asyncio import Return, From
 from asyncio import _overlapped
 from asyncio import py33_winapi as _winapi
 from asyncio import windows_events
@@ -63,19 +63,19 @@ class ProactorTests(unittest.TestCase):
         ADDRESS = r'\\.\pipe\_test_pipe-%s' % os.getpid()
 
         with self.assertRaises(FileNotFoundError):
-            yield self.loop.create_pipe_connection(
-                asyncio.Protocol, ADDRESS)
+            yield From(self.loop.create_pipe_connection(
+                asyncio.Protocol, ADDRESS))
 
-        [server] = yield self.loop.start_serving_pipe(
-            UpperProto, ADDRESS)
+        [server] = yield From(self.loop.start_serving_pipe(
+            UpperProto, ADDRESS))
         self.assertIsInstance(server, windows_events.PipeServer)
 
         clients = []
         for i in range(5):
             stream_reader = asyncio.StreamReader(loop=self.loop)
             protocol = asyncio.StreamReaderProtocol(stream_reader)
-            trans, proto = yield self.loop.create_pipe_connection(
-                lambda: protocol, ADDRESS)
+            trans, proto = yield From(self.loop.create_pipe_connection(
+                lambda: protocol, ADDRESS))
             self.assertIsInstance(trans, asyncio.Transport)
             self.assertEqual(protocol, proto)
             clients.append((stream_reader, trans))
@@ -84,15 +84,15 @@ class ProactorTests(unittest.TestCase):
             w.write('lower-{0}\n'.format(i).encode())
 
         for i, (r, w) in enumerate(clients):
-            response = yield r.readline()
+            response = yield From(r.readline())
             self.assertEqual(response, 'LOWER-{0}\n'.format(i).encode())
             w.close()
 
         server.close()
 
         with self.assertRaises(FileNotFoundError):
-            yield self.loop.create_pipe_connection(
-                asyncio.Protocol, ADDRESS)
+            yield From(self.loop.create_pipe_connection(
+                asyncio.Protocol, ADDRESS))
 
         raise Return('done')
 

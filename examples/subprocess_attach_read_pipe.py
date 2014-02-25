@@ -2,7 +2,7 @@
 """Example showing how to attach a read pipe to a subprocess."""
 import asyncio
 import os, sys
-from asyncio import subprocess
+from asyncio import From
 
 code = """
 import os, sys
@@ -21,16 +21,16 @@ def task():
     pipe = os.fdopen(rfd, 'rb', 0)
     reader = asyncio.StreamReader(loop=loop)
     protocol = asyncio.StreamReaderProtocol(reader, loop=loop)
-    transport, _ = yield loop.connect_read_pipe(lambda: protocol, pipe)
+    transport, _ = yield From(loop.connect_read_pipe(lambda: protocol, pipe))
 
     kwds = {}
     if sys.version_info >= (3, 2):
         kwds['pass_fds'] = (wfd,)
-    proc = yield asyncio.create_subprocess_exec(*args, **kwds)
-    yield proc.wait()
+    proc = yield From(asyncio.create_subprocess_exec(*args, **kwds))
+    yield From(proc.wait())
 
     os.close(wfd)
-    data = yield reader.read()
+    data = yield From(reader.read())
     print("read = %r" % data.decode())
 
 loop.run_until_complete(task())

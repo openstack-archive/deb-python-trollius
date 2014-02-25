@@ -4,6 +4,7 @@ import subprocess
 from . import protocols
 from . import tasks
 from . import transports
+from .coroutines import From
 
 
 class BaseSubprocessTransport(transports.SubprocessTransport):
@@ -70,19 +71,19 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
         proc = self._proc
         loop = self._loop
         if proc.stdin is not None:
-            _, pipe = yield loop.connect_write_pipe(
+            _, pipe = yield From(loop.connect_write_pipe(
                 lambda: WriteSubprocessPipeProto(self, 0),
-                proc.stdin)
+                proc.stdin))
             self._pipes[0] = pipe
         if proc.stdout is not None:
-            _, pipe = yield loop.connect_read_pipe(
+            _, pipe = yield From(loop.connect_read_pipe(
                 lambda: ReadSubprocessPipeProto(self, 1),
-                proc.stdout)
+                proc.stdout))
             self._pipes[1] = pipe
         if proc.stderr is not None:
-            _, pipe = yield loop.connect_read_pipe(
+            _, pipe = yield From(loop.connect_read_pipe(
                 lambda: ReadSubprocessPipeProto(self, 2),
-                proc.stderr)
+                proc.stderr))
             self._pipes[2] = pipe
 
         assert self._pending_calls is not None

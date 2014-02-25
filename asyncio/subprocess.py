@@ -10,6 +10,7 @@ from . import futures
 from . import protocols
 from . import streams
 from . import tasks
+from .coroutines import From
 from .py33_exceptions import ProcessLookupError
 
 
@@ -107,7 +108,7 @@ class Process:
 
         waiter = futures.Future(loop=self._loop)
         self._protocol._waiters.append(waiter)
-        yield waiter
+        yield From(waiter)
         raise tasks.Return(waiter.result())
 
     def _check_alive(self):
@@ -129,7 +130,7 @@ class Process:
     @tasks.coroutine
     def _feed_stdin(self, input):
         self.stdin.write(input)
-        yield self.stdin.drain()
+        yield From(self.stdin.drain())
         self.stdin.close()
 
     @tasks.coroutine
@@ -144,7 +145,7 @@ class Process:
         else:
             assert fd == 1
             stream = self.stdout
-        output = yield stream.read()
+        output = yield From(stream.read())
         transport.close()
         raise tasks.Return(output)
 
@@ -162,9 +163,9 @@ class Process:
             stderr = self._read_stream(2)
         else:
             stderr = self._noop()
-        stdin, stdout, stderr = yield tasks.gather(stdin, stdout, stderr,
-                                                   loop=self._loop)
-        yield self.wait()
+        stdin, stdout, stderr = yield From(tasks.gather(stdin, stdout, stderr,
+                                                        loop=self._loop))
+        yield From(self.wait())
         raise tasks.Return(stdout, stderr)
 
 
@@ -179,11 +180,11 @@ def create_subprocess_shell(cmd, **kwds):
         loop = events.get_event_loop()
     protocol_factory = lambda: SubprocessStreamProtocol(limit=limit,
                                                         loop=loop)
-    transport, protocol = yield loop.subprocess_shell(
+    transport, protocol = yield From(loop.subprocess_shell(
                                        protocol_factory,
                                        cmd, stdin=stdin, stdout=stdout,
-                                       stderr=stderr, **kwds)
-    yield protocol.waiter
+                                       stderr=stderr, **kwds))
+    yield From(protocol.waiter)
     raise tasks.Return(Process(transport, protocol, loop))
 
 @tasks.coroutine
@@ -197,10 +198,10 @@ def create_subprocess_exec(program, *args, **kwds):
         loop = events.get_event_loop()
     protocol_factory = lambda: SubprocessStreamProtocol(limit=limit,
                                                         loop=loop)
-    transport, protocol = yield loop.subprocess_exec(
+    transport, protocol = yield From(loop.subprocess_exec(
                                        protocol_factory,
                                        program, *args,
                                        stdin=stdin, stdout=stdout,
-                                       stderr=stderr, **kwds)
-    yield protocol.waiter
+                                       stderr=stderr, **kwds))
+    yield From(protocol.waiter)
     raise tasks.Return(Process(transport, protocol, loop))

@@ -18,11 +18,11 @@ from __future__ import print_function
 
 import argparse
 import asyncio
+from asyncio import From
 import asyncio.locks
 import cgi
 import logging
 import re
-import signal
 import sys
 import time
 try:
@@ -150,7 +150,7 @@ class ConnectionPool:
         """Create or reuse a connection."""
         port = port or (443 if ssl else 80)
         try:
-            ipaddrs = yield self.loop.getaddrinfo(host, port)
+            ipaddrs = yield From(self.loop.getaddrinfo(host, port))
         except Exception as exc:
             self.log(0, 'Exception %r for (%r, %r)' % (exc, host, port))
             raise
@@ -178,7 +178,7 @@ class ConnectionPool:
 
         # Create a new connection.
         conn = Connection(self.log, self, host, port, ssl)
-        yield conn.connect()
+        yield From(conn.connect())
         self.log(1, '* New connection', conn.key, 'FD =', conn.fileno())
         raise asyncio.Return(conn)
 
@@ -269,8 +269,8 @@ class Connection:
 
     @asyncio.coroutine
     def connect(self):
-        self.reader, self.writer = yield asyncio.open_connection(
-            self.host, self.port, ssl=self.ssl)
+        self.reader, self.writer = yield From(asyncio.open_connection(
+            self.host, self.port, ssl=self.ssl))
         peername = self.writer.get_extra_info('peername')
         if peername:
             self.host, self.port = peername[:2]
@@ -322,8 +322,8 @@ class Request:
                     (self.hostname, self.port,
                      'ssl' if self.ssl else 'tcp',
                      self.url))
-        self.conn = yield self.pool.get_connection(self.hostname,
-                                                   self.port, self.ssl)
+        self.conn = yield From(self.pool.get_connection(self.hostname,
+                                                        self.port, self.ssl))
 
     def close(self, recycle=False):
         """Close the connection, recycle if requested."""
@@ -347,7 +347,7 @@ class Request:
         """Send the request."""
         request_line = '%s %s %s' % (self.method, self.full_path,
                                      self.http_version)
-        yield self.putline(request_line)
+        yield From(self.putline(request_line))
         # TODO: What if a header is already set?
         self.headers.append(('User-Agent', 'asyncio-example-crawl/0.0'))
         self.headers.append(('Host', self.netloc))
@@ -355,14 +355,14 @@ class Request:
         ##self.headers.append(('Accept-Encoding', 'gzip'))
         for key, value in self.headers:
             line = '%s: %s' % (key, value)
-            yield self.putline(line)
-        yield self.putline('')
+            yield From(self.putline(line))
+        yield From(self.putline(''))
 
     @asyncio.coroutine
     def get_response(self):
         """Receive the response."""
         response = Response(self.log, self.conn.reader)
-        yield response.read_headers()
+        yield From(response.read_headers())
         raise asyncio.Return(response)
 
 
@@ -385,14 +385,15 @@ class Response:
     @asyncio.coroutine
     def getline(self):
         """Read one line from the connection."""
-        line = (yield self.reader.readline()).decode('latin-1').rstrip()
+        line = (yield From(self.reader.readline()))
+        line = line.decode('latin-1').rstrip()
         self.log(2, '<', line)
         raise asyncio.Return(line)
 
     @asyncio.coroutine
     def read_headers(self):
         """Read the response status and the request headers."""
-        status_line = yield self.getline()
+        status_line = yield From(self.getline())
         status_parts = status_line.split(None, 2)
         if len(status_parts) != 3:
             self.log(0, 'bad status_line', repr(status_line))
@@ -400,7 +401,7 @@ class Response:
         self.http_version, status, self.reason = status_parts
         self.status = int(status)
         while True:
-            header_line = yield self.getline()
+            header_line = yield From(self.getline())
             if not header_line:
                 break
             # TODO: Continuation lines.
@@ -437,7 +438,7 @@ class Response:
                 self.log(2, 'parsing chunked response')
                 blocks = []
                 while True:
-                    size_header = yield self.reader.readline()
+                    size_header = yield From(self.reader.readline())
                     if not size_header:
                         self.log(0, 'premature end of chunked response')
                         break
@@ -446,10 +447,10 @@ class Response:
                     size = int(parts[0], 16)
                     if size:
                         self.log(3, 'reading chunk of', size, 'bytes')
-                        block = yield self.reader.readexactly(size)
+                        block = yield From(self.reader.readexactly(size))
                         assert len(block) == size, (len(block), size)
                         blocks.append(block)
-                    crlf = yield self.reader.readline()
+                    crlf = yield From(self.reader.readline())
                     assert crlf == b'\r\n', repr(crlf)
                     if not size:
                         break
@@ -458,11 +459,11 @@ class Response:
                             'bytes in', len(blocks), 'blocks')
             else:
                 self.log(3, 'reading until EOF')
-                body = yield self.reader.read()
+                body = yield From(self.reader.read())
                 # TODO: Should make sure not to recycle the connection
                 # in this case.
         else:
-            body = yield self.reader.readexactly(nbytes)
+            body = yield From(self.reader.readexactly(nbytes))
         raise asyncio.Return(body)
 
 
@@ -515,10 +516,10 @@ class Fetcher:
             self.request = None
             try:
                 self.request = Request(self.log, self.url, self.crawler.pool)
-                yield self.request.connect()
-                yield self.request.send_request()
-                self.response = yield self.request.get_response()
-                self.body = yield self.response.read()
+                yield From(self.request.connect())
+                yield From(self.request.send_request())
+                self.response = yield From(self.request.get_response())
+                self.body = yield From(self.response.read())
                 h_conn = self.response.get_header('connection').lower()
                 h_t_enc = self.response.get_header('transfer-encoding').lower()
                 if h_conn != 'close':
@@ -760,7 +761,7 @@ class Crawler:
     @asyncio.coroutine
     def crawl(self):
         """Run the crawler until all finished."""
-        with (yield self.termination):
+        with (yield From(self.termination)):
             while self.todo or self.busy:
                 if self.todo:
                     url, max_redirect = self.todo.popitem()
@@ -772,7 +773,7 @@ class Crawler:
                     self.busy[url] = fetcher
                     fetcher.task = asyncio.Task(self.fetch(fetcher))
                 else:
-                    yield self.termination.wait()
+                    yield From(self.termination.wait())
         self.t1 = time.time()
 
     @asyncio.coroutine
@@ -782,13 +783,13 @@ class Crawler:
         Once this returns, move the fetcher from busy to done.
         """
         url = fetcher.url
-        with (yield self.governor):
+        with (yield From(self.governor)):
             try:
-                yield fetcher.fetch()  # Fetcher gonna fetch.
+                yield From(fetcher.fetch())  # Fetcher gonna fetch.
             finally:
                 # Force GC of the task, so the error is logged.
                 fetcher.task = None
-        with (yield self.termination):
+        with (yield From(self.termination)):
             self.done[url] = fetcher
             del self.busy[url]
             self.termination.notify()

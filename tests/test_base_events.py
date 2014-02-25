@@ -4,17 +4,16 @@ import errno
 import logging
 import socket
 import sys
-import time
 import unittest
 
 import asyncio
-from asyncio import Return
+from asyncio import Return, From
 from asyncio import base_events
 from asyncio import constants
 from asyncio import test_utils
 from asyncio.py33_exceptions import BlockingIOError
 from asyncio.test_utils import mock
-from asyncio.test_support import find_unused_port, IPV6_ENABLED
+from asyncio.test_support import IPV6_ENABLED
 from asyncio.time_monotonic import time_monotonic
 
 
@@ -336,7 +335,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def zero_error_coro():
-            yield asyncio.sleep(0.01, loop=self.loop)
+            yield From(asyncio.sleep(0.01, loop=self.loop))
             1/0
 
         # Test Future.__del__

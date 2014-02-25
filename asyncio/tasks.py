@@ -5,13 +5,11 @@ __all__ = ['coroutine', 'Task',
            'iscoroutinefunction', 'iscoroutine',
            'FIRST_COMPLETED', 'FIRST_EXCEPTION', 'ALL_COMPLETED',
            'wait', 'wait_for', 'as_completed', 'sleep', 'async',
-           'gather', 'shield', 'Return',
+           'gather', 'shield', 'Return', 'From',
            ]
 
 import functools
 import linecache
-import os
-import sys
 import traceback
 try:
     from weakref import WeakSet
@@ -23,11 +21,12 @@ from . import events
 from . import executor
 from . import futures
 from .locks import Lock, Condition, Semaphore
-from .coroutines import Return, coroutine, iscoroutinefunction, iscoroutine
+from .coroutines import Return, From, coroutine, iscoroutinefunction, iscoroutine
+from . import coroutines
 
 @coroutine
 def lock_coroutine(lock):
-    cm = yield lock.acquire()
+    cm = yield From(lock.acquire())
     raise Return(cm)
 
 
@@ -215,6 +214,15 @@ class Task(futures.Future):
             self.set_exception(exc)
             raise
         else:
+            if coroutines._DEBUG:
+                if not isinstance(result, coroutines.FromWrapper):
+                    raise RuntimeError("yield used without From")
+                result = result.obj
+            else:
+                # FIXME: only check if coroutines._DEBUG is True?
+                if isinstance(result, coroutines.FromWrapper):
+                    result = result.obj
+
             if iscoroutine(result):
                 result = async(result, loop=self._loop)
             # FIXME: faster check. common base class? hasattr?
@@ -270,7 +278,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
 
     Usage:
 
-        done, pending = yield asyncio.wait(fs)
+        done, pending = yield From(asyncio.wait(fs))
 
     Note: This does not raise TimeoutError! Futures that aren't done
     when the timeout occurs are returned in the second set.
@@ -287,7 +295,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
 
     if return_when not in (FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED):
         raise ValueError('Invalid return_when value: {0}'.format(return_when))
-    result = yield _wait(fs, timeout, return_when, loop)
+    result = yield From(_wait(fs, timeout, return_when, loop))
     raise Return(result)
 
 
@@ -308,14 +316,14 @@ def wait_for(fut, timeout, loop=None):
 
     Usage:
 
-        result = yield asyncio.wait_for(fut, 10.0)
+        result = yield From(asyncio.wait_for(fut, 10.0))
 
     """
     if loop is None:
         loop = events.get_event_loop()
 
     if timeout is None:
-        raise Return((yield fut))
+        raise Return((yield From(fut)))
 
     waiter = futures.Future(loop=loop)
     timeout_handle = loop.call_later(timeout, _release_waiter, waiter, False)
@@ -325,7 +333,7 @@ def wait_for(fut, timeout, loop=None):
     fut.add_done_callback(cb)
 
     try:
-        if (yield waiter):
+        if (yield From(waiter)):
             raise Return(fut.result())
         else:
             fut.remove_done_callback(cb)
@@ -363,7 +371,7 @@ def _wait(fs, timeout, return_when, loop):
         f.add_done_callback(_on_completion)
 
     try:
-        yield waiter
+        yield From(waiter)
     finally:
         if timeout_handle is not None:
             timeout_handle.cancel()
@@ -389,7 +397,7 @@ def as_completed(fs, loop=None, timeout=None):
     This differs from PEP 3148; the proper way to use this is:
 
         for f in as_completed(fs):
-            result = yield f  # The 'yield' may raise.
+            result = yield From(f)  # The 'yield' may raise.
             # Use result.
 
     If a timeout is specified, the 'yield' will raise
@@ -421,7 +429,7 @@ def as_completed(fs, loop=None, timeout=None):
 
     @coroutine
     def _wait_for_one():
-        f = yield done.get()
+        f = yield From(done.get())
         if f is None:
             # Dummy value from _on_timeout().
             raise futures.TimeoutError
@@ -432,7 +440,7 @@ def as_completed(fs, loop=None, timeout=None):
     if todo and timeout is not None:
         timeout_handle = loop.call_later(timeout, _on_timeout)
     for _ in range(len(todo)):
-        yield _wait_for_one()
+        yield From(_wait_for_one())
 
 
 @coroutine
@@ -441,7 +449,7 @@ def sleep(delay, result=None, loop=None):
     future = futures.Future(loop=loop)
     h = future._loop.call_later(delay, future.set_result, result)
     try:
-        result = yield future
+        result = yield From(future)
         raise Return(result)
     finally:
         h.cancel()
@@ -452,6 +460,9 @@ def async(coro_or_future, loop=None):
 
     If the argument is a Future, it is returned directly.
     """
+    # FIXME: only check if coroutines._DEBUG is True?
+    if isinstance(coro_or_future, coroutines.FromWrapper):
+        coro_or_future = coro_or_future.obj
     if isinstance(coro_or_future, futures.Future):
         if loop is not None and loop is not coro_or_future._loop:
             raise ValueError('loop argument must agree with Future')
@@ -557,11 +568,11 @@ def shield(arg, loop=None):
 
     The statement
 
-        res = yield shield(something())
+        res = yield From(shield(something()))
 
     is exactly equivalent to the statement
 
-        res = yield something()
+        res = yield From(something())
 
     *except* that if the coroutine containing it is cancelled, the
     task running in something() is not cancelled.  From the POV of
@@ -574,7 +585,7 @@ def shield(arg, loop=None):
     you can combine shield() with a try/except clause, as follows:
 
         try:
-            res = yield shield(something())
+            res = yield From(shield(something()))
         except CancelledError:
             res = None
     """

@@ -1,6 +1,5 @@
 """Tests for streams.py."""
 
-import functools
 import gc
 import socket
 import unittest
@@ -10,7 +9,7 @@ except ImportError:
     ssl = None
 
 import asyncio
-from asyncio import Return
+from asyncio import Return, From
 from asyncio import test_utils
 from asyncio.test_utils import mock
 
@@ -416,7 +415,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def readline():
-            yield stream.readline()
+            yield From(stream.readline())
 
         t1 = asyncio.Task(stream.readline(), loop=self.loop)
         t2 = asyncio.Task(set_err(), loop=self.loop)
@@ -430,7 +429,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def read_a_line():
-            yield stream.readline()
+            yield From(stream.readline())
 
         t = asyncio.Task(read_a_line(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -451,7 +450,7 @@ class StreamReaderTests(test_utils.TestCase):
 
             @asyncio.coroutine
             def handle_client(self, client_reader, client_writer):
-                data = yield client_reader.readline()
+                data = yield From(client_reader.readline())
                 client_writer.write(data)
 
             def start(self):
@@ -490,12 +489,12 @@ class StreamReaderTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def client(addr):
-            reader, writer = yield asyncio.open_connection(
-                *addr, loop=self.loop)
+            reader, writer = yield From(asyncio.open_connection(
+                *addr, loop=self.loop))
             # send a line
             writer.write(b"hello world!\n")
             # read it back
-            msgback = yield reader.readline()
+            msgback = yield From(reader.readline())
             writer.close()
             raise asyncio.Return(msgback)
 
@@ -527,7 +526,7 @@ class StreamReaderTests(test_utils.TestCase):
 
             @asyncio.coroutine
             def handle_client(self, client_reader, client_writer):
-                data = yield client_reader.readline()
+                data = yield From(client_reader.readline())
                 client_writer.write(data)
 
             def start(self):
@@ -558,12 +557,12 @@ class StreamReaderTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def client(path):
-            reader, writer = yield asyncio.open_unix_connection(
-                path, loop=self.loop)
+            reader, writer = yield From(asyncio.open_unix_connection(
+                path, loop=self.loop))
             # send a line
             writer.write(b"hello world!\n")
             # read it back
-            msgback = yield reader.readline()
+            msgback = yield From(reader.readline())
             writer.close()
             raise Return(msgback)
 

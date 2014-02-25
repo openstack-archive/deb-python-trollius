@@ -2,7 +2,6 @@
 
 import collections
 import contextlib
-import functools
 import io
 import os
 import re

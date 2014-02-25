@@ -71,10 +71,10 @@ def start(loop, host, port):
             certfile=os.path.join(here, 'ssl_cert.pem'),
             keyfile=os.path.join(here, 'ssl_key.pem'))
 
-    server = yield loop.create_server(Service, host, port, ssl=sslctx)
+    server = yield From(loop.create_server(Service, host, port, ssl=sslctx))
     dprint('serving TLS' if sslctx else 'serving',
            [s.getsockname() for s in server.sockets])
-    yield server.wait_closed()
+    yield From(server.wait_closed())
 
 
 def main():

@@ -86,7 +86,7 @@ def coroutine(func):
         def coro(*args, **kw):
             res = func(*args, **kw)
             if isinstance(res, futures.Future) or inspect.isgenerator(res):
-                res = yield res
+                res = yield From(res)
             raise Return(res)
 
     if not _DEBUG:
@@ -112,3 +112,15 @@ def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
     return isinstance(obj, CoroWrapper) or inspect.isgenerator(obj)
 
+class FromWrapper:
+    def __init__(self, obj):
+        if isinstance(obj, FromWrapper):
+            obj = obj.obj
+            assert not isinstance(obj, FromWrapper)
+        self.obj = obj
+
+def From(obj):
+    if not _DEBUG:
+        return obj
+    else:
+        return FromWrapper(obj)

@@ -4,7 +4,7 @@
 #  - run unit tests without concurrent.futures
 #  - run unit tests without ssl: set sys.modules['ssl']=None at startup
 #  - test examples
-#  - update version in setup.py
+#  - update version in setup.py (version) and doc/conf.py (version, release)
 #  - set release date in doc/index.rst
 #  - hg ci
 #  - hg tag trollius-VERSION
@@ -42,7 +42,7 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "0.1.7",
+    "version": "0.2",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',

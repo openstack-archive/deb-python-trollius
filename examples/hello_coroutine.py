@@ -1,13 +1,14 @@
 """Print 'Hello World' every two seconds, using a coroutine."""
 
 import asyncio
+from asyncio import From
 
 
 @asyncio.coroutine
 def greet_every_two_seconds():
     while True:
         print('Hello World')
-        yield asyncio.sleep(2)
+        yield From(asyncio.sleep(2))
 
 
 if __name__ == '__main__':
