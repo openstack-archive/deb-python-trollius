@@ -1,5 +1,7 @@
 Unsorted "TODO" tasks:
 
+* Fix traceback?
+* Fix test_create_ssl_connection() on OpenIndiana (the test hangs)
 * Future: only format the traceback in debug mode?
 * test_internal_fds() of test_events.py emits two ResourceWarning on Windows
 * tests/test_events.py -v KqueueEventLoopTests.test_read_pty_output failed on Mac OS X:

@@ -165,6 +165,11 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Development version (will be the version 0.1.7)
+-----------------------------------------------
+
+* No change yet
+
 2014-02-25: version 0.1.6
 -------------------------
 
