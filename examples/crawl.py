@@ -143,7 +143,7 @@ class ConnectionPool:
             for conn in conns:
                 conn.close()
         self.connections.clear()
-        self.queue[:] = []
+        del self.queue[:]
 
     @asyncio.coroutine
     def get_connection(self, host, port, ssl):
