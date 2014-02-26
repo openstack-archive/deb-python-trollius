@@ -73,7 +73,7 @@ class _TracebackLogger(object):
     immediately format the exception; we only do the work when
     activate() is called, which call is delayed until after all the
     Future's callbacks have run.  Since usually a Future has at least
-    one callback (typically set by 'yield') and usually that
+    one callback (typically set by 'yield From') and usually that
     callback extracts the callback, thereby removing the need to
     format the exception.
 
@@ -345,7 +345,6 @@ class Future(object):
             else:
                 result = other.result()
                 self.set_result(result)
-
 
 def wrap_future(fut, loop=None):
     """Wrap concurrent.futures.Future object."""
