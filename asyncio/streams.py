@@ -183,7 +183,7 @@ class FlowControlMixin(protocols.Protocol):
 
     def _make_drain_waiter(self):
         if not self._paused:
-            return ()
+            return None
         waiter = self._drain_waiter
         assert waiter is None or waiter.cancelled()
         waiter = futures.Future(loop=self._loop)
@@ -269,7 +269,6 @@ class StreamWriter(object):
     def get_extra_info(self, name, default=None):
         return self._transport.get_extra_info(name, default)
 
-    @tasks.coroutine
     def drain(self):
         """This method has an unusual return value.
 
