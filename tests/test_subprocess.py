@@ -4,7 +4,7 @@ import os
 import signal
 import sys
 import unittest
-from asyncio import From
+from asyncio import From, Return
 from asyncio import test_support as support
 from asyncio import test_utils
 if sys.platform != 'win32':
@@ -49,7 +49,7 @@ class SubprocessMixin:
             # get output and exitcode
             data = yield From(proc.stdout.read())
             exitcode = yield From(proc.wait())
-            raise asyncio.Return(exitcode, data)
+            raise Return(exitcode, data)
 
         task = run(b'some data')
         task = asyncio.wait_for(task, 10.0, loop=self.loop)
@@ -68,7 +68,7 @@ class SubprocessMixin:
                                           stdout=subprocess.PIPE,
                                           loop=self.loop))
             stdout, stderr = yield From(proc.communicate(data))
-            raise asyncio.Return(proc.returncode, stdout)
+            raise Return(proc.returncode, stdout)
 
         task = run(b'some data')
         task = asyncio.wait_for(task, 10.0, loop=self.loop)

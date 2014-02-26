@@ -5,7 +5,7 @@ import os.path
 import unittest
 
 import asyncio
-from asyncio import From
+from asyncio import From, Return
 from asyncio import test_utils
 from asyncio.test_support import assert_python_ok
 
@@ -117,7 +117,7 @@ class TaskTests(test_utils.TestCase):
         @asyncio.coroutine
         def notmuch():
             yield From(noop())
-            raise asyncio.Return('abc')
+            raise Return('abc')
 
         t = asyncio.Task(notmuch(), loop=self.loop)
         t.add_done_callback(Dummy())
@@ -154,7 +154,7 @@ class TaskTests(test_utils.TestCase):
         def outer():
             a = yield From(inner1())
             b = yield From(inner2())
-            raise asyncio.Return(a+b)
+            raise Return(a+b)
 
         @asyncio.coroutine
         def inner1():
@@ -180,7 +180,7 @@ class TaskTests(test_utils.TestCase):
         @asyncio.coroutine
         def task():
             yield From(asyncio.sleep(10.0, loop=loop))
-            raise asyncio.Return(12)
+            raise Return(12)
 
         t = asyncio.Task(task(), loop=loop)
         test_utils.run_briefly(loop)
@@ -196,7 +196,7 @@ class TaskTests(test_utils.TestCase):
         def task():
             yield From(None)
             yield From(None)
-            raise asyncio.Return(12)
+            raise Return(12)
 
         t = asyncio.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)  # start coro
@@ -213,7 +213,7 @@ class TaskTests(test_utils.TestCase):
         @asyncio.coroutine
         def task():
             yield From(f)
-            raise asyncio.Return(12)
+            raise Return(12)
 
         t = asyncio.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)  # start task
@@ -229,7 +229,7 @@ class TaskTests(test_utils.TestCase):
         @asyncio.coroutine
         def task():
             yield From(f)
-            raise asyncio.Return(12)
+            raise Return(12)
 
         t = asyncio.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -254,7 +254,7 @@ class TaskTests(test_utils.TestCase):
             try:
                 yield From(fut2)
             except asyncio.CancelledError:
-                raise asyncio.Return(42)
+                raise Return(42)
 
         t = asyncio.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -281,7 +281,7 @@ class TaskTests(test_utils.TestCase):
             except asyncio.CancelledError:
                 pass
             res = yield From(fut3)
-            raise asyncio.Return(res)
+            raise Return(res)
 
         t = asyncio.Task(task(), loop=self.loop)
         test_utils.run_briefly(self.loop)
@@ -309,7 +309,7 @@ class TaskTests(test_utils.TestCase):
             self.assertTrue(t._must_cancel)  # White-box test.
             # The sleep should be cancelled immediately.
             yield From(asyncio.sleep(100, loop=loop))
-            raise asyncio.Return(12)
+            raise Return(12)
 
         t = asyncio.Task(task(), loop=loop)
         self.assertRaises(
@@ -377,7 +377,7 @@ class TaskTests(test_utils.TestCase):
                 yield From(asyncio.sleep(0.2, loop=loop))
             finally:
                 non_local['foo_running'] = False
-            raise asyncio.Return('done')
+            raise Return('done')
 
         fut = asyncio.Task(foo(), loop=loop)
         test_utils.run_briefly(loop)
@@ -425,7 +425,7 @@ class TaskTests(test_utils.TestCase):
         @asyncio.coroutine
         def foo():
             yield From(asyncio.sleep(0.2, loop=loop))
-            raise asyncio.Return('done')
+            raise Return('done')
 
         asyncio.set_event_loop(loop)
         try:
@@ -466,7 +466,7 @@ class TaskTests(test_utils.TestCase):
             done, pending = yield From(asyncio.wait([b, a], loop=loop))
             self.assertEqual(done, set([a, b]))
             self.assertEqual(pending, set())
-            raise asyncio.Return(42)
+            raise Return(42)
 
         res = loop.run_until_complete(asyncio.Task(foo(), loop=loop))
         self.assertEqual(res, 42)
@@ -497,7 +497,7 @@ class TaskTests(test_utils.TestCase):
             done, pending = yield From(asyncio.wait([b, a]))
             self.assertEqual(done, set([a, b]))
             self.assertEqual(pending, set())
-            raise asyncio.Return(42)
+            raise Return(42)
 
         asyncio.set_event_loop(loop)
         try:
@@ -770,7 +770,7 @@ class TaskTests(test_utils.TestCase):
             if not non_local['time_shifted'] and 'a' in completed and 'b' in completed:
                 non_local['time_shifted'] = True
                 loop.advance_time(0.14)
-            raise asyncio.Return(x)
+            raise Return(x)
 
         a = sleeper(0.01, 'a')
         b = sleeper(0.01, 'b')
@@ -781,7 +781,7 @@ class TaskTests(test_utils.TestCase):
             values = []
             for f in asyncio.as_completed([b, c, a], loop=loop):
                 values.append((yield From(f)))
-            raise asyncio.Return(values)
+            raise Return(values)
 
         res = loop.run_until_complete(asyncio.Task(foo(), loop=loop))
         self.assertAlmostEqual(0.15, loop.time())
@@ -818,7 +818,7 @@ class TaskTests(test_utils.TestCase):
                     values.append((1, v))
                 except asyncio.TimeoutError as exc:
                     values.append((2, exc))
-            raise asyncio.Return(values)
+            raise Return(values)
 
         res = loop.run_until_complete(asyncio.Task(foo(), loop=loop))
         self.assertEqual(len(res), 2, res)
@@ -909,7 +909,7 @@ class TaskTests(test_utils.TestCase):
             for f in asyncio.as_completed([c, c, coro('spam')],
                                           loop=self.loop):
                 result.append((yield From(f)))
-            raise asyncio.Return(result)
+            raise Return(result)
 
         fut = asyncio.Task(runner(), loop=self.loop)
         self.loop.run_until_complete(fut)
@@ -933,7 +933,7 @@ class TaskTests(test_utils.TestCase):
         def sleeper(dt, arg):
             yield From(asyncio.sleep(dt/2, loop=loop))
             res = yield From(asyncio.sleep(dt/2, arg, loop=loop))
-            raise asyncio.Return(res)
+            raise Return(res)
 
         t = asyncio.Task(sleeper(0.1, 'yeah'), loop=loop)
         loop.run_until_complete(t)
@@ -993,9 +993,9 @@ class TaskTests(test_utils.TestCase):
             try:
                 yield From(sleeper)
             except asyncio.CancelledError:
-                raise asyncio.Return('cancelled')
+                raise Return('cancelled')
             else:
-                raise asyncio.Return('slept in')
+                raise Return('slept in')
 
         doer = doit()
         self.assertEqual(loop.run_until_complete(doer), 'cancelled')
@@ -1036,7 +1036,7 @@ class TaskTests(test_utils.TestCase):
         def notmuch():
             yield From(None)
             yield From(1)
-            raise asyncio.Return('ko')
+            raise Return('ko')
 
         self.assertRaises(
             RuntimeError, self.loop.run_until_complete, notmuch())
@@ -1566,7 +1566,7 @@ class CoroutineGatherTests(GatherTestsBase, test_utils.TestCase):
             @asyncio.coroutine
             def coro(fut=fut):
                 result = (yield From(fut))
-                raise asyncio.Return(result)
+                raise Return(result)
             coros.append(coro())
         return coros
 
