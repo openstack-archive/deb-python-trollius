@@ -1389,16 +1389,14 @@ class ChildWatcherTestsMixin:
         self.loop = test_utils.TestLoop()
         patch = mock.patch.object
 
-        with patch(old_loop,
-                   "remove_signal_handler") as m_old_remove_signal_handler:
-             with patch(self.loop,
-                        "add_signal_handler") as m_new_add_signal_handler:
+        with patch(old_loop, "remove_signal_handler") as m_old_remove:
+             with patch(self.loop, "add_signal_handler") as m_new_add:
 
                 self.watcher.attach_loop(self.loop)
 
-                m_old_remove_signal_handler.assert_called_once_with(
+                m_old_remove.assert_called_once_with(
                     signal.SIGCHLD)
-                m_new_add_signal_handler.assert_called_once_with(
+                m_new_add.assert_called_once_with(
                     signal.SIGCHLD, self.watcher._sig_chld)
 
         # child terminates

@@ -8,6 +8,12 @@ import os
 import platform
 import signal
 import socket
+import subprocess
+import sys
+import threading
+import errno
+import unittest
+
 try:
     import ssl
 except ImportError:
@@ -15,11 +21,7 @@ except ImportError:
     HAS_SNI = False
 else:
     HAS_SNI = getattr(ssl, 'HAS_SNI', False)
-import subprocess
-import sys
-import threading
-import errno
-import unittest
+
 try:
     import concurrent
 except ImportError:

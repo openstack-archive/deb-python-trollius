@@ -38,7 +38,6 @@ else:
         # Python 2.6
         memoryview = buffer
 
-
 MOCK_ANY = mock.ANY
 
 
