@@ -184,13 +184,6 @@ class ProactorEventLoop(proactor_events.BaseProactorEventLoop):
         raise tasks.Return(transp)
 
 
-def _finish_recv(trans, key, ov):
-    return wrap_error(ov.getresult)
-
-def _finish_send(trans, key, ov):
-    return wrap_error(ov.getresult)
-
-
 class IocpProactor(object):
     """Proactor implementation using IOCP."""
 
@@ -221,7 +214,10 @@ class IocpProactor(object):
         else:
             wrap_error(ov.ReadFile, conn.fileno(), nbytes)
 
-        return self._register(ov, conn, _finish_recv)
+        def finish_recv(trans, key, ov):
+            return wrap_error(ov.getresult)
+
+        return self._register(ov, conn, finish_recv)
 
     def send(self, conn, buf, flags=0):
         self._register_with_iocp(conn)
@@ -231,7 +227,10 @@ class IocpProactor(object):
         else:
             ov.WriteFile(conn.fileno(), buf)
 
-        return self._register(ov, conn, _finish_send)
+        def finish_send(trans, key, ov):
+            return wrap_error(ov.getresult)
+
+        return self._register(ov, conn, finish_send)
 
     def accept(self, listener):
         self._register_with_iocp(listener)
@@ -239,7 +238,6 @@ class IocpProactor(object):
         ov = _overlapped.Overlapped(NULL)
         ov.AcceptEx(listener.fileno(), conn.fileno())
 
-        # FIXME: move it out of the function
         def finish_accept(trans, key, ov):
             wrap_error(ov.getresult)
             # Use SO_UPDATE_ACCEPT_CONTEXT so getsockname() etc work.
@@ -291,12 +289,11 @@ class IocpProactor(object):
         ov = _overlapped.Overlapped(NULL)
         ov.ConnectNamedPipe(pipe.fileno())
 
-        # FIXME: move out of the function
-        def _finish_accept_pipe(trans, key, ov):
+        def finish_accept_pipe(trans, key, ov):
             wrap_error(ov.getresult)
             return pipe
 
-        return self._register(ov, pipe, _finish_accept_pipe)
+        return self._register(ov, pipe, finish_accept_pipe)
 
     def connect_pipe(self, address):
         ov = _overlapped.Overlapped(NULL)
