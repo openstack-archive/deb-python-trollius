@@ -576,7 +576,7 @@ class _SelectorSslTransport(_SelectorTransport):
                         cert_reqs=ssl.CERT_REQUIRED,
                         check_hostname=bool(server_hostname))
                 else:
-                    # Fallback for Python 3.3.
+                    # Python older than 3.4
                     sslcontext = SSLContext(ssl.PROTOCOL_SSLv23)
                     if not BACKPORT_SSL_CONTEXT:
                         sslcontext.options |= ssl.OP_NO_SSLv2
@@ -681,7 +681,7 @@ class _SelectorSslTransport(_SelectorTransport):
             return
         self._loop.add_reader(self._sock_fd, self._read_ready)
 
-    def _read_ready_maxsize(self):
+    def _sock_recv(self):
         return wrap_ssl_error(self._sock.recv, self.max_size)
 
     def _read_ready(self):
@@ -694,12 +694,12 @@ class _SelectorSslTransport(_SelectorTransport):
 
         try:
             if _SSL_REQUIRES_SELECT:
-                rfds = [self._sock.fileno()]
+                rfds = (self._sock.fileno(),)
                 rfds = select.select(rfds, (), (), 0.0)[0]
                 if not rfds:
                     # False alarm.
                     return
-            data = wrap_error(self._read_ready_maxsize)
+            data = wrap_error(self._sock_recv)
         except (BlockingIOError, InterruptedError, SSLWantReadError):
             pass
         except SSLWantWriteError:
