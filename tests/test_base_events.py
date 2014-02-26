@@ -332,6 +332,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
     def test_default_exc_handler_coro(self):
         self.loop._process_events = mock.Mock()
+        self.loop.set_debug(True)
 
         @asyncio.coroutine
         def zero_error_coro():

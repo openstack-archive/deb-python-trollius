@@ -169,6 +169,7 @@ class FutureTests(test_utils.TestCase):
 
     @mock.patch('asyncio.base_events.logger')
     def test_tb_logger_exception_unretrieved(self, m_log):
+        self.loop.set_debug(True)
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
         del fut
