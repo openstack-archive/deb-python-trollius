@@ -74,7 +74,7 @@ class MyServer:
                 client_writer.write("{0!r}\n".format(retval).encode("utf-8"))
             elif cmd == 'repeat':
                 times = int(args[0])
-                # msg = args[1]
+                msg = args[1]
                 client_writer.write("begin\n".encode("utf-8"))
                 for idx in range(times):
                     client_writer.write("{0}. {1}\n".format(idx+1, msg)
