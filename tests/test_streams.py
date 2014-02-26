@@ -496,7 +496,7 @@ class StreamReaderTests(test_utils.TestCase):
             # read it back
             msgback = yield From(reader.readline())
             writer.close()
-            raise asyncio.Return(msgback)
+            raise Return(msgback)
 
         # test the server variant with a coroutine as client handler
         server = MyServer(self.loop)
