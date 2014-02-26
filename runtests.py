@@ -110,7 +110,6 @@ def load_modules(basedir, suffix='.py'):
 
         return files
 
-
     mods = []
     for modname, sourcefile in list_dir('', basedir):
         if modname == 'runtests':

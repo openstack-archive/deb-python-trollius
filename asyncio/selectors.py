@@ -19,6 +19,7 @@ from .compat import integer_types
 EVENT_READ = (1 << 0)
 EVENT_WRITE = (1 << 1)
 
+
 def _fileobj_to_fd(fileobj):
     """Return a file descriptor from a file object.
 
