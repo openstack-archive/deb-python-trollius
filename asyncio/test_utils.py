@@ -22,17 +22,17 @@ except ImportError:
     from BaseHTTPServer import HTTPServer
 
 try:
+    from unittest import mock
+except ImportError:
+    # Python < 3.3
+    import mock
+
+try:
     import ssl
     from .py3_ssl import SSLContext, wrap_socket
 except ImportError:  # pragma: no cover
     # SSL support disabled in Python
     ssl = None
-
-try:
-    from unittest import mock
-except ImportError:
-    # Python < 3.3
-    import mock
 
 from . import tasks
 from . import base_events
