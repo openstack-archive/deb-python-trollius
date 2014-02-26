@@ -36,9 +36,8 @@ class ConnectionPool:
             print('* %s resolves to %s' %
                   (host, ', '.join(ip[4][0] for ip in ipaddrs)),
                   file=sys.stderr)
-        for _, _, _, _, parts in ipaddrs:
-            h = parts[0]
-            p = parts[1]
+        for _, _, _, _, addr in ipaddrs:
+            h, p = addr[:2]
             key = h, p, ssl
             conn = self.connections.get(key)
             if conn:
@@ -50,9 +49,8 @@ class ConnectionPool:
                     print('* Reusing pooled connection', key, file=sys.stderr)
                 raise Return(conn)
         reader, writer = yield From(open_connection(host, port, ssl=ssl))
-        parts = writer.get_extra_info('peername')
-        host = parts[0]
-        port = parts[1]
+        addr = writer.get_extra_info('peername')
+        host, port = addr[:2]
         key = host, port, ssl
         self.connections[key] = reader, writer
         if self.verbose:
