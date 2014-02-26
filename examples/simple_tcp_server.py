@@ -12,7 +12,7 @@ from __future__ import print_function
 import sys
 import asyncio
 import asyncio.streams
-from asyncio import From
+from asyncio import From, Return
 
 
 class MyServer:
@@ -131,7 +131,7 @@ def main():
             msgback = (yield From(reader.readline()))
             msgback = msgback.decode("utf-8").rstrip()
             print("< " + msgback)
-            raise asyncio.Return(msgback)
+            raise Return(msgback)
 
         # send a line
         send("add 1 2")

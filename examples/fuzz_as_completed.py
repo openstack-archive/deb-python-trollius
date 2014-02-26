@@ -5,7 +5,7 @@
 from __future__ import print_function
 
 import asyncio
-from asyncio import From
+from asyncio import From, Return
 import itertools
 import random
 import sys
@@ -13,7 +13,7 @@ import sys
 @asyncio.coroutine
 def sleeper(time):
     yield From(asyncio.sleep(time))
-    raise asyncio.Return(time)
+    raise Return(time)
 
 @asyncio.coroutine
 def watcher(tasks,delay=False):

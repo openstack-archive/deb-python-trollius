@@ -5,7 +5,7 @@ See cachesvr.py for protocol description.
 
 import argparse
 import asyncio
-from asyncio import From
+from asyncio import From, Return
 from asyncio import test_utils
 import json
 import logging
@@ -65,22 +65,22 @@ class CacheClient:
     def get(self, key):
         resp = yield From(self.request('get', key))
         if resp is None:
-            raise asyncio.Return()
-        raise asyncio.Return(resp.get('value'))
+            raise Return()
+        raise Return(resp.get('value'))
 
     @asyncio.coroutine
     def set(self, key, value):
         resp = yield From(self.request('set', key, value))
         if resp is None:
-            raise asyncio.Return(False)
-        raise asyncio.Return(resp.get('status') == 'ok')
+            raise Return(False)
+        raise Return(resp.get('status') == 'ok')
 
     @asyncio.coroutine
     def delete(self, key):
         resp = yield From(self.request('delete', key))
         if resp is None:
-            raise asyncio.Return(False)
-        raise asyncio.Return(resp.get('status') == 'ok')
+            raise Return(False)
+        raise Return(resp.get('status') == 'ok')
 
     @asyncio.coroutine
     def request(self, type, key, value=None):
@@ -98,7 +98,7 @@ class CacheClient:
         else:
             self.todo.add((payload, waiter))
         result = (yield From(waiter))
-        raise asyncio.Return(result)
+        raise Return(result)
 
     @asyncio.coroutine
     def activity(self):
@@ -162,7 +162,7 @@ class CacheClient:
         if len(data) != resp_size:
             raise EOFError()
         resp = json.loads(data.decode('utf8'))
-        raise asyncio.Return(resp_id, resp)
+        raise Return(resp_id, resp)
 
 
 def main():

@@ -18,7 +18,7 @@ from __future__ import print_function
 
 import argparse
 import asyncio
-from asyncio import From
+from asyncio import From, Return
 import asyncio.locks
 import cgi
 import logging
@@ -175,13 +175,13 @@ class ConnectionPool:
                 else:
                     self.log(1, '* Reusing pooled connection', key,
                                 'FD =', conn.fileno())
-                    raise asyncio.Return(conn)
+                    raise Return(conn)
 
         # Create a new connection.
         conn = Connection(self.log, self, host, port, ssl)
         yield From(conn.connect())
         self.log(1, '* New connection', conn.key, 'FD =', conn.fileno())
-        raise asyncio.Return(conn)
+        raise Return(conn)
 
     def recycle_connection(self, conn):
         """Make a connection available for reuse.
@@ -364,7 +364,7 @@ class Request:
         """Receive the response."""
         response = Response(self.log, self.conn.reader)
         yield From(response.read_headers())
-        raise asyncio.Return(response)
+        raise Return(response)
 
 
 class Response:
@@ -389,7 +389,7 @@ class Response:
         line = (yield From(self.reader.readline()))
         line = line.decode('latin-1').rstrip()
         self.log(2, '<', line)
-        raise asyncio.Return(line)
+        raise Return(line)
 
     @asyncio.coroutine
     def read_headers(self):
@@ -465,7 +465,7 @@ class Response:
                 # in this case.
         else:
             body = yield From(self.reader.readexactly(nbytes))
-        raise asyncio.Return(body)
+        raise Return(body)
 
 
 class Fetcher:
