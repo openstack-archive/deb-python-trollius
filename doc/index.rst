@@ -182,6 +182,8 @@ Development version (will be the version 0.2)
 ---------------------------------------------
 
 * Replace ``yield ...`` with ``yield From(...)``
+* On Python 2, Future.set_exception() now only logs the traceback if the debug
+  mode of the event loop is enabled. Use: ``loop.set_debug(True)``.
 * Fix BaseEventLoop.default_exception_handler(): get the traceback from
   sys.exc_info()
 * Fix unit tests on SSL sockets on Python older than 2.6.6. Example:Mac OS 10.6

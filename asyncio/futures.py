@@ -131,7 +131,8 @@ class Future(object):
     _exception = None
     _loop = None
 
-    _tb_logger = None
+    _log_traceback = False   # Used for Python 3.4 and later
+    _tb_logger = None        # Used for Python 3.3 only
 
     def __init__(self, loop=None):
         """Initialize the future.
@@ -231,6 +232,7 @@ class Future(object):
             raise CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Result is not ready.')
+        self._log_traceback = False
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
@@ -250,6 +252,7 @@ class Future(object):
             raise CancelledError
         if self._state != _FINISHED:
             raise InvalidStateError('Exception is not set.')
+        self._log_traceback = False
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
@@ -305,25 +308,28 @@ class Future(object):
         if isinstance(exception, type):
             exception = exception()
         self._exception = exception
-
-        # FIXME: delay when the traceback is formatted
-        self._tb_logger = _TracebackLogger(exception, self._loop)
-        frame = sys._getframe(1)
-        tb = ['Traceback (most recent call last):\n'] + traceback.format_stack(frame)
-        tb.extend(traceback.format_exception_only(type(exception), exception))
-        self._tb_logger.tb = tb
-
-        self._tb_logger.exc = None
         self._state = _FINISHED
         self._schedule_callbacks()
-        # FIXME: remove this code? only format the traceback in debug mode?
-        #if _PY34:
-        #    self._log_traceback = True
-        #else:
-        #    self._tb_logger = _TracebackLogger(exception, self._loop)
-        #    # Arrange for the logger to be activated after all callbacks
-        #    # have had a chance to call result() or exception().
-        #    self._loop.call_soon(self._tb_logger.activate)
+        if _PY34:
+            self._log_traceback = True
+        else:
+            self._tb_logger = _TracebackLogger(exception, self._loop)
+            if hasattr(exception, '__traceback__'):
+                # Python 3: exception contains a link to the traceback
+
+                # Arrange for the logger to be activated after all callbacks
+                # have had a chance to call result() or exception().
+                self._loop.call_soon(self._tb_logger.activate)
+            else:
+                if self._loop.get_debug():
+                    frame = sys._getframe(1)
+                    tb = ['Traceback (most recent call last):\n']
+                    tb += traceback.format_stack(frame)
+                    tb += traceback.format_exception_only(type(exception), exception)
+                    self._tb_logger.tb = tb
+                else:
+                    self._tb_logger.tb = ()
+                self._tb_logger.exc = None
 
     # Truly internal methods.
 
