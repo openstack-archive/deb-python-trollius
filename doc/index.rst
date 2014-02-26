@@ -186,6 +186,7 @@ Development version (will be the version 0.2)
   sys.exc_info()
 * Fix unit tests on SSL sockets on Python older than 2.6.6. Example:Mac OS 10.6
   with Python 2.6.1 or OpenIndiana 148 with Python 2.6.4.
+* Fix error handling in asyncio.time_monotonic
 
 2014-02-25: version 0.1.6
 -------------------------
