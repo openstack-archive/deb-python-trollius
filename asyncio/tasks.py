@@ -24,12 +24,6 @@ from .locks import Lock, Condition, Semaphore
 from .coroutines import Return, From, coroutine, iscoroutinefunction, iscoroutine
 from . import coroutines
 
-@coroutine
-def lock_coroutine(lock):
-    cm = yield From(lock.acquire())
-    raise Return(cm)
-
-
 class Task(futures.Future):
     """A coroutine wrapped in a Future."""
 
@@ -219,7 +213,6 @@ class Task(futures.Future):
                     raise RuntimeError("yield used without From")
                 result = result.obj
             else:
-                # FIXME: only check if coroutines._DEBUG is True?
                 if isinstance(result, coroutines.FromWrapper):
                     result = result.obj
 
@@ -227,7 +220,7 @@ class Task(futures.Future):
                 result = async(result, loop=self._loop)
             # FIXME: faster check. common base class? hasattr?
             elif isinstance(result, (Lock, Condition, Semaphore)):
-                result = Task(lock_coroutine(result), loop=self._loop)
+                result = Task(result.acquire(), loop=self._loop)
 
             if isinstance(result, futures.Future):
                 # Yielded Future must come from Future.__iter__().
