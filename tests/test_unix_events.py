@@ -1470,7 +1470,6 @@ class ChildWatcherTestsMixin:
     def test_close(self, m):
         # register two children
         callback1 = mock.Mock()
-        callback2 = mock.Mock()
 
         with self.watcher:
             self.running = True

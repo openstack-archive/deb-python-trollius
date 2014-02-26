@@ -1403,7 +1403,7 @@ class SelectorSslWithoutSslTransportTests(test_utils.TestCase):
     def test_ssl_transport_requires_ssl_module(self):
         Mock = mock.Mock
         with self.assertRaises(RuntimeError):
-            transport = _SelectorSslTransport(Mock(), Mock(), Mock(), Mock())
+            _SelectorSslTransport(Mock(), Mock(), Mock(), Mock())
 
 
 class SelectorDatagramTransportTests(test_utils.TestCase):
