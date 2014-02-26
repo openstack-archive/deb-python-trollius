@@ -12,6 +12,7 @@ __all__ = [
     ]
 
 try:
+    # FIXME: use _overlapped on Python 3.3? see windows_utils.pipe()
     from _winapi import (
         CloseHandle, CreateNamedPipe, CreateFile, ConnectNamedPipe,
         NULL,
