@@ -401,7 +401,6 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
         self._ssock.setblocking(False)
         self._csock.setblocking(False)
         self._internal_fds += 1
-        self._self_reading_future = None
         self.call_soon(self._loop_self_reading)
 
     def _loop_self_reading(self, f=None):
