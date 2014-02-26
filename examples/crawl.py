@@ -521,7 +521,6 @@ class Fetcher:
                 self.response = yield From(self.request.get_response())
                 self.body = yield From(self.response.read())
                 h_conn = self.response.get_header('connection').lower()
-                h_t_enc = self.response.get_header('transfer-encoding').lower()
                 if h_conn != 'close':
                     self.request.close(recycle=True)
                     self.request = None
