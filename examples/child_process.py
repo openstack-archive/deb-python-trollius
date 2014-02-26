@@ -15,7 +15,7 @@ except ImportError:
     # asyncio is not installed
     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     import asyncio
-from asyncio import From
+from asyncio import From, Return
 
 if sys.platform == 'win32':
     from asyncio.windows_utils import Popen, PIPE
@@ -31,7 +31,7 @@ else:
 def connect_write_pipe(file):
     loop = asyncio.get_event_loop()
     transport, _ =  yield From(loop.connect_write_pipe(asyncio.Protocol, file))
-    raise asyncio.Return(transport)
+    raise Return(transport)
 
 #
 # Wrap a readable pipe in a stream
@@ -44,7 +44,7 @@ def connect_read_pipe(file):
     def factory():
         return asyncio.StreamReaderProtocol(stream_reader)
     transport, _ = yield From(loop.connect_read_pipe(factory, file))
-    raise asyncio.Return(stream_reader, transport)
+    raise Return(stream_reader, transport)
 
 
 #
