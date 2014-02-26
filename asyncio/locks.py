@@ -62,7 +62,7 @@ class Lock(object):
     release() call resets the state to unlocked; first coroutine which
     is blocked in acquire() is being processed.
 
-    acquire() is a coroutine and should be called with 'yield'.
+    acquire() is a coroutine and should be called with 'yield From'.
 
     Locks also support the context manager protocol.  '(yield From(lock))'
     should be used as context manager expression.
@@ -339,7 +339,7 @@ class Condition(object):
 
     def __enter__(self):
         raise RuntimeError(
-            '"yield" should be used as context manager expression')
+            '"yield From" should be used as context manager expression')
 
     def __exit__(self, *args):
         pass

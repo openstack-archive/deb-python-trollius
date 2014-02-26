@@ -678,7 +678,7 @@ class ConditionTests(test_utils.TestCase):
         except RuntimeError as err:
             self.assertEqual(
                 str(err),
-                '"yield" should be used as context manager expression')
+                '"yield From" should be used as context manager expression')
 
         self.assertFalse(cond.locked())
 
