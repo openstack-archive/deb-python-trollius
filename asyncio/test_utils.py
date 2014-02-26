@@ -6,23 +6,33 @@ import io
 import os
 import re
 import socket
-try:
-    import socketserver
-    from http.server import HTTPServer
-except ImportError:
-    import SocketServer as socketserver
-    from BaseHTTPServer import HTTPServer
 import sys
 import tempfile
 import threading
 import time
+
 from wsgiref.simple_server import WSGIRequestHandler, WSGIServer
+
+try:
+    import socketserver
+    from http.server import HTTPServer
+except ImportError:
+    # Python 2
+    import SocketServer as socketserver
+    from BaseHTTPServer import HTTPServer
 
 try:
     import ssl
     from .py3_ssl import SSLContext, wrap_socket
 except ImportError:  # pragma: no cover
+    # SSL support disabled in Python
     ssl = None
+
+try:
+    from unittest import mock
+except ImportError:
+    # Python < 3.3
+    import mock
 
 from . import tasks
 from . import base_events
@@ -145,13 +155,6 @@ if not hasattr(_TestCase, 'assertRaisesRegex'):
             return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
 else:
     TestCase = _TestCase
-
-
-try:
-    from unittest import mock
-except ImportError:
-    # Python < 3.3
-    import mock
 
 
 def dummy_ssl_context():
