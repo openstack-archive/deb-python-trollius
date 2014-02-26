@@ -10,7 +10,7 @@ from . import futures
 from . import protocols
 from . import streams
 from . import tasks
-from .coroutines import From
+from .coroutines import From, Return
 from .py33_exceptions import ProcessLookupError
 
 
@@ -104,12 +104,12 @@ class Process:
         """Wait until the process exit and return the process return code."""
         returncode = self._transport.get_returncode()
         if returncode is not None:
-            raise tasks.Return(returncode)
+            raise Return(returncode)
 
         waiter = futures.Future(loop=self._loop)
         self._protocol._waiters.append(waiter)
         yield From(waiter)
-        raise tasks.Return(waiter.result())
+        raise Return(waiter.result())
 
     def _check_alive(self):
         if self._transport.get_returncode() is not None:
@@ -147,7 +147,7 @@ class Process:
             stream = self.stdout
         output = yield From(stream.read())
         transport.close()
-        raise tasks.Return(output)
+        raise Return(output)
 
     @tasks.coroutine
     def communicate(self, input=None):
@@ -166,7 +166,7 @@ class Process:
         stdin, stdout, stderr = yield From(tasks.gather(stdin, stdout, stderr,
                                                         loop=self._loop))
         yield From(self.wait())
-        raise tasks.Return(stdout, stderr)
+        raise Return(stdout, stderr)
 
 
 @tasks.coroutine
@@ -185,7 +185,7 @@ def create_subprocess_shell(cmd, **kwds):
                                        cmd, stdin=stdin, stdout=stdout,
                                        stderr=stderr, **kwds))
     yield From(protocol.waiter)
-    raise tasks.Return(Process(transport, protocol, loop))
+    raise Return(Process(transport, protocol, loop))
 
 @tasks.coroutine
 def create_subprocess_exec(program, *args, **kwds):
@@ -204,4 +204,4 @@ def create_subprocess_exec(program, *args, **kwds):
                                        stdin=stdin, stdout=stdout,
                                        stderr=stderr, **kwds))
     yield From(protocol.waiter)
-    raise tasks.Return(Process(transport, protocol, loop))
+    raise Return(Process(transport, protocol, loop))

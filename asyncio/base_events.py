@@ -31,7 +31,7 @@ from . import compat
 from . import events
 from . import futures
 from . import tasks
-from .coroutines import From
+from .coroutines import From, Return
 from .executor import get_default_executor
 from .log import logger
 from .time_monotonic import time_monotonic, time_monotonic_resolution
@@ -113,7 +113,7 @@ class Server(events.AbstractServer):
     @tasks.coroutine
     def wait_closed(self):
         if self.sockets is None or self.waiters is None:
-            raise tasks.Return()
+            raise Return()
         waiter = futures.Future(loop=self.loop)
         self.waiters.append(waiter)
         yield From(waiter)
@@ -417,7 +417,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         transport, protocol = yield From(self._create_connection_transport(
             sock, protocol_factory, ssl, server_hostname))
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def _create_connection_transport(self, sock, protocol_factory, ssl,
@@ -433,7 +433,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             transport = self._make_socket_transport(sock, protocol, waiter)
 
         yield From(waiter)
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def create_datagram_endpoint(self, protocol_factory,
@@ -501,7 +501,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         protocol = protocol_factory()
         transport = self._make_datagram_transport(sock, protocol, r_addr)
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def create_server(self, protocol_factory, host=None, port=None,
@@ -575,7 +575,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             sock.listen(backlog)
             sock.setblocking(False)
             self._start_serving(protocol_factory, sock, ssl, server)
-        raise tasks.Return(server)
+        raise Return(server)
 
     @tasks.coroutine
     def connect_read_pipe(self, protocol_factory, pipe):
@@ -583,7 +583,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         waiter = futures.Future(loop=self)
         transport = self._make_read_pipe_transport(pipe, protocol, waiter)
         yield From(waiter)
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def connect_write_pipe(self, protocol_factory, pipe):
@@ -591,7 +591,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         waiter = futures.Future(loop=self)
         transport = self._make_write_pipe_transport(pipe, protocol, waiter)
         yield From(waiter)
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def subprocess_shell(self, protocol_factory, cmd, stdin=subprocess.PIPE,
@@ -609,7 +609,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         protocol = protocol_factory()
         transport = yield From(self._make_subprocess_transport(
             protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs))
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def subprocess_exec(self, protocol_factory, program, *args, **kwargs):
@@ -635,7 +635,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         transport = yield From(self._make_subprocess_transport(
             protocol, popen_args, False, stdin, stdout, stderr,
             bufsize, **kwargs))
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     def set_exception_handler(self, handler):
         """Set handler as the new event loop exception handler.
