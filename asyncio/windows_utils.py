@@ -100,8 +100,10 @@ def pipe(duplex=False, overlapped=(True, True), bufsize=BUFSIZE):
 
         ov = _winapi.ConnectNamedPipe(h1, True)
         if hasattr(ov, 'GetOverlappedResult'):
+            # _winapi module of Python 3.3
             ov.GetOverlappedResult(True)
         else:
+            # _overlapped module
             wrap_error(ov.getresult, True)
         return h1, h2
     except:
