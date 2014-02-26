@@ -1,7 +1,6 @@
 Unsorted "TODO" tasks:
 
 * lock.py: _ContextManager is used differently in Tulip, is it correct?
-* Future.set_exception(): FIXME if debug
 * Windows: use _overlapped in py33_winapi?
 * Write unit test when yield is used without From()
 * Future: only format the traceback in debug mode?
