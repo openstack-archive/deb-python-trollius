@@ -19,7 +19,7 @@ from . import events
 from . import selector_events
 from . import tasks
 from . import transports
-from .coroutines import From
+from .coroutines import From, Return
 from .log import logger
 from .py33_exceptions import (
     reraise, wrap_error,
@@ -171,7 +171,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             watcher.add_child_handler(transp.get_pid(),
                                       self._child_watcher_callback, transp)
 
-        raise tasks.Return(transp)
+        raise Return(transp)
 
     def _child_watcher_callback(self, pid, returncode, transp):
         self.call_soon_threadsafe(transp._process_exited, returncode)
@@ -209,7 +209,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
 
         transport, protocol = yield From(self._create_connection_transport(
             sock, protocol_factory, ssl, server_hostname))
-        raise tasks.Return(transport, protocol)
+        raise Return(transport, protocol)
 
     @tasks.coroutine
     def create_unix_server(self, protocol_factory, path=None,

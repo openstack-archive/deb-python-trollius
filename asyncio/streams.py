@@ -14,7 +14,7 @@ from . import events
 from . import futures
 from . import protocols
 from . import tasks
-from .coroutines import From
+from .coroutines import From, Return
 from .py33_exceptions import ConnectionResetError
 
 
@@ -62,7 +62,7 @@ def open_connection(host=None, port=None,
     transport, _ = yield From(loop.create_connection(
         lambda: protocol, host, port, **kwds))
     writer = StreamWriter(transport, protocol, reader, loop)
-    raise tasks.Return(reader, writer)
+    raise Return(reader, writer)
 
 
 @tasks.coroutine
@@ -99,7 +99,7 @@ def start_server(client_connected_cb, host=None, port=None,
         return protocol
 
     result = yield From(loop.create_server(factory, host, port, **kwds))
-    raise tasks.Return(result)
+    raise Return(result)
 
 
 if hasattr(socket, 'AF_UNIX'):
@@ -116,7 +116,7 @@ if hasattr(socket, 'AF_UNIX'):
         transport, _ = yield From(loop.create_unix_connection(
             lambda: protocol, path, **kwds))
         writer = StreamWriter(transport, protocol, reader, loop)
-        raise tasks.Return(reader, writer)
+        raise Return(reader, writer)
 
 
     @tasks.coroutine
@@ -133,7 +133,7 @@ if hasattr(socket, 'AF_UNIX'):
             return protocol
 
         res = (yield From(loop.create_unix_server(factory, path, **kwds)))
-        raise tasks.Return(res)
+        raise Return(res)
 
 
 class FlowControlMixin(protocols.Protocol):
@@ -412,7 +412,7 @@ class StreamReader(object):
                     self._waiter = None
 
         self._maybe_resume_transport()
-        raise tasks.Return(bytes(line))
+        raise Return(bytes(line))
 
     @tasks.coroutine
     def read(self, n=-1):
@@ -420,7 +420,7 @@ class StreamReader(object):
             raise self._exception
 
         if not n:
-            raise tasks.Return(b'')
+            raise Return(b'')
 
         if n < 0:
             while not self._eof:
@@ -446,7 +446,7 @@ class StreamReader(object):
             del self._buffer[:n]
 
         self._maybe_resume_transport()
-        raise tasks.Return(data)
+        raise Return(data)
 
     @tasks.coroutine
     def readexactly(self, n):
@@ -469,4 +469,4 @@ class StreamReader(object):
             blocks.append(block)
             n -= len(block)
 
-        raise tasks.Return(b''.join(blocks))
+        raise Return(b''.join(blocks))

@@ -7,7 +7,7 @@ import collections
 from . import events
 from . import futures
 from . import coroutines as tasks
-from .coroutines import From
+from .coroutines import From, Return
 
 
 class _ContextManager:
@@ -122,14 +122,14 @@ class Lock(object):
         """
         if not self._waiters and not self._locked:
             self._locked = True
-            raise tasks.Return(_ContextManager(self))
+            raise Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
             self._locked = True
-            raise tasks.Return(_ContextManager(self))
+            raise Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -219,13 +219,13 @@ class Event(object):
         set() to set the flag to true, then return True.
         """
         if self._value:
-            raise tasks.Return(_ContextManager(self))
+            raise Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
-            raise tasks.Return(_ContextManager(self))
+            raise Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
@@ -284,7 +284,7 @@ class Condition(object):
             self._waiters.append(fut)
             try:
                 yield From(fut)
-                raise tasks.Return(True)
+                raise Return(True)
             finally:
                 self._waiters.remove(fut)
 
@@ -303,7 +303,7 @@ class Condition(object):
         while not result:
             yield From(self.wait())
             result = predicate()
-        raise tasks.Return(result)
+        raise Return(result)
 
     def notify(self, n=1):
         """By default, wake up one coroutine waiting on this condition, if any.
@@ -394,14 +394,14 @@ class Semaphore(object):
         """
         if not self._waiters and self._value > 0:
             self._value -= 1
-            raise tasks.Return(_ContextManager(self))
+            raise Return(_ContextManager(self))
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
             self._value -= 1
-            raise tasks.Return(_ContextManager(self))
+            raise Return(_ContextManager(self))
         finally:
             self._waiters.remove(fut)
 
