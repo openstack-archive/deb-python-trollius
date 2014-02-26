@@ -487,6 +487,8 @@ class _SelectorSocketTransport(_SelectorTransport):
 
     def write(self, data):
         data = flatten_bytes(data)
+        if self._eof:
+            raise RuntimeError('Cannot call write() after write_eof()')
         if not data:
             return
 
