@@ -107,6 +107,7 @@ class Logger:
     def _log(self, n, args):
         if self.level >= n:
             print(*args, file=sys.stderr)
+            sys.stderr.flush()
 
     def log(self, n, *args):
         self._log(n, args)
