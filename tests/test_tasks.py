@@ -6,6 +6,7 @@ import unittest
 
 import asyncio
 from asyncio import From, Return
+from asyncio import coroutines
 from asyncio import test_utils
 from asyncio.test_support import assert_python_ok
 
@@ -1365,6 +1366,27 @@ class TaskTests(test_utils.TestCase):
         # wait() expects at least a future
         self.assertRaises(ValueError, self.loop.run_until_complete,
             asyncio.wait([], loop=self.loop))
+
+    def test_yield_without_from(self):
+        old_debug = coroutines._DEBUG
+        try:
+            @asyncio.coroutine
+            def task():
+                yield None
+                raise Return("done")
+
+            import logging; logging.basicConfig()
+
+            coroutines._DEBUG = False
+            value = self.loop.run_until_complete(task())
+            self.assertEqual(value, "done")
+
+            coroutines._DEBUG = True
+            self.assertRaises(RuntimeError,
+                              self.loop.run_until_complete, task())
+        finally:
+            coroutines._DEBUG = old_debug
+
 
 class GatherTestsBase:
 
