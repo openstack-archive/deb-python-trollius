@@ -100,12 +100,17 @@ class _TracebackLogger(object):
         self.tb = None
 
     def __del__(self):
-        if self.tb:
-            msg = 'Future/Task exception was never retrieved:\n{tb}'
-            context = {
-                'message': msg.format(tb=''.join(self.tb)),
-            }
-            self.loop.call_exception_handler(context)
+        if self.tb is None:
+            if self.exc is None:
+                return
+            self.activate()
+        msg = 'Future/Task exception was never retrieved:\n{tb}'
+        tb = ''.join(self.tb)
+        tb = tb.rstrip()
+        context = {
+            'message': msg.format(tb=tb),
+        }
+        self.loop.call_exception_handler(context)
 
 
 class Future(object):
@@ -314,8 +319,6 @@ class Future(object):
             self._log_traceback = True
         else:
             self._tb_logger = _TracebackLogger(exception, self._loop)
-            # explicitly break the reference cycle
-            exception = None
             if hasattr(exception, '__traceback__'):
                 # Python 3: exception contains a link to the traceback
 
@@ -330,7 +333,10 @@ class Future(object):
                     tb += traceback.format_exception_only(type(exception), exception)
                     self._tb_logger.tb = tb
                 else:
-                    self._tb_logger.tb = ()
+                    self._tb_logger.tb = traceback.format_exception_only(
+                                                        type(exception),
+                                                        exception)
+
                 self._tb_logger.exc = None
 
     # Truly internal methods.
