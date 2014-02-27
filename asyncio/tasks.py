@@ -20,9 +20,16 @@ except ImportError:
 from . import events
 from . import executor
 from . import futures
-from .locks import Lock, Condition, Semaphore
+from .locks import Lock, Condition, Semaphore, _ContextManager
 from .coroutines import Return, From, coroutine, iscoroutinefunction, iscoroutine
 from . import coroutines
+
+
+@coroutine
+def _lock_coroutine(lock):
+    yield From(lock.acquire())
+    raise Return(_ContextManager(lock))
+
 
 class Task(futures.Future):
     """A coroutine wrapped in a Future."""
@@ -223,7 +230,8 @@ class Task(futures.Future):
                 result = async(result, loop=self._loop)
             # FIXME: faster check. common base class? hasattr?
             elif isinstance(result, (Lock, Condition, Semaphore)):
-                result = Task(result.acquire(), loop=self._loop)
+                coro = _lock_coroutine(result)
+                result = Task(coro, loop=self._loop)
 
             if isinstance(result, futures.Future):
                 # Yielded Future must come from Future.__iter__().
