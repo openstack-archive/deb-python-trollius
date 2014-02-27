@@ -1,5 +1,6 @@
 Unsorted "TODO" tasks:
 
+* Replace logger with warning in monotonic clock and synchronous executor
 * Windows: use _overlapped in py33_winapi?
 * test_internal_fds() of test_events.py emits two ResourceWarning on Windows
 * tests/test_events.py -v KqueueEventLoopTests.test_read_pty_output failed on Mac OS X:
