@@ -2,7 +2,6 @@ Unsorted "TODO" tasks:
 
 * lock.py: _ContextManager is used differently in Tulip, is it correct?
 * Windows: use _overlapped in py33_winapi?
-* Future: only format the traceback in debug mode?
 * test_internal_fds() of test_events.py emits two ResourceWarning on Windows
 * tests/test_events.py -v KqueueEventLoopTests.test_read_pty_output failed on Mac OS X:
   OSError: [Errno 22] Invalid argument

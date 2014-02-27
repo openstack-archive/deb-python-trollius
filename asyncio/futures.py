@@ -131,8 +131,8 @@ class Future(object):
     _exception = None
     _loop = None
 
-    _log_traceback = False   # Used for Python 3.4 and later
-    _tb_logger = None        # Used for Python 3.3 only
+    _log_traceback = False   # Used for Python >= 3.4
+    _tb_logger = None        # Used for Python <= 3.3
 
     def __init__(self, loop=None):
         """Initialize the future.
