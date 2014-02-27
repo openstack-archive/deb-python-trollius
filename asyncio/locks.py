@@ -122,14 +122,14 @@ class Lock(object):
         """
         if not self._waiters and not self._locked:
             self._locked = True
-            raise Return(_ContextManager(self))
+            raise Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
             self._locked = True
-            raise Return(_ContextManager(self))
+            raise Return(True)
         finally:
             self._waiters.remove(fut)
 
@@ -219,13 +219,13 @@ class Event(object):
         set() to set the flag to true, then return True.
         """
         if self._value:
-            raise Return(_ContextManager(self))
+            raise Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
-            raise Return(_ContextManager(self))
+            raise Return(True)
         finally:
             self._waiters.remove(fut)
 
@@ -394,14 +394,14 @@ class Semaphore(object):
         """
         if not self._waiters and self._value > 0:
             self._value -= 1
-            raise Return(_ContextManager(self))
+            raise Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
             self._value -= 1
-            raise Return(_ContextManager(self))
+            raise Return(True)
         finally:
             self._waiters.remove(fut)
 

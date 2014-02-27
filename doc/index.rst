@@ -189,6 +189,8 @@ Development version (will be the version 0.2)
 * Fix unit tests on SSL sockets on Python older than 2.6.6. Example:
   Mac OS 10.6 with Python 2.6.1 or OpenIndiana 148 with Python 2.6.4.
 * Fix error handling in asyncio.time_monotonic
+* Fix acquire() method of Lock, Condition and Semaphore: don't return a context
+  manager but True, as Tulip. Task._step() now does the trick.
 
 2014-02-25: version 0.1.6
 -------------------------
