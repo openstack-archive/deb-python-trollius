@@ -210,7 +210,10 @@ class Task(futures.Future):
         else:
             if coroutines._DEBUG:
                 if not isinstance(result, coroutines.FromWrapper):
-                    raise RuntimeError("yield used without From")
+                    self._loop.call_soon(
+                        self._step, None,
+                        RuntimeError("yield used without From"))
+                    return
                 result = result.obj
             else:
                 if isinstance(result, coroutines.FromWrapper):
@@ -240,7 +243,7 @@ class Task(futures.Future):
                         'Task got bad yield: {0!r}'.format(result)))
         finally:
             self.__class__._current_tasks.pop(self._loop)
-        self = None
+            self = None
 
     def _wakeup(self, future):
         try:
