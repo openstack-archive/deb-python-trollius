@@ -1375,8 +1375,6 @@ class TaskTests(test_utils.TestCase):
                 yield None
                 raise Return("done")
 
-            import logging; logging.basicConfig()
-
             coroutines._DEBUG = False
             value = self.loop.run_until_complete(task())
             self.assertEqual(value, "done")
