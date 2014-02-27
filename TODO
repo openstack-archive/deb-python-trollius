@@ -10,8 +10,6 @@ Unsorted "TODO" tasks:
   - test_queues.test_repr
   - test_futures.test_tb_logger_exception_unretrieved
 
-* python3.3 runtests.sh:
-  sys:1: ResourceWarning: gc: 3 uncollectable objects at shutdown; use gc.set_debug(gc.DEBUG_UNCOLLECTABLE) to list them
 * write unit test for create_connection(ssl=True)
 * Fix examples:
 

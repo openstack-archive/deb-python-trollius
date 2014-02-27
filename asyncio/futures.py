@@ -314,6 +314,8 @@ class Future(object):
             self._log_traceback = True
         else:
             self._tb_logger = _TracebackLogger(exception, self._loop)
+            # explicitly break the reference cycle
+            exception = None
             if hasattr(exception, '__traceback__'):
                 # Python 3: exception contains a link to the traceback
 
