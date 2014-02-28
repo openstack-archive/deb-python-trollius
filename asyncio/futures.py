@@ -100,17 +100,12 @@ class _TracebackLogger(object):
         self.tb = None
 
     def __del__(self):
-        if self.tb is None:
-            if self.exc is None:
-                return
-            self.activate()
-        msg = 'Future/Task exception was never retrieved:\n{tb}'
-        tb = ''.join(self.tb)
-        tb = tb.rstrip()
-        context = {
-            'message': msg.format(tb=tb),
-        }
-        self.loop.call_exception_handler(context)
+        if self.tb:
+            msg = 'Future/Task exception was never retrieved:\n{tb}'
+            context = {
+                'message': msg.format(tb=''.join(self.tb)),
+            }
+            self.loop.call_exception_handler(context)
 
 
 class Future(object):
