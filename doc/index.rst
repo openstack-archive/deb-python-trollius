@@ -181,14 +181,15 @@ Change log
 Development version (will be the version 0.2)
 ---------------------------------------------
 
-* Replace ``yield ...`` with ``yield From(...)``
-* On Python 2, Future.set_exception() now only logs the traceback if the debug
-  mode of the event loop is enabled. Use: ``loop.set_debug(True)``.
-* Fix BaseEventLoop.default_exception_handler() on Python 2: get the traceback
-  from sys.exc_info()
+* Replace ``yield ...`` syntax with ``yield From(...)``
+* On Python 2, Future.set_exception() now only saves the traceback if the debug
+  mode of the event loop is enabled for best performances in production mode.
+  Use ``loop.set_debug(True)`` to save the traceback.
+* Fix ``BaseEventLoop.default_exception_handler()`` on Python 2: get the
+  traceback from ``sys.exc_info()``
 * Fix unit tests on SSL sockets on Python older than 2.6.6. Example:
   Mac OS 10.6 with Python 2.6.1 or OpenIndiana 148 with Python 2.6.4.
-* Fix error handling in asyncio.time_monotonic
+* Fix error handling in the asyncio.time_monotonic module
 * Fix acquire() method of Lock, Condition and Semaphore: don't return a context
   manager but True, as Tulip. Task._step() now does the trick.
 
