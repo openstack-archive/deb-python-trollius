@@ -225,6 +225,7 @@ Development version (will be the version 0.2)
 * Fix error handling in the asyncio.time_monotonic module
 * Fix acquire() method of Lock, Condition and Semaphore: don't return a context
   manager but True, as Tulip. Task._step() now does the trick.
+* tox.ini: set PYTHONASYNCIODEBUG to 1 to run tests
 
 2014-02-25: version 0.1.6
 -------------------------
