@@ -211,13 +211,24 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Development version (will be the version 0.2)
----------------------------------------------
+2014-03-04: version 0.2
+-----------------------
+
+Trollius now uses ``yield From(...)`` syntax which looks close to Tulip ``yield
+from ...`` and allows to port more easily Trollius code to Tulip. The usage of
+``From()`` is not mandatory yet, but it may become mandatory in a future
+version.  However, if ``yield`` is used without ``From``, an exception is
+raised if the event loop is running in debug mode.
+
+Major changes:
 
 * Replace ``yield ...`` syntax with ``yield From(...)``
 * On Python 2, Future.set_exception() now only saves the traceback if the debug
   mode of the event loop is enabled for best performances in production mode.
   Use ``loop.set_debug(True)`` to save the traceback.
+
+Bugfixes:
+
 * Fix ``BaseEventLoop.default_exception_handler()`` on Python 2: get the
   traceback from ``sys.exc_info()``
 * Fix unit tests on SSL sockets on Python older than 2.6.6. Example:
@@ -225,6 +236,9 @@ Development version (will be the version 0.2)
 * Fix error handling in the asyncio.time_monotonic module
 * Fix acquire() method of Lock, Condition and Semaphore: don't return a context
   manager but True, as Tulip. Task._step() now does the trick.
+
+Other changes:
+
 * tox.ini: set PYTHONASYNCIODEBUG to 1 to run tests
 
 2014-02-25: version 0.1.6
