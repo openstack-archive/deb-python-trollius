@@ -33,6 +33,9 @@ online: `asyncio - Asynchronous I/O, event loop, coroutines and tasks
 Differences between Trollius and Tulip
 ======================================
 
+Syntax of coroutines
+--------------------
+
 The major difference between Trollius and Tulip is the syntax of coroutines:
 
 ==================  ======================
@@ -43,7 +46,12 @@ Tulip               Trollius
 ``return x, y``     ``raise Return(x, y)``
 ==================  ======================
 
-Other differences:
+.. note::
+
+   Trollius 0.1 used ``yield ...`` syntax in coroutines.
+
+Other differences
+-----------------
 
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
   ``ssl.SSLContext`` of Python 3.3: no options, verify_mode cannot be modified
@@ -52,13 +60,38 @@ Other differences:
 * Python 2 does not support keyword-only parameters.
 * If the ``concurrent.futures`` module is missing,
   ``BaseEventLoop.run_in_executor()`` uses a synchronous executor instead of a
-  pool of threads. It blocks until the function returns, and so DNS resolutions
-  are blocking.
+  pool of threads. It blocks until the function returns. For example, DNS
+  resolutions are blocking in this case.
 * ``asyncio.subprocess`` has no ``DEVNULL`` constant
 
-.. note::
+Symbols
+-------
 
-   Trollius 0.1 used ``yield ...`` syntax in coroutines.
+Trollius has more symbols than Tulip in the main asyncio module for
+compatibility with Python older than 3.3:
+
+* Specific to Trollius:
+
+  - ``From``: part of ``yield From(...)`` syntax
+  - ``Return``: part of ``raise Return(...)`` syntax
+
+* SSL:
+
+  - ``SSLContext``
+  - Exceptions: ``SSLEOFError``, ``SSLWantReadError``, ``SSLWantWriteError``
+  - Flags (bool): ``BACKPORT_SSL_ERRORS``, ``BACKPORT_SSL_CONTEXT``
+
+* OS exceptions:
+
+  - ``BlockingIOError``
+  - ``BrokenPipeError``
+  - ``ChildProcessError,``
+  - ``ConnectionAbortedError,``
+  - ``ConnectionRefusedError``
+  - ``ConnectionResetError``
+  - ``FileNotFoundError``
+  - ``InterruptedError``
+  - ``PermissionError``
 
 
 Write code working on Trollius and Tulip
