@@ -10,7 +10,7 @@
 #  - hg tag trollius-VERSION
 #  - hg push
 #  - python setup.py register sdist bdist_wheel upload
-#  - increment version in setup.py
+#  - increment version in setup.py (version) and doc/conf.py (version, release)
 #  - hg ci && hg push
 
 import os
@@ -42,7 +42,7 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "0.2",
+    "version": "0.2.1",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',
