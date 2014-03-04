@@ -85,8 +85,8 @@ compatibility with Python older than 3.3:
 
   - ``BlockingIOError``
   - ``BrokenPipeError``
-  - ``ChildProcessError,``
-  - ``ConnectionAbortedError,``
+  - ``ChildProcessError``
+  - ``ConnectionAbortedError``
   - ``ConnectionRefusedError``
   - ``ConnectionResetError``
   - ``FileNotFoundError``
