@@ -127,7 +127,7 @@ class ConnectionPool:
     and recycle_connection() puts it back in.  To recycle a
     connection, call conn.close(recycle=True).
 
-    There are limits to both the overal pool and the per-key pool.
+    There are limits to both the overall pool and the per-key pool.
     """
 
     def __init__(self, log, max_pool=10, max_tasks=5):
@@ -256,14 +256,14 @@ class Connection:
         self.key = None
 
     def stale(self):
-        return self.reader is None or self.reader._eof
+        return self.reader is None or self.reader.at_eof()
 
     def fileno(self):
         writer = self.writer
         if writer is not None:
-            transport = writer._transport
+            transport = writer.transport
             if transport is not None:
-                sock = transport._sock
+                sock = transport.get_extra_info('socket')
                 if sock is not None:
                     return sock.fileno()
         return None
@@ -612,6 +612,8 @@ class Fetcher:
                   size,
                   '%d/%d' % (len(self.new_urls or ()), len(self.urls or ())),
                   file=file)
+        elif self.response is None:
+            print(self.url, 'no response object')
         else:
             size = len(self.body or b'')
             if self.response.status == 200:
