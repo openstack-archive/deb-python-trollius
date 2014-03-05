@@ -226,6 +226,9 @@ Projects working on Trollius and Tulip:
   WAMP for Python, it works on Trollius (Python 2.6 and 2.7), Tulip (Python
   3.3) and Python 3.4 (asyncio), and also on Twisted.
 
+It looks like `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and
+Trollius.
+
 
 Run tests
 =========
