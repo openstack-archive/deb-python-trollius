@@ -5,21 +5,13 @@ Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
 2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux,
 Mac OS X, FreeBSD and OpenIndiana.
 
-* Website: https://bitbucket.org/enovance/trollius
-* Documentation: http://trollius.readthedocs.org/
-* Tulip project: http://code.google.com/p/tulip/
+* `Asyncio documentation <http://docs.python.org/dev/library/asyncio.html>`_
+* `Trollius documentation <http://trollius.readthedocs.org/>`_ (this document)
 * `Trollius project in the Python Cheeseshop (PyPI)
   <https://pypi.python.org/pypi/trollius>`_
-* Copyright/license: Open source, Apache 2.0. Enjoy.
+* Copyright/license: Open source, Apache 2.0. Enjoy!
 
-The source code of the Trollius project is in the ``trollius`` branch of the
-Mercurial repository, not in the default branch. The default branch is the
-Tulip project, Trollius repository is a fork of the Tulip repository.
-
-Command to download the development version of the source code (trollius
-branch)::
-
-    hg clone 'https://bitbucket.org/enovance/trollius#trollius'
+See also the `Tulip project <http://code.google.com/p/tulip/>`_.
 
 
 Documentation of the asyncio module
@@ -28,6 +20,134 @@ Documentation of the asyncio module
 The documentation of the asyncio is part of the Python project. It can be read
 online: `asyncio - Asynchronous I/O, event loop, coroutines and tasks
 <http://docs.python.org/dev/library/asyncio.html>`_.
+
+
+Hello World
+===========
+
+Print ``Hello World`` every two seconds, using a coroutine::
+
+    import asyncio
+    from asyncio import From
+
+    @asyncio.coroutine
+    def greet_every_two_seconds():
+        while True:
+            print('Hello World')
+            yield From(asyncio.sleep(2))
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(greet_every_two_seconds())
+
+
+Install Trollius
+================
+
+Packages for Linux
+------------------
+
+* `Debian package (0.1.4 available in Sid)
+  <https://packages.debian.org/fr/sid/python-trollius>`_
+* `ArchLinux package
+  <https://aur.archlinux.org/packages/python2-trollius/>`_
+* `Proposition of package for Fedora/RHEL
+  <https://bugzilla.redhat.com/show_bug.cgi?id=1066238>`_
+
+
+Install Trollius on Windows using pip
+-------------------------------------
+
+Since Trollius 0.2, `precompiled wheel packages <http://pythonwheels.com/>`_
+are now distributed on the Python Cheeseshop (PyPI). Procedure to install
+Trollius on Windows:
+
+* `Install pip
+  <http://www.pip-installer.org/en/latest/installing.html>`_, download
+  ``get-pip.py`` and type::
+
+  \Python27\python.exe get-pip.py
+
+* If you already have pip, ensure that you have at least pip 1.4. If you need
+  to upgrade::
+
+  \Python27\python.exe -m pip install -U pip
+
+* Install Trollius::
+
+  \Python27\python.exe -m pip install trollius
+
+* pip also installs the ``futures`` dependency
+
+.. note::
+
+   Only wheel packages for Python 2.7 are currently distributed on the
+   Cheeseshop (PyPI). If you need wheel packages for other Python versions,
+   please ask.
+   `
+
+Download source code
+--------------------
+
+Command to download the development version of the source code (``trollius``
+branch)::
+
+    hg clone 'https://bitbucket.org/enovance/trollius#trollius'
+
+The actual code lives in the ``asyncio`` subdirectory. Tests are in the
+``tests`` subdirectory.
+
+See the `trollius project at Bitbucket
+<https://bitbucket.org/enovance/trollius>`_.
+
+The source code of the Trollius project is in the ``trollius`` branch of the
+Mercurial repository, not in the default branch. The default branch is the
+Tulip project, Trollius repository is a fork of the Tulip repository.
+
+
+Dependencies
+------------
+
+On Python older than 3.2, the `futures <https://pypi.python.org/pypi/futures>`_
+project is needed to get a backport of ``concurrent.futures``.
+
+Python 2.6 requires also `ordereddict
+<https://pypi.python.org/pypi/ordereddict>`_.
+
+
+Build manually Trollius on Windows
+----------------------------------
+
+On Windows, if you cannot use precompiled wheel packages, an extension module
+must be compiled: the ``_overlapped`` module (source code: ``overlapped.c``).
+Read `Compile Python extensions on Windows
+<http://haypo-notes.readthedocs.org/misc.html#compile-python-extensions-on-windows>`_
+to prepare your environment to build the Python extension. Then build the
+extension using::
+
+    C:\Python27\python.exe setup.py build_ext
+
+
+Backports
+---------
+
+To support Python 2.6-3.4, many Python modules of the standard library have
+been backported:
+
+========================  =========  =======================
+Name                      Python     Backport
+========================  =========  =======================
+OSError                        3.3   asyncio.py33_exceptions
+_overlapped                    3.4   asyncio._overlapped
+_winapi                        3.3   asyncio.py33_winapi
+collections.OrderedDict   2.7, 3.1   ordereddict (PyPI)
+concurrent.futures             3.2   futures (PyPI)
+selectors                      3.4   asyncio.selectors
+ssl                       3.2, 3.3   asyncio.py3_ssl
+time.monotonic                 3.3   asyncio.time_monotonic
+unittest                  2.7, 3.1   unittest2 (PyPI)
+unittest.mock                  3.3   mock (PyPI)
+weakref.WeakSet           2.7, 3.0   asyncio.py27_weakrefset
+========================  =========  =======================
 
 
 Differences between Trollius and Tulip
@@ -105,47 +225,43 @@ Projects working on Trollius and Tulip:
 
 * `AutobahnPython <https://github.com/tavendo/AutobahnPython>`_: WebSocket &
   WAMP for Python, it works on Trollius (Python 2.6 and 2.7), Tulip (Python
-  3.3) and Python 3.4 (asyncio), but also on Twisted.
+  3.3) and Python 3.4 (asyncio), and also on Twisted.
 
 
-Install Trollius
-================
+Run tests
+=========
 
-Packages for Linux
+Run tests with tox
 ------------------
 
-* `Debian package (0.1.4 available in Sid)
-  <https://packages.debian.org/fr/sid/python-trollius>`_
-* `Proposition of package for Fedora/RHEL
-  <https://bugzilla.redhat.com/show_bug.cgi?id=1066238>`_
-* `ArchLinux package
-  <https://aur.archlinux.org/packages/python2-trollius/>`_
+The `tox project <https://testrun.org/tox/latest/>`_ can be used to build a
+virtual environment with all runtime and test dependencies and run tests
+against different Python versions (2.6, 2.7, 3.2, 3.3).
 
-Runtime Dependencies
---------------------
+For example, to run tests with Python 2.7, just type::
 
-On Python older than 3.2, the ``futures`` project is needed to get a backport
-of ``concurrent.futures``: https://pypi.python.org/pypi/futures
+    tox -e py27
 
-Python 2.6 requires also ``ordereddict``:
-https://pypi.python.org/pypi/ordereddict
+To run tests against other Python versions:
+
+* ``py26``: Python 2.6
+* ``py27``: Python 2.7
+* ``py32``: Python 3.2
+* ``py33``: Python 3.3
 
 
 Test Dependencies
 -----------------
 
-On Python older than 3.3, unit tests require the ``mock`` module:
-https://pypi.python.org/pypi/mock
-
-Python 2.6 requires also ``unittest2``:
-https://pypi.python.org/pypi/unittest2
+On Python older than 3.3, unit tests require the `mock
+<https://pypi.python.org/pypi/mock>`_ module. Python 2.6 requires also
+`unittest2 <https://pypi.python.org/pypi/unittest2>`_.
 
 
-Usage
------
+Run tests on UNIX
+-----------------
 
-The actual code lives in the ``asyncio`` subdirectory.
-Tests are in the ``tests`` subdirectory.
+Run the following commands from the directory of the Trollius project.
 
 To run tests::
 
@@ -155,46 +271,19 @@ To run coverage (``coverage`` package is required)::
 
     make coverage
 
-On Windows, things are a little more complicated.  Assume ``P`` is your Python
-binary (for example ``C:\Python33\python.exe``).
 
-You must first build the ``_overlapped.pyd`` extension (it will be placed in
-the ``asyncio`` directory)::
+Run tests on Windows
+--------------------
 
-    C> P setup.py build_ext
+Run the following commands from the directory of the Trollius project.
 
-Then you can run the tests as follows::
+You can run the tests as follows::
 
-    C> P runtests.py
+    C:\Python27\python.exe runtests.py
 
 And coverage as follows::
 
-    C> P runtests.py --coverage
-
---Guido van Rossum <guido@python.org>
-
-
-Backports
----------
-
-To support Python 2.6-3.4, many Python modules of the standard library have
-been backported:
-
-========================  =========  =======================
-Name                      Python     Backport
-========================  =========  =======================
-OSError                        3.3   asyncio.py33_exceptions
-_overlapped                    3.4   asyncio._overlapped
-_winapi                        3.3   asyncio.py33_winapi
-collections.OrderedDict   2.7, 3.1   ordereddict (PyPI)
-concurrent.futures             3.2   futures (PyPI)
-selectors                      3.4   asyncio.selectors
-ssl                       3.2, 3.3   asyncio.py3_ssl
-time.monotonic                 3.3   asyncio.time_monotonic
-unittest                  2.7, 3.1   unittest2 (PyPI)
-unittest.mock                  3.3   mock (PyPI)
-weakref.WeakSet           2.7, 3.0   asyncio.py27_weakrefset
-========================  =========  =======================
+    C:\Python27\python.exe runtests.py --coverage
 
 
 Trollius name
