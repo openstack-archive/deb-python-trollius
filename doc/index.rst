@@ -118,6 +118,8 @@ Packages for Linux
   <https://packages.debian.org/fr/sid/python-trollius>`_
 * `Proposition of package for Fedora/RHEL
   <https://bugzilla.redhat.com/show_bug.cgi?id=1066238>`_
+* `ArchLinux package
+  <https://aur.archlinux.org/packages/python2-trollius/>`_
 
 Runtime Dependencies
 --------------------
