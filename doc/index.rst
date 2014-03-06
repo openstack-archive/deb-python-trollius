@@ -225,6 +225,9 @@ Projects working on Trollius and Tulip:
 * `AutobahnPython <https://github.com/tavendo/AutobahnPython>`_: WebSocket &
   WAMP for Python, it works on Trollius (Python 2.6 and 2.7), Tulip (Python
   3.3) and Python 3.4 (asyncio), and also on Twisted.
+* `Pulsar <http://pythonhosted.org/pulsar/>`_: Event driven concurrent
+  framework for Python. With pulsar you can write asynchronous servers
+  performing one or several activities in different threads and/or processes.
 
 It looks like `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and
 Trollius.
