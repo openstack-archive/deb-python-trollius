@@ -1,6 +1,11 @@
 Trollius
 ========
 
+.. image:: trollius.jpg
+   :alt: Trollius altaicus from Khangai Mountains (Mongòlia)
+   :align: right
+   :target: http://commons.wikimedia.org/wiki/File:Trollius_altaicus.jpg
+
 Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
 2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux,
 Mac OS X, FreeBSD and OpenIndiana.
