@@ -14,6 +14,8 @@ Mac OS X, FreeBSD and OpenIndiana.
 * `Trollius documentation <http://trollius.readthedocs.org/>`_ (this document)
 * `Trollius project in the Python Cheeseshop (PyPI)
   <https://pypi.python.org/pypi/trollius>`_
+* `Trollius project at Bitbucket <https://bitbucket.org/enovance/trollius>`_
+
 * Copyright/license: Open source, Apache 2.0. Enjoy!
 
 See also the `Tulip project <http://code.google.com/p/tulip/>`_.
