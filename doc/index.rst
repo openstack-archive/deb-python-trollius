@@ -224,10 +224,10 @@ Write code working on Trollius and Tulip
 ========================================
 
 Trollius and Tulip are different, especially for coroutines (``yield
-From(...)`` vs ``yield from``). It is possible to write code working on both
-projects if coroutines are not used but only callbacks.
+From(...)`` vs ``yield from``).
 
-Projects working on Trollius and Tulip:
+It is possible to write code working on both projects using only callbacks.
+This option is used by the following projects which work on Trollius and Tulip:
 
 * `AutobahnPython <https://github.com/tavendo/AutobahnPython>`_: WebSocket &
   WAMP for Python, it works on Trollius (Python 2.6 and 2.7), Tulip (Python
@@ -235,9 +235,14 @@ Projects working on Trollius and Tulip:
 * `Pulsar <http://pythonhosted.org/pulsar/>`_: Event driven concurrent
   framework for Python. With pulsar you can write asynchronous servers
   performing one or several activities in different threads and/or processes.
+* It looks like `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and
+  Trollius.
 
-It looks like `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and
-Trollius.
+Another option is to provide functions returning ``Future`` objects, so the
+caller can decide to use callback using ``fut.add_done_callback(callback)`` or
+to use coroutines (``yield From(fut)`` for Trollius, or ``yield from fut`` for
+Tulip). This option is used by the `aiodns <https://github.com/saghul/aiodns>`_
+project for example.
 
 
 Run tests
