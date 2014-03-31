@@ -1,3 +1,9 @@
+python-trollius (0.1.4+20140210+git+6f1f9233b1-2) unstable; urgency=medium
+
+  * Adds missing python3-mock and python3-nose build-depends (Closes: #743077).
+
+ -- Thomas Goirand <zigo@debian.org>  Mon, 31 Mar 2014 07:57:18 +0000
+
 python-trollius (0.1.4+20140210+git+6f1f9233b1-1) unstable; urgency=low
 
   * Initial release. (Closes: #738511)
