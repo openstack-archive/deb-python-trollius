@@ -50,7 +50,7 @@ if os.name == "nt":
             # time that an overflow is detected. The epoch is stored in the
             # process-local state and so the value of time_monotonic() may be
             # different in two Python processes running for more than 49 days.
-            def time_monotonic(use_info):
+            def time_monotonic():
                 ticks = GetTickCount()
                 if ticks < time_monotonic.last:
                     # Integer overflow detected
