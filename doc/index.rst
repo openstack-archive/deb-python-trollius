@@ -319,6 +319,13 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Version 0.2.1
+-------------
+
+Bugfixes:
+
+* Trollius issue #7: Fix asyncio.time_monotonic on Windows older than Vista
+
 2014-03-04: version 0.2
 -----------------------
 
