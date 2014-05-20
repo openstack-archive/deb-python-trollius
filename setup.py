@@ -30,7 +30,7 @@ with open("README") as fp:
 extensions = []
 if os.name == 'nt':
     ext = Extension(
-        'asyncio._overlapped', ['overlapped.c'], libraries=['ws2_32'],
+        'trollius._overlapped', ['overlapped.c'], libraries=['ws2_32'],
     )
     extensions.append(ext)
 
@@ -42,7 +42,7 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "0.2.1",
+    "version": "0.3",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',
@@ -57,7 +57,7 @@ install_options = {
         "License :: OSI Approved :: Apache Software License",
     ],
 
-    "packages": ["asyncio"],
+    "packages": ["trollius"],
 
     "ext_modules": extensions,
 }
