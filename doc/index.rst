@@ -34,16 +34,16 @@ Hello World
 
 Print ``Hello World`` every two seconds, using a coroutine::
 
-    import asyncio
-    from asyncio import From
+    import trollius
+    from trolllius import From
 
-    @asyncio.coroutine
+    @trollius.coroutine
     def greet_every_two_seconds():
         while True:
             print('Hello World')
-            yield From(asyncio.sleep(2))
+            yield From(trollius.sleep(2))
 
-    loop = asyncio.get_event_loop()
+    loop = trollius.get_event_loop()
     loop.run_until_complete(greet_every_two_seconds())
 
 
@@ -179,6 +179,8 @@ Tulip               Trollius
 Other differences
 -----------------
 
+* The name of the Trollius module is "trollius", whereas Tulip module is called
+  "asyncio", as the asyncio builtin in Python 3.4 standard library.
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
   ``ssl.SSLContext`` of Python 3.3: no options, verify_mode cannot be modified
   (fixed to ``CERT_NONE``), no set_default_verify_paths() method, no SNI, etc.
@@ -225,6 +227,15 @@ Write code working on Trollius and Tulip
 
 Trollius and Tulip are different, especially for coroutines (``yield
 From(...)`` vs ``yield from``).
+
+To use asyncio on Python 2, add the following code at the top of your file::
+
+    try:
+        # Use Trollius on Python <= 3.2
+        import trollius as asyncio
+    except ImportError:
+        # Use Tulip on Python 3.3, or builtin asyncio on Python 3.4+
+        import asyncio
 
 It is possible to write code working on both projects using only callbacks.
 This option is used by the following projects which work on Trollius and Tulip:
@@ -319,8 +330,18 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Version 0.2.1
--------------
+Version 0.3
+-----------
+
+Rename the Python module ``asyncio`` to "trollius`` to support Python 3.4.
+
+On Python 3.4, there is already a module called ``asyncio`` in the standard
+library which conflicts with Trollius ``asyncio`` (of Trollius 0.2). To write
+asyncio code working on Trollius and Tulip, use ``import trollius as asyncio``.
+
+Major changes:
+
+* Synchronize with Tulip 3.4.1.
 
 Bugfixes:
 
