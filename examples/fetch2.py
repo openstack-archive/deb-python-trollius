@@ -13,7 +13,7 @@ except ImportError:
     from urlparse import urlparse
     from httplib import BadStatusLine
 
-from asyncio import *
+from trollius import *
 
 
 class Request:

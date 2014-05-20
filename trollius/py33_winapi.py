@@ -29,7 +29,7 @@ except ImportError:
     from _multiprocessing import win32
     import _subprocess
 
-    from asyncio import _overlapped
+    from trollius import _overlapped
 
     CloseHandle = win32.CloseHandle
     CreateNamedPipe = win32.CreateNamedPipe

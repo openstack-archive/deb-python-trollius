@@ -10,7 +10,7 @@ Backport SSL functions and exceptions:
 import errno
 import ssl
 import sys
-from asyncio.py33_exceptions import _wrap_error
+from trollius.py33_exceptions import _wrap_error
 
 __all__ = ["SSLContext", "BACKPORT_SSL_ERRORS", "BACKPORT_SSL_CONTEXT",
            "SSLWantReadError", "SSLWantWriteError", "SSLEOFError",

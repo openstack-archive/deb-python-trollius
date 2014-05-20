@@ -1,10 +1,10 @@
 """Examples using create_subprocess_exec() and create_subprocess_shell()."""
 
-import asyncio
-from asyncio import From
+import trollius as asyncio
+from trollius import From
 import signal
-from asyncio.subprocess import PIPE
-from asyncio.py33_exceptions import ProcessLookupError
+from trollius.subprocess import PIPE
+from trollius.py33_exceptions import ProcessLookupError
 
 @asyncio.coroutine
 def cat(loop):

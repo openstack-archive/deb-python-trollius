@@ -57,8 +57,8 @@ form is returned, but the connection is not closed:
 """
 
 import argparse
-import asyncio
-from asyncio import From
+import trollius as asyncio
+from trollius import From
 import json
 import logging
 import os
@@ -218,7 +218,7 @@ class Cache:
 def main():
     asyncio.set_event_loop(None)
     if args.iocp:
-        from asyncio.windows_events import ProactorEventLoop
+        from trollius.windows_events import ProactorEventLoop
         loop = ProactorEventLoop()
     else:
         loop = asyncio.new_event_loop()

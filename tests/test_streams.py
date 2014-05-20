@@ -11,11 +11,11 @@ try:
 except ImportError:
     ssl = None
 
-import asyncio
-from asyncio import Return, From
-from asyncio import compat
-from asyncio import test_utils
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import Return, From
+from trollius import compat
+from trollius import test_utils
+from trollius.test_utils import mock
 
 
 class StreamReaderTests(test_utils.TestCase):
@@ -33,7 +33,7 @@ class StreamReaderTests(test_utils.TestCase):
         self.loop.close()
         gc.collect()
 
-    @mock.patch('asyncio.streams.events')
+    @mock.patch('trollius.streams.events')
     def test_ctor_global_loop(self, m_events):
         stream = asyncio.StreamReader()
         self.assertIs(stream._loop, m_events.get_event_loop.return_value)

@@ -5,15 +5,15 @@ import sys
 import unittest
 
 if sys.platform != 'win32':
-    from asyncio.test_utils import SkipTest
+    from trollius.test_utils import SkipTest
     raise SkipTest('Windows only')
 
 import asyncio.test_support as support
-from asyncio.test_support import IPV6_ENABLED
-from asyncio import _overlapped
-from asyncio import py33_winapi as _winapi
-from asyncio import windows_utils
-from asyncio.test_utils import mock
+from trollius.test_support import IPV6_ENABLED
+from trollius import _overlapped
+from trollius import py33_winapi as _winapi
+from trollius import windows_utils
+from trollius.test_utils import mock
 
 
 class WinsocketpairTests(unittest.TestCase):
@@ -33,7 +33,7 @@ class WinsocketpairTests(unittest.TestCase):
         ssock, csock = windows_utils.socketpair(family=socket.AF_INET6)
         self.check_winsocketpair(ssock, csock)
 
-    @mock.patch('asyncio.windows_utils.socket')
+    @mock.patch('trollius.windows_utils.socket')
     def test_winsocketpair_exc(self, m_socket):
         m_socket.AF_INET = socket.AF_INET
         m_socket.SOCK_STREAM = socket.SOCK_STREAM

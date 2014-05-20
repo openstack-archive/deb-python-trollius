@@ -1,11 +1,11 @@
 """Example writing to and reading from a subprocess at the same time using
 tasks."""
 
-import asyncio
+import trollius as asyncio
 import os
-from asyncio import From
-from asyncio.subprocess import PIPE
-from asyncio.py33_exceptions import BrokenPipeError, ConnectionResetError
+from trollius import From
+from trollius.subprocess import PIPE
+from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
 
 
 @asyncio.coroutine

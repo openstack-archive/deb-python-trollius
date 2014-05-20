@@ -10,7 +10,7 @@ try:
 except ImportError:
     from urlparse import urlparse
 
-from asyncio import *
+from trollius import *
 
 
 class Response:

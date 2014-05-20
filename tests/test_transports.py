@@ -2,10 +2,10 @@
 
 import unittest
 
-import asyncio
-from asyncio import test_utils
-from asyncio import transports
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import test_utils
+from trollius import transports
+from trollius.test_utils import mock
 
 try:
     memoryview

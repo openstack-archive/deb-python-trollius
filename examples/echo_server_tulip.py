@@ -1,5 +1,5 @@
-import asyncio
-from asyncio import From
+import trollius as asyncio
+from trollius import From
 
 @asyncio.coroutine
 def echo_server():

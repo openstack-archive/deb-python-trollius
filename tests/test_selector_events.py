@@ -12,21 +12,21 @@ except ImportError:
     ssl = None
 else:
     HAS_SNI = getattr(ssl, 'HAS_SNI', False)
-    from asyncio.py3_ssl import SSLWantReadError, SSLWantWriteError
+    from trollius.py3_ssl import SSLWantReadError, SSLWantWriteError
 
-import asyncio
-from asyncio.py33_exceptions import (
+import trollius as asyncio
+from trollius.py33_exceptions import (
     BlockingIOError, InterruptedError,
     ConnectionResetError, ConnectionRefusedError)
-from asyncio import selectors
-from asyncio import test_utils
-from asyncio.selector_events import BaseSelectorEventLoop
-from asyncio.selector_events import _SelectorDatagramTransport
-from asyncio.selector_events import _SelectorSocketTransport
-from asyncio.selector_events import _SelectorSslTransport
-from asyncio.selector_events import _SelectorTransport
-from asyncio.selector_events import _SSL_REQUIRES_SELECT
-from asyncio.test_utils import mock
+from trollius import selectors
+from trollius import test_utils
+from trollius.selector_events import BaseSelectorEventLoop
+from trollius.selector_events import _SelectorDatagramTransport
+from trollius.selector_events import _SelectorSocketTransport
+from trollius.selector_events import _SelectorSslTransport
+from trollius.selector_events import _SelectorTransport
+from trollius.selector_events import _SSL_REQUIRES_SELECT
+from trollius.test_utils import mock
 
 if sys.version_info >= (3,):
     UNICODE_STR = 'unicode'
@@ -77,7 +77,7 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
             m, asyncio.Protocol(), m, waiter)
         self.assertIsInstance(transport, _SelectorSslTransport)
 
-    @mock.patch('asyncio.selector_events.ssl', None)
+    @mock.patch('trollius.selector_events.ssl', None)
     def test_make_ssl_transport_without_ssl_error(self):
         m = mock.Mock()
         self.loop.add_reader = mock.Mock()
@@ -662,7 +662,7 @@ class SelectorTransportTests(test_utils.TestCase):
         self.assertFalse(self.loop.readers)
         self.assertEqual(1, self.loop.remove_reader_count[7])
 
-    @mock.patch('asyncio.log.logger.error')
+    @mock.patch('trollius.log.logger.error')
     def test_fatal_error(self, m_exc):
         exc = OSError()
         tr = _SelectorTransport(self.loop, self.sock, self.protocol, None)
@@ -911,7 +911,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         self.loop.assert_writer(7, transport._write_ready)
         self.assertEqual(list_to_buffer([b'data']), transport._buffer)
 
-    @mock.patch('asyncio.selector_events.logger')
+    @mock.patch('trollius.selector_events.logger')
     def test_write_exception(self, m_log):
         err = self.sock.send.side_effect = OSError()
 
@@ -1029,7 +1029,7 @@ class SelectorSocketTransportTests(test_utils.TestCase):
                                    err,
                                    'Fatal write error on socket transport')
 
-    @mock.patch('asyncio.base_events.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_write_ready_exception_and_close(self, m_log):
         self.sock.send.side_effect = OSError()
         remove_writer = self.loop.remove_writer = mock.Mock()
@@ -1182,7 +1182,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport.write(b'data')
         self.assertEqual(transport._conn_lost, 2)
 
-    @mock.patch('asyncio.selector_events.logger')
+    @mock.patch('trollius.selector_events.logger')
     def test_write_exception(self, m_log):
         transport = self._make_one()
         transport._conn_lost = 1
@@ -1400,7 +1400,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
 
 class SelectorSslWithoutSslTransportTests(test_utils.TestCase):
 
-    @mock.patch('asyncio.selector_events.ssl', None)
+    @mock.patch('trollius.selector_events.ssl', None)
     def test_ssl_transport_requires_ssl_module(self):
         Mock = mock.Mock
         with self.assertRaises(RuntimeError):
@@ -1544,7 +1544,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         self.assertEqual(
             [(b'data', ('0.0.0.0', 12345))], list(transport._buffer))
 
-    @mock.patch('asyncio.selector_events.logger')
+    @mock.patch('trollius.selector_events.logger')
     def test_sendto_exception(self, m_log):
         data = b'data'
         err = self.sock.sendto.side_effect = RuntimeError()
@@ -1700,7 +1700,7 @@ class SelectorDatagramTransportTests(test_utils.TestCase):
         self.assertFalse(transport._fatal_error.called)
         self.assertTrue(self.protocol.error_received.called)
 
-    @mock.patch('asyncio.base_events.logger.error')
+    @mock.patch('trollius.base_events.logger.error')
     def test_fatal_error_connected(self, m_exc):
         transport = _SelectorDatagramTransport(
             self.loop, self.sock, self.protocol, ('0.0.0.0', 1))

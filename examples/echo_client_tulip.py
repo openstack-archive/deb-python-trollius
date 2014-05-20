@@ -1,5 +1,5 @@
-import asyncio
-from asyncio import From
+import trollius as asyncio
+from trollius import From
 
 END = b'Bye-bye!\n'
 

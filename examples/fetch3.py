@@ -14,7 +14,7 @@ except ImportError:
     from urlparse import urlparse
     from httplib import BadStatusLine
 
-from asyncio import *
+from trollius import *
 
 
 class ConnectionPool:
@@ -223,7 +223,7 @@ def fetch(url, verbose=True, max_redirect=10):
 
 def main():
     if '--iocp' in sys.argv:
-        from asyncio.windows_events import ProactorEventLoop
+        from trollius.windows_events import ProactorEventLoop
         loop = ProactorEventLoop()
         set_event_loop(loop)
     else:

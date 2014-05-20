@@ -28,18 +28,18 @@ try:
 except ImportError:
     concurrent = None
 
-from asyncio import Return, From
-from asyncio import futures
+from trollius import Return, From
+from trollius import futures
 
-import asyncio
-from asyncio import selector_events
-from asyncio import test_utils
-from asyncio.py33_exceptions import (wrap_error,
+import trollius as asyncio
+from trollius import selector_events
+from trollius import test_utils
+from trollius.py33_exceptions import (wrap_error,
     BlockingIOError, ConnectionRefusedError,
     FileNotFoundError)
-from asyncio.test_utils import mock
-from asyncio.time_monotonic import time_monotonic
-from asyncio import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
+from trollius.test_utils import mock
+from trollius.time_monotonic import time_monotonic
+from trollius import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
 
 
 def data_file(filename):
@@ -1701,7 +1701,7 @@ if sys.platform == 'win32':
         def test_remove_fds_after_closing(self):
             raise unittest.SkipTest("IocpEventLoop does not have add_reader()")
 else:
-    from asyncio import selectors
+    from trollius import selectors
 
     class UnixEventLoopTestsMixin(EventLoopTestsMixin):
         def setUp(self):
@@ -2033,7 +2033,7 @@ class PolicyTests(test_utils.TestCase):
         policy.set_event_loop(None)
         self.assertRaises(AssertionError, policy.get_event_loop)
 
-    @mock.patch('asyncio.events.threading.current_thread')
+    @mock.patch('trollius.events.threading.current_thread')
     def test_get_event_loop_thread(self, m_current_thread):
 
         def f():
