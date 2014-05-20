@@ -423,12 +423,17 @@ class StreamReader(object):
             raise Return(b'')
 
         if n < 0:
-            while not self._eof:
-                self._waiter = self._create_waiter('read')
-                try:
-                    yield From(self._waiter)
-                finally:
-                    self._waiter = None
+            # This used to just loop creating a new waiter hoping to
+            # collect everything in self._buffer, but that would
+            # deadlock if the subprocess sends more than self.limit
+            # bytes.  So just call self.read(self._limit) until EOF.
+            blocks = []
+            while True:
+                block = yield From(self.read(self._limit))
+                if not block:
+                    break
+                blocks.append(block)
+            raise Return(b''.join(blocks))
         else:
             if not self._buffer and not self._eof:
                 self._waiter = self._create_waiter('read')

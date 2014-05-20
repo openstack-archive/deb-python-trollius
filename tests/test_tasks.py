@@ -2,7 +2,9 @@
 
 import gc
 import os.path
+import types
 import unittest
+import weakref
 
 import asyncio
 from asyncio import From, Return
@@ -1367,23 +1369,102 @@ class TaskTests(test_utils.TestCase):
         self.assertRaises(ValueError, self.loop.run_until_complete,
             asyncio.wait([], loop=self.loop))
 
-    def test_yield_without_from(self):
-        old_debug = coroutines._DEBUG
+    def test_corowrapper_mocks_generator(self):
+
+        def check():
+            # A function that asserts various things.
+            # Called twice, with different debug flag values.
+
+            @asyncio.coroutine
+            def coro():
+                # The actual coroutine.
+                self.assertTrue(gen.gi_running)
+                yield From(fut)
+
+            # A completed Future used to run the coroutine.
+            fut = asyncio.Future(loop=self.loop)
+            fut.set_result(None)
+
+            # Call the coroutine.
+            gen = coro()
+
+            # Check some properties.
+            self.assertTrue(asyncio.iscoroutine(gen))
+            self.assertIsInstance(gen.gi_frame, types.FrameType)
+            self.assertFalse(gen.gi_running)
+            self.assertIsInstance(gen.gi_code, types.CodeType)
+
+            # Run it.
+            self.loop.run_until_complete(gen)
+
+            # The frame should have changed.
+            self.assertIsNone(gen.gi_frame)
+
+        # Save debug flag.
+        old_debug = asyncio.coroutines._DEBUG
+        try:
+            # Test with debug flag cleared.
+            asyncio.coroutines._DEBUG = False
+            check()
+
+            # Test with debug flag set.
+            asyncio.coroutines._DEBUG = True
+            check()
+
+        finally:
+            # Restore original debug flag.
+            asyncio.coroutines._DEBUG = old_debug
+
+    def test_yield_from_corowrapper(self):
+        old_debug = asyncio.coroutines._DEBUG
+        asyncio.coroutines._DEBUG = True
         try:
             @asyncio.coroutine
-            def task():
-                yield None
-                raise Return("done")
+            def t1():
+                res = yield From(t2())
+                raise Return(res)
 
-            coroutines._DEBUG = False
-            value = self.loop.run_until_complete(task())
-            self.assertEqual(value, "done")
+            @asyncio.coroutine
+            def t2():
+                f = asyncio.Future(loop=self.loop)
+                asyncio.Task(t3(f), loop=self.loop)
+                res = yield From(f)
+                raise Return(res)
 
-            coroutines._DEBUG = True
-            self.assertRaises(RuntimeError,
-                              self.loop.run_until_complete, task())
+            @asyncio.coroutine
+            def t3(f):
+                f.set_result((1, 2, 3))
+
+            task = asyncio.Task(t1(), loop=self.loop)
+            val = self.loop.run_until_complete(task)
+            self.assertEqual(val, (1, 2, 3))
         finally:
-            coroutines._DEBUG = old_debug
+            asyncio.coroutines._DEBUG = old_debug
+
+    def test_yield_from_corowrapper_send(self):
+        def foo():
+            a = yield
+            raise Return(a)
+
+        def call(arg):
+            cw = asyncio.coroutines.CoroWrapper(foo(), foo)
+            cw.send(None)
+            try:
+                cw.send(arg)
+            except Return as ex:
+                return ex.value
+            else:
+                raise AssertionError('StopIteration was expected')
+
+        self.assertEqual(call((1, 2)), (1, 2))
+        self.assertEqual(call('spam'), 'spam')
+
+    def test_corowrapper_weakref(self):
+        wd = weakref.WeakValueDictionary()
+        def foo(): yield From([])
+        cw = asyncio.coroutines.CoroWrapper(foo(), foo)
+        wd['cw'] = cw  # Would fail without __weakref__ slot.
+        cw.gen = None  # Suppress warning from __del__.
 
 
 class GatherTestsBase:

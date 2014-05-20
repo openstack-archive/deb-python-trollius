@@ -1,7 +1,10 @@
 """Tests for streams.py."""
 
 import gc
+import io
+import os
 import socket
+import sys
 import unittest
 try:
     import ssl
@@ -10,6 +13,7 @@ except ImportError:
 
 import asyncio
 from asyncio import Return, From
+from asyncio import compat
 from asyncio import test_utils
 from asyncio.test_utils import mock
 
@@ -583,6 +587,46 @@ class StreamReaderTests(test_utils.TestCase):
                                                             loop=self.loop))
             server.stop()
             self.assertEqual(msg, b"hello world!\n")
+
+    @unittest.skipIf(sys.platform == 'win32', "Don't have pipes")
+    def test_read_all_from_pipe_reader(self):
+        # See Tulip issue 168.  This test is derived from the example
+        # subprocess_attach_read_pipe.py, but we configure the
+        # StreamReader's limit so that twice it is less than the size
+        # of the data writter.  Also we must explicitly attach a child
+        # watcher to the event loop.
+
+        code = """\
+import os, sys
+fd = int(sys.argv[1])
+os.write(fd, b'data')
+os.close(fd)
+"""
+        rfd, wfd = os.pipe()
+        args = [sys.executable, '-c', code, str(wfd)]
+
+        pipe = io.open(rfd, 'rb', 0)
+        reader = asyncio.StreamReader(loop=self.loop, limit=1)
+        protocol = asyncio.StreamReaderProtocol(reader, loop=self.loop)
+        transport, _ = self.loop.run_until_complete(
+            self.loop.connect_read_pipe(lambda: protocol, pipe))
+
+        watcher = asyncio.SafeChildWatcher()
+        watcher.attach_loop(self.loop)
+        try:
+            asyncio.set_child_watcher(watcher)
+            kw = {'loop': self.loop}
+            if compat.PY3:
+                kw['pass_fds'] = set((wfd,))
+            proc = self.loop.run_until_complete(
+                asyncio.create_subprocess_exec(*args, **kw))
+            self.loop.run_until_complete(proc.wait())
+        finally:
+            asyncio.set_child_watcher(None)
+
+        os.close(wfd)
+        data = self.loop.run_until_complete(reader.read(-1))
+        self.assertEqual(data, b'data')
 
 
 if __name__ == '__main__':
