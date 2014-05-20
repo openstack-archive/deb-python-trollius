@@ -2,14 +2,8 @@ Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
 2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux,
 Mac OS X, FreeBSD and OpenIndiana.
 
-* Website: https://bitbucket.org/enovance/trollius
-* Documentation: http://trollius.readthedocs.org/
+* Trollius website and documentation: http://trollius.readthedocs.org/
 * Tulip project: http://code.google.com/p/tulip/
 * Copyright/license: Open source, Apache 2.0. Enjoy.
 
-WARNING: Trollius code is in the "trollius" branch of the Mercurial repository,
-not in the default branch (which is the Tulip project). Command to download
-the development version of the source code (trollius branch):
-
-    hg clone 'https://bitbucket.org/enovance/trollius#trollius'
-
+See the "doc" subdirectory for more information.
