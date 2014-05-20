@@ -2,10 +2,10 @@
 
 import unittest
 
-import asyncio
-from asyncio import Return, From
-from asyncio import test_utils
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import Return, From
+from trollius import test_utils
+from trollius.test_utils import mock
 
 
 class _QueueTestBase(test_utils.TestCase):

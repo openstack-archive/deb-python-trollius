@@ -1,15 +1,15 @@
-from asyncio import subprocess
-import asyncio
+from trollius import subprocess
+import trollius as asyncio
 import os
 import signal
 import sys
 import unittest
-from asyncio import From, Return
-from asyncio import test_support as support
-from asyncio import test_utils
+from trollius import From, Return
+from trollius import test_support as support
+from trollius import test_utils
 if sys.platform != 'win32':
-    from asyncio import unix_events
-from asyncio.py33_exceptions import BrokenPipeError
+    from trollius import unix_events
+from trollius.py33_exceptions import BrokenPipeError
 
 # Program blocking
 PROGRAM_BLOCKED = [sys.executable, '-c', 'import time; time.sleep(3600)']

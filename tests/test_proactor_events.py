@@ -3,14 +3,14 @@
 import socket
 import unittest
 
-from asyncio import test_utils
-from asyncio.proactor_events import BaseProactorEventLoop
-from asyncio.proactor_events import _ProactorDuplexPipeTransport
-from asyncio.proactor_events import _ProactorSocketTransport
-from asyncio.proactor_events import _ProactorWritePipeTransport
-from asyncio.py33_exceptions import ConnectionAbortedError, ConnectionResetError
-from asyncio.test_utils import mock
-import asyncio
+from trollius import test_utils
+from trollius.proactor_events import BaseProactorEventLoop
+from trollius.proactor_events import _ProactorDuplexPipeTransport
+from trollius.proactor_events import _ProactorSocketTransport
+from trollius.proactor_events import _ProactorWritePipeTransport
+from trollius.py33_exceptions import ConnectionAbortedError, ConnectionResetError
+from trollius.test_utils import mock
+import trollius as asyncio
 
 
 class ProactorSocketTransportTests(test_utils.TestCase):
@@ -140,7 +140,7 @@ class ProactorSocketTransportTests(test_utils.TestCase):
         self.loop._proactor.send.return_value.add_done_callback.\
             assert_called_with(tr._loop_writing)
 
-    @mock.patch('asyncio.proactor_events.logger')
+    @mock.patch('trollius.proactor_events.logger')
     def test_loop_writing_err(self, m_log):
         err = self.loop._proactor.send.side_effect = OSError()
         tr = _ProactorSocketTransport(self.loop, self.sock, self.protocol)
@@ -214,7 +214,7 @@ class ProactorSocketTransportTests(test_utils.TestCase):
         test_utils.run_briefly(self.loop)
         self.assertFalse(self.protocol.connection_lost.called)
 
-    @mock.patch('asyncio.base_events.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_fatal_error(self, m_logging):
         tr = _ProactorSocketTransport(self.loop, self.sock, self.protocol)
         tr._force_close = mock.Mock()
@@ -439,7 +439,7 @@ class BaseProactorEventLoopTests(test_utils.TestCase):
     def test_process_events(self):
         self.loop._process_events([])
 
-    @mock.patch('asyncio.base_events.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_create_server(self, m_log):
         pf = mock.Mock()
         call_soon = self.loop.call_soon = mock.Mock()

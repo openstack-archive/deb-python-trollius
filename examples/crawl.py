@@ -17,8 +17,8 @@ from __future__ import print_function
 # - Handle out of file descriptors directly?  (How?)
 
 import argparse
-import asyncio
-from asyncio import From, Return
+import trollius as asyncio
+from trollius import From, Return
 import asyncio.locks
 import cgi
 import logging
@@ -841,7 +841,7 @@ def main():
     log = Logger(args.level)
 
     if args.iocp:
-        from asyncio.windows_events import ProactorEventLoop
+        from trollius.windows_events import ProactorEventLoop
         loop = ProactorEventLoop()
         asyncio.set_event_loop(loop)
     elif args.select:

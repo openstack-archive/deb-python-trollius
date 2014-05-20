@@ -3,10 +3,10 @@
 import unittest
 import re
 
-import asyncio
-from asyncio import From, Return
-from asyncio import test_utils
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import From, Return
+from trollius import test_utils
+from trollius.test_utils import mock
 
 
 STR_RGX_REPR = (

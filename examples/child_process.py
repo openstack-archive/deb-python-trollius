@@ -10,16 +10,16 @@ import os
 import sys
 
 try:
-    import asyncio
+    import trollius as asyncio
 except ImportError:
     # asyncio is not installed
     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-    import asyncio
-from asyncio import From, Return
+    import trollius as asyncio
+from trollius import From, Return
 
 if sys.platform == 'win32':
-    from asyncio.windows_utils import Popen, PIPE
-    from asyncio.windows_events import ProactorEventLoop
+    from trollius.windows_utils import Popen, PIPE
+    from trollius.windows_events import ProactorEventLoop
 else:
     from subprocess import Popen, PIPE
 

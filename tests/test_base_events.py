@@ -6,15 +6,15 @@ import socket
 import sys
 import unittest
 
-import asyncio
-from asyncio import Return, From
-from asyncio import base_events
-from asyncio import constants
-from asyncio import test_utils
-from asyncio.py33_exceptions import BlockingIOError
-from asyncio.test_utils import mock
-from asyncio.test_support import IPV6_ENABLED
-from asyncio.time_monotonic import time_monotonic
+import trollius as asyncio
+from trollius import Return, From
+from trollius import base_events
+from trollius import constants
+from trollius import test_utils
+from trollius.py33_exceptions import BlockingIOError
+from trollius.test_utils import mock
+from trollius.test_support import IPV6_ENABLED
+from trollius.time_monotonic import time_monotonic
 
 
 MOCK_ANY = mock.ANY
@@ -228,8 +228,8 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.loop.set_debug(False)
         self.assertFalse(self.loop.get_debug())
 
-    @mock.patch('asyncio.base_events.time_monotonic')
-    @mock.patch('asyncio.base_events.logger')
+    @mock.patch('trollius.base_events.time_monotonic')
+    @mock.patch('trollius.base_events.logger')
     def test__run_once_logging(self, m_logger, m_time_monotonic):
         # Log to INFO level if timeout > 1.0 sec.
         non_local = {
@@ -334,7 +334,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             1/0
 
         # Test call_soon (events.Handle)
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             fut = asyncio.Future(loop=self.loop)
             self.loop.call_soon(zero_error, fut)
             fut.add_done_callback(lambda fut: self.loop.stop())
@@ -344,7 +344,7 @@ class BaseEventLoopTests(test_utils.TestCase):
                 exc_info=(ZeroDivisionError, MOCK_ANY, MOCK_ANY))
 
         # Test call_later (events.TimerHandle)
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             fut = asyncio.Future(loop=self.loop)
             self.loop.call_later(0.01, zero_error, fut)
             fut.add_done_callback(lambda fut: self.loop.stop())
@@ -364,7 +364,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             1/0
 
         # Test Future.__del__
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             fut = asyncio.async(zero_error_coro(), loop=self.loop)
             fut.add_done_callback(lambda *args: self.loop.stop())
             self.loop.run_forever()
@@ -408,7 +408,7 @@ class BaseEventLoopTests(test_utils.TestCase):
         mock_handler.reset_mock()
 
         self.loop.set_exception_handler(None)
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             run_loop()
             log.error.assert_called_with(
                         test_utils.MockPattern(
@@ -431,7 +431,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
         self.loop.set_exception_handler(handler)
 
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             run_loop()
             log.error.assert_called_with(
                 test_utils.MockPattern(
@@ -460,7 +460,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             loop.call_soon(zero_error)
             loop._run_once()
 
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             run_loop()
             log.error.assert_called_with(
                 'Exception in default exception handler',
@@ -471,7 +471,7 @@ class BaseEventLoopTests(test_utils.TestCase):
 
         del contexts[:]
         loop.set_exception_handler(custom_handler)
-        with mock.patch('asyncio.base_events.logger') as log:
+        with mock.patch('trollius.base_events.logger') as log:
             run_loop()
             log.error.assert_called_with(
                 test_utils.MockPattern('Exception in default exception.*'
@@ -553,7 +553,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
     def tearDown(self):
         self.loop.close()
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_connection_multiple_errors(self, m_socket):
 
         class MyProto(asyncio.Protocol):
@@ -643,7 +643,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         with self.assertRaises(socket.error):
             self.loop.run_until_complete(coro)
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_connection_multiple_errors_local_addr(self, m_socket):
 
         def bind(addr):
@@ -815,7 +815,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         f = self.loop.create_server(MyProto, '0.0.0.0', 0)
         self.assertRaises(socket.error, self.loop.run_until_complete, f)
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_server_cant_bind(self, m_socket):
 
         class Err(socket.error):
@@ -832,7 +832,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(socket.error, self.loop.run_until_complete, fut)
         self.assertTrue(m_sock.close.called)
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_datagram_endpoint_no_addrinfo(self, m_socket):
         m_socket.error = socket.error
         m_socket.getaddrinfo.return_value = []
@@ -862,7 +862,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_datagram_endpoint_socket_err(self, m_socket):
         m_socket.error = socket.error
         m_socket.getaddrinfo = socket.getaddrinfo
@@ -886,7 +886,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(
             ValueError, self.loop.run_until_complete, coro)
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_datagram_endpoint_setblk_err(self, m_socket):
         m_socket.error = socket.error
         m_socket.socket.return_value.setblocking.side_effect = socket.error
@@ -903,7 +903,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
             asyncio.DatagramProtocol)
         self.assertRaises(ValueError, self.loop.run_until_complete, coro)
 
-    @mock.patch('asyncio.base_events.socket')
+    @mock.patch('trollius.base_events.socket')
     def test_create_datagram_endpoint_cant_bind(self, m_socket):
         class Err(socket.error):
             pass
@@ -927,7 +927,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.loop._accept_connection(MyProto, sock)
         self.assertFalse(sock.close.called)
 
-    @mock.patch('asyncio.base_events.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_accept_connection_exception(self, m_log):
         sock = mock.Mock()
         sock.fileno.return_value = 10

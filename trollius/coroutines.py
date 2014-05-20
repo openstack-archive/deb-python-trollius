@@ -3,7 +3,7 @@ import inspect
 import os
 import sys
 
-from asyncio import futures
+from trollius import futures
 from .log import logger
 
 # If you set _DEBUG to true, @coroutine will wrap the resulting

@@ -13,9 +13,9 @@ import sys
 import time
 import random
 
-import asyncio
+import trollius as asyncio
 import asyncio.streams
-from asyncio import From, Return
+from trollius import From, Return
 
 
 class MyServer:

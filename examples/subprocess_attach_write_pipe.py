@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Example showing how to attach a write pipe to a subprocess."""
-import asyncio
-from asyncio import From
+import trollius as asyncio
+from trollius import From
 import os, sys
-from asyncio import subprocess
+from trollius import subprocess
 
 code = """
 import os, sys

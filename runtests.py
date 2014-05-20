@@ -29,7 +29,7 @@ import random
 import re
 import sys
 import textwrap
-from asyncio.compat import PY33
+from trollius.compat import PY33
 if PY33:
     import importlib.machinery
 else:

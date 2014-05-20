@@ -10,9 +10,9 @@ fail if this port is currently in use.
 
 from __future__ import print_function
 import sys
-import asyncio
+import trollius as asyncio
 import asyncio.streams
-from asyncio import From, Return
+from trollius import From, Return
 
 
 class MyServer:

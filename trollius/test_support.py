@@ -8,7 +8,7 @@ import socket
 import subprocess
 import sys
 import time
-from asyncio import test_utils
+from trollius import test_utils
 
 # TEST_HOME_DIR refers to the top level directory of the "test" package
 # that contains Python's regression test suite

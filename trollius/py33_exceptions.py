@@ -75,7 +75,7 @@ _MAP_ERRNO = {
 }
 
 if sys.platform == 'win32':
-    from asyncio import _overlapped
+    from trollius import _overlapped
     _MAP_ERRNO.update({
         _overlapped.ERROR_CONNECTION_REFUSED: ConnectionRefusedError,
         _overlapped.ERROR_CONNECTION_ABORTED: ConnectionAbortedError,

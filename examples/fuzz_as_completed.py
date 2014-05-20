@@ -4,8 +4,8 @@
 
 from __future__ import print_function
 
-import asyncio
-from asyncio import From, Return
+import trollius as asyncio
+from trollius import From, Return
 import itertools
 import random
 import sys

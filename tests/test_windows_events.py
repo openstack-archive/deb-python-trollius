@@ -1,4 +1,4 @@
-from asyncio import test_utils
+from trollius import test_utils
 import os
 import sys
 import unittest
@@ -6,12 +6,12 @@ import unittest
 if sys.platform != 'win32':
     raise test_utils.SkipTest('Windows only')
 
-import asyncio
-from asyncio import Return, From
-from asyncio import _overlapped
-from asyncio import py33_winapi as _winapi
-from asyncio import windows_events
-from asyncio.py33_exceptions import PermissionError, FileNotFoundError
+import trollius as asyncio
+from trollius import Return, From
+from trollius import _overlapped
+from trollius import py33_winapi as _winapi
+from trollius import windows_events
+from trollius.py33_exceptions import PermissionError, FileNotFoundError
 
 
 class UpperProto(asyncio.Protocol):

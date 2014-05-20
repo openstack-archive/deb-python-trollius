@@ -6,11 +6,11 @@ import types
 import unittest
 import weakref
 
-import asyncio
-from asyncio import From, Return
-from asyncio import coroutines
-from asyncio import test_utils
-from asyncio.test_support import assert_python_ok
+import trollius as asyncio
+from trollius import From, Return
+from trollius import coroutines
+from trollius import test_utils
+from trollius.test_support import assert_python_ok
 
 
 @asyncio.coroutine
@@ -1546,8 +1546,8 @@ class GatherTestsBase:
         code = '\n'.join((
             'import sys',
             'sys.path.insert(0, %r)' % path,
-            'import asyncio.coroutines',
-            'print(asyncio.coroutines._DEBUG)'))
+            'import trollius.coroutines',
+            'print(trollius.coroutines._DEBUG)'))
 
         # Test with -E to not fail if the unit test was run with
         # PYTHONASYNCIODEBUG set to a non-empty string

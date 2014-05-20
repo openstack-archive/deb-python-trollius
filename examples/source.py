@@ -4,8 +4,8 @@ from __future__ import print_function
 import argparse
 import sys
 
-from asyncio import *
-from asyncio import test_utils
+from trollius import *
+from trollius import test_utils
 
 
 ARGS = argparse.ArgumentParser(description="TCP data sink example.")
@@ -86,7 +86,7 @@ def main():
     global args
     args = ARGS.parse_args()
     if args.iocp:
-        from asyncio.windows_events import ProactorEventLoop
+        from trollius.windows_events import ProactorEventLoop
         loop = ProactorEventLoop()
         set_event_loop(loop)
     else:
