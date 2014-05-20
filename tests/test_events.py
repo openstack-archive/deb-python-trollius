@@ -13,6 +13,7 @@ import sys
 import threading
 import errno
 import unittest
+import weakref
 
 try:
     import ssl
@@ -713,6 +714,19 @@ class EventLoopTestsMixin(object):
 
         # close server
         server.close()
+
+    @unittest.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
+    def test_create_unix_server_path_socket_error(self):
+        proto = MyProto(loop=self.loop)
+        sock = socket.socket()
+        try:
+            f = self.loop.create_unix_server(lambda: proto, '/test', sock=sock)
+            with self.assertRaisesRegex(ValueError,
+                                        'path and sock can not be specified '
+                                        'at the same time'):
+                server = self.loop.run_until_complete(f)
+        finally:
+            sock.close()
 
     def _create_ssl_context(self, certfile, keyfile=None):
         sslcontext = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
@@ -1796,6 +1810,11 @@ class HandleTests(test_utils.TestCase):
             'exception': mock.ANY,
             'handle': h
         })
+
+    def test_handle_weakref(self):
+        wd = weakref.WeakValueDictionary()
+        h = asyncio.Handle(lambda: None, (), object())
+        wd['h'] = h  # Would fail without __weakref__ slot.
 
 
 class TimerTests(test_utils.TestCase):
