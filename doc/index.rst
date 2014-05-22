@@ -99,7 +99,7 @@ branch)::
 
     hg clone 'https://bitbucket.org/enovance/trollius#trollius'
 
-The actual code lives in the ``asyncio`` subdirectory. Tests are in the
+The actual code lives in the ``trollius`` subdirectory. Tests are in the
 ``tests`` subdirectory.
 
 See the `trollius project at Bitbucket
@@ -126,7 +126,7 @@ Build manually Trollius on Windows
 On Windows, if you cannot use precompiled wheel packages, an extension module
 must be compiled: the ``_overlapped`` module (source code: ``overlapped.c``).
 Read `Compile Python extensions on Windows
-<http://haypo-notes.readthedocs.org/misc.html#compile-python-extensions-on-windows>`_
+<http://haypo-notes.readthedocs.org/python.html#compile-python-extensions-on-windows>`_
 to prepare your environment to build the Python extension. Then build the
 extension using::
 
@@ -179,8 +179,8 @@ Tulip               Trollius
 Other differences
 -----------------
 
-* The name of the Trollius module is "trollius", whereas Tulip module is called
-  "asyncio", as the asyncio builtin in Python 3.4 standard library.
+* The name of the Trollius module is ``trollius``, whereas the asyncio module
+  name is ``asyncio`` in Tulip and Python 3.4+
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
   ``ssl.SSLContext`` of Python 3.3: no options, verify_mode cannot be modified
   (fixed to ``CERT_NONE``), no set_default_verify_paths() method, no SNI, etc.
@@ -228,7 +228,8 @@ Write code working on Trollius and Tulip
 Trollius and Tulip are different, especially for coroutines (``yield
 From(...)`` vs ``yield from``).
 
-To use asyncio on Python 2, add the following code at the top of your file::
+To use asyncio or Trollius on Python 2 and Python 3, add the following code at
+the top of your file::
 
     try:
         # Use builtin asyncio on Python 3.4+, or Tulip on Python 3.3
