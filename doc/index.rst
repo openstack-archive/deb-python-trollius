@@ -231,11 +231,11 @@ From(...)`` vs ``yield from``).
 To use asyncio on Python 2, add the following code at the top of your file::
 
     try:
+        # Use builtin asyncio on Python 3.4+, or Tulip on Python 3.3
+        import asyncio
+    except ImportError:
         # Use Trollius on Python <= 3.2
         import trollius as asyncio
-    except ImportError:
-        # Use Tulip on Python 3.3, or builtin asyncio on Python 3.4+
-        import asyncio
 
 It is possible to write code working on both projects using only callbacks.
 This option is used by the following projects which work on Trollius and Tulip:
