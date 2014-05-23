@@ -238,6 +238,11 @@ the top of your file::
         # Use Trollius on Python <= 3.2
         import trollius as asyncio
 
+.. note::
+
+   The Trollius module was called ``asyncio`` in Trollius version 0.2. The
+   module name changed to ``trollius`` to support Python 3.4.
+
 It is possible to write code working on both projects using only callbacks.
 This option is used by the following projects which work on Trollius and Tulip:
 
