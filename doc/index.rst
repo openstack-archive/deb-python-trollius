@@ -344,19 +344,63 @@ Change log
 Version 0.3
 -----------
 
-Rename the Python module ``asyncio`` to ``trollius`` to support Python 3.4.
-
-On Python 3.4, there is already a module called ``asyncio`` in the standard
-library which conflicts with Trollius ``asyncio`` (of Trollius 0.2). To write
+Rename the Python module ``asyncio`` to ``trollius`` to support Python 3.4. On
+Python 3.4, there is already a module called ``asyncio`` in the standard
+library which conflicted with ``asyncio`` module of Trollius 0.2. To write
 asyncio code working on Trollius and Tulip, use ``import trollius as asyncio``.
 
-Major changes:
+Changes between Trollius 0.2 and 0.3:
 
 * Synchronize with Tulip 3.4.1.
+* Enhance Trollius documentation.
+* Trollius issue #7: Fix ``asyncio.time_monotonic`` on Windows older than
+  Vista (ex: Windows 2000 and Windows XP).
+* Fedora packages have been accepted.
 
-Bugfixes:
+Changes between Tulip 3.4.0 and 3.4.1:
 
-* Trollius issue #7: Fix asyncio.time_monotonic on Windows older than Vista
+* Pull in Solaris ``devpoll`` support by Giampaolo Rodola
+  (``trollius.selectors`` module).
+* Add options ``-r`` and ``--randomize`` to runtests.py to randomize test
+  order.
+* Add a simple echo client/server example.
+* Tulip issue #166: Add ``__weakref__`` slots to ``Handle`` and
+  ``CoroWrapper``.
+* ``EventLoop.create_unix_server()`` now raises a ``ValueError`` if path and
+  sock are specified at the same time.
+* Ensure ``call_soon()``, ``call_later()`` and ``call_at()`` are invoked on
+  current loop in debug mode. Raise a ``RuntimeError`` if the event loop of the
+  current thread is different.  The check should help to debug thread-safetly
+  issue. Patch written by David Foster.
+* Tulip issue #157: Improve test_events.py, avoid ``run_briefly()`` which is
+  not reliable.
+* Reject add/remove reader/writer when event loop is closed.
+
+Bugfixes of Tulip 3.4.1:
+
+* Tulip issue #168: ``StreamReader.read(-1)`` from pipe may hang if
+  data exceeds buffer limit.
+* CPython issue #21447: Fix a race condition in
+  ``BaseEventLoop._write_to_self()``.
+* Different bugfixes in ``CoroWrapper`` of ``trollius.coroutines``, class used
+  when running Trollius in debug mode:
+
+  - Fix ``CoroWrapper`` to workaround yield-from bug in CPython 3.4.0. The
+    CPython bug is now fixed in CPython 3.4.1 and 3.5.
+  - Make sure ``CoroWrapper.send`` proxies one argument correctly.
+  - CPython issue #21340: Be careful accessing instance variables in ``__del__``.
+  - Tulip issue #163: Add ``gi_{frame,running,code}`` properties to
+    ``CoroWrapper``.
+
+* Fix ``ResourceWarning`` warnings
+* Tulip issue #159: Fix ``windows_utils.socketpair()``. Use ``"127.0.0.1"``
+  (IPv4) or ``"::1"`` (IPv6) host instead of ``"localhost"``, because
+  ``"localhost"`` may be a different IP address. Reject also invalid arguments:
+  only ``AF_INET`` and ``AF_INET6`` with ``SOCK_STREAM`` (and ``proto=0``) are
+  supported.
+* Tulip issue #158: ``Task._step()`` now also sets ``self`` to ``None`` if an
+  exception is raised. ``self`` is set to ``None`` to break a reference cycle.
+
 
 2014-03-04: version 0.2
 -----------------------
