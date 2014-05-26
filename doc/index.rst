@@ -341,8 +341,8 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Version 0.3
------------
+2014-05-26: version 0.3
+-----------------------
 
 Rename the Python module ``asyncio`` to ``trollius`` to support Python 3.4. On
 Python 3.4, there is already a module called ``asyncio`` in the standard
