@@ -35,7 +35,7 @@ Hello World
 Print ``Hello World`` every two seconds, using a coroutine::
 
     import trollius
-    from trolllius import From
+    from trollius import From
 
     @trollius.coroutine
     def greet_every_two_seconds():
