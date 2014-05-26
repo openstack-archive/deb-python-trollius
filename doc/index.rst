@@ -238,11 +238,6 @@ the top of your file::
         # Use Trollius on Python <= 3.2
         import trollius as asyncio
 
-.. note::
-
-   The Trollius module was called ``asyncio`` in Trollius version 0.2. The
-   module name changed to ``trollius`` to support Python 3.4.
-
 It is possible to write code working on both projects using only callbacks.
 This option is used by the following projects which work on Trollius and Tulip:
 
@@ -260,6 +255,16 @@ caller can decide to use callback using ``fut.add_done_callback(callback)`` or
 to use coroutines (``yield From(fut)`` for Trollius, or ``yield from fut`` for
 Tulip). This option is used by the `aiodns <https://github.com/saghul/aiodns>`_
 project for example.
+
+It is possible to write an application working on Trollius or asyncio with the
+same code base, but it is not possible yet to run an application using Tulip
+using a module using Trollius. The module must use the same module than
+modules.
+
+.. note::
+
+   The Trollius module was called ``asyncio`` in Trollius version 0.2. The
+   module name changed to ``trollius`` to support Python 3.4.
 
 
 Run tests
@@ -339,7 +344,7 @@ Change log
 Version 0.3
 -----------
 
-Rename the Python module ``asyncio`` to "trollius`` to support Python 3.4.
+Rename the Python module ``asyncio`` to ``trollius`` to support Python 3.4.
 
 On Python 3.4, there is already a module called ``asyncio`` in the standard
 library which conflicts with Trollius ``asyncio`` (of Trollius 0.2). To write
