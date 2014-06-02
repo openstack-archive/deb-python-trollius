@@ -247,6 +247,8 @@ This option is used by the following projects which work on Trollius and Tulip:
 * `Pulsar <http://pythonhosted.org/pulsar/>`_: Event driven concurrent
   framework for Python. With pulsar you can write asynchronous servers
   performing one or several activities in different threads and/or processes.
+  Trollius 0.3 requires Pulsar 0.8.2 or later. Pulsar uses the ``asyncio``
+  module if available, or import ``trollius``.
 * It looks like `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and
   Trollius.
 
