@@ -343,6 +343,11 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Version 0.3.1
+-------------
+
+Synchronize with Tulip.
+
 2014-05-26: version 0.3
 -----------------------
 
