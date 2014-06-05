@@ -606,6 +606,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         # Ensure that the socket is closed on timeout
         sock = mock.Mock()
         m_socket.socket.return_value = sock
+        m_socket.error = socket.error
 
         def getaddrinfo(*args, **kw):
             fut = asyncio.Future(loop=self.loop)
