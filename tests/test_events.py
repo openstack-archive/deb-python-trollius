@@ -1089,6 +1089,7 @@ class EventLoopTestsMixin(object):
     def test_internal_fds(self):
         loop = self.create_event_loop()
         if not isinstance(loop, selector_events.BaseSelectorEventLoop):
+            loop.close()
             self.skipTest('loop is not a BaseSelectorEventLoop')
 
         self.assertEqual(1, loop._internal_fds)

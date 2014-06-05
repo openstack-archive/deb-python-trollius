@@ -96,7 +96,10 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
 
         self.loop._selector.close()
         self.loop._selector = selector = mock.Mock()
+        self.assertFalse(self.loop.is_closed())
+
         self.loop.close()
+        self.assertTrue(self.loop.is_closed())
         self.assertIsNone(self.loop._selector)
         self.assertIsNone(self.loop._csock)
         self.assertIsNone(self.loop._ssock)
@@ -105,8 +108,19 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         csock.close.assert_called_with()
         remove_reader.assert_called_with(7)
 
+        # it should be possible to call close() more than once
         self.loop.close()
         self.loop.close()
+
+        # operation blocked when the loop is closed
+        f = asyncio.Future(loop=self.loop)
+        self.assertRaises(RuntimeError, self.loop.run_forever)
+        self.assertRaises(RuntimeError, self.loop.run_until_complete, f)
+        fd = 0
+        def callback():
+            pass
+        self.assertRaises(RuntimeError, self.loop.add_reader, fd, callback)
+        self.assertRaises(RuntimeError, self.loop.add_writer, fd, callback)
 
     def test_close_no_selector(self):
         ssock = self.loop._ssock
@@ -117,9 +131,6 @@ class BaseSelectorEventLoopTests(test_utils.TestCase):
         self.loop._selector = None
         self.loop.close()
         self.assertIsNone(self.loop._selector)
-        self.assertFalse(ssock.close.called)
-        self.assertFalse(csock.close.called)
-        self.assertFalse(remove_reader.called)
 
     def test_socketpair(self):
         self.assertRaises(NotImplementedError, self.loop._socketpair)
@@ -731,6 +742,8 @@ class SelectorSocketTransportTests(test_utils.TestCase):
         tr.resume_reading()
         self.assertFalse(tr._paused)
         self.loop.assert_reader(7, tr._read_ready)
+        with self.assertRaises(RuntimeError):
+            tr.resume_reading()
 
     def test_read_ready(self):
         transport = _SelectorSocketTransport(
@@ -1145,6 +1158,8 @@ class SelectorSslTransportTests(test_utils.TestCase):
         tr.resume_reading()
         self.assertFalse(tr._paused)
         self.loop.assert_reader(1, tr._read_ready)
+        with self.assertRaises(RuntimeError):
+            tr.resume_reading()
 
     def test_write(self):
         transport = self._make_one()

@@ -122,6 +122,7 @@ class Server(events.AbstractServer):
 class BaseEventLoop(events.AbstractEventLoop):
 
     def __init__(self):
+        self._closed = False
         self._ready = collections.deque()
         self._scheduled = []
         self._default_executor = None
@@ -130,6 +131,11 @@ class BaseEventLoop(events.AbstractEventLoop):
         self._clock_resolution = time_monotonic_resolution
         self._exception_handler = None
         self._debug = False
+
+    def __repr__(self):
+        return ('<%s running=%s closed=%s debug=%s>'
+                % (self.__class__.__name__, self.is_running(),
+                   self.is_closed(), self.get_debug()))
 
     def _make_socket_transport(self, sock, protocol, waiter=None,
                                extra=None, server=None):
@@ -176,8 +182,13 @@ class BaseEventLoop(events.AbstractEventLoop):
         """Process selector events."""
         raise NotImplementedError
 
+    def _check_closed(self):
+        if self._closed:
+            raise RuntimeError('Event loop is closed')
+
     def run_forever(self):
         """Run until stop() is called."""
+        self._check_closed()
         if self._running:
             raise RuntimeError('Event loop is running.')
         self._running = True
@@ -201,6 +212,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         Return the Future's result, or raise its exception.
         """
+        self._check_closed()
         future = tasks.async(future, loop=self)
         future.add_done_callback(_raise_stop_error)
         self.run_forever()
@@ -225,12 +237,19 @@ class BaseEventLoop(events.AbstractEventLoop):
         This clears the queues and shuts down the executor,
         but does not wait for the executor to finish.
         """
+        if self._closed:
+            return
+        self._closed = True
         self._ready.clear()
         del self._scheduled[:]
         executor = self._default_executor
         if executor is not None:
             self._default_executor = None
             executor.shutdown(wait=False)
+
+    def is_closed(self):
+        """Returns True if the event loop was closed."""
+        return self._closed
 
     def is_running(self):
         """Returns running status of event loop."""
@@ -415,6 +434,10 @@ class BaseEventLoop(events.AbstractEventLoop):
                     if sock is not None:
                         sock.close()
                     exceptions.append(exc)
+                except:
+                    if sock is not None:
+                        sock.close()
+                    raise
                 else:
                     break
             else:
@@ -515,6 +538,10 @@ class BaseEventLoop(events.AbstractEventLoop):
                 if sock is not None:
                     sock.close()
                 exceptions.append(exc)
+            except:
+                if sock is not None:
+                    sock.close()
+                raise
             else:
                 break
         else:

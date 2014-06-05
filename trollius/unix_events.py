@@ -235,6 +235,9 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
                     raise OSError(errno.EADDRINUSE, msg)
                 else:
                     raise
+            except:
+                sock.close()
+                raise
         else:
             if sock is None:
                 raise ValueError(

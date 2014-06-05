@@ -58,6 +58,7 @@ install_options = {
     ],
 
     "packages": ["trollius"],
+    "test_suite": "runtests.runtests",
 
     "ext_modules": extensions,
 }
