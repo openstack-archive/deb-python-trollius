@@ -149,9 +149,16 @@ def iscoroutinefunction(func):
     return getattr(func, '_is_coroutine', False)
 
 
+if asyncio is not None:
+    # Accept also asyncio Future objects for interoperability
+    _COROUTINE_TYPES = (CoroWrapper, asyncio.tasks.CoroWrapper)
+else:
+    _COROUTINE_TYPES = CoroWrapper
+
+
 def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
-    return isinstance(obj, CoroWrapper) or inspect.isgenerator(obj)
+    return isinstance(obj, _COROUTINE_TYPES) or inspect.isgenerator(obj)
 
 class FromWrapper(object):
     __slots__ = ('obj',)
