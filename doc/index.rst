@@ -6,16 +6,43 @@ Trollius
    :align: right
    :target: http://commons.wikimedia.org/wiki/File:Trollius_altaicus.jpg
 
-Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on Python
-2. Trollius works on Python 2.6-3.4. It has been tested on Windows, Linux,
-Mac OS X, FreeBSD and OpenIndiana.
+Trollius provides infrastructure for writing single-threaded concurrent
+code using coroutines, multiplexing I/O access over sockets and other
+resources, running network clients and servers, and other related primitives.
+Here is a more detailed list of the package contents:
+
+* a pluggable event loop with various system-specific implementations;
+
+* transport and protocol abstractions (similar to those in `Twisted
+  <http://twistedmatrix.com/>`_);
+
+* concrete support for TCP, UDP, SSL, subprocess pipes, delayed calls, and
+  others (some may be system-dependent);
+
+* a ``Future`` class that mimics the one in the ``concurrent.futures`` module,
+  but adapted for use with the event loop;
+
+* coroutines and tasks based on generators (``yield``), to help write
+  concurrent code in a sequential fashion;
+
+* cancellation support for ``Future``\s and coroutines;
+
+* synchronization primitives for use between coroutines in a single thread,
+  mimicking those in the ``threading`` module;
+
+* an interface for passing work off to a threadpool, for times when you
+  absolutely, positively have to use a library that makes blocking I/O calls.
+
+Trollius is a portage of the Tulip project (``asyncio`` module, `PEP 3156
+<http://legacy.python.org/dev/peps/pep-3156/>`_) on Python 2. Trollius works on
+Python 2.6-3.4. It has been tested on Windows, Linux, Mac OS X, FreeBSD and
+OpenIndiana.
 
 * `Asyncio documentation <http://docs.python.org/dev/library/asyncio.html>`_
 * `Trollius documentation <http://trollius.readthedocs.org/>`_ (this document)
 * `Trollius project in the Python Cheeseshop (PyPI)
   <https://pypi.python.org/pypi/trollius>`_
 * `Trollius project at Bitbucket <https://bitbucket.org/enovance/trollius>`_
-
 * Copyright/license: Open source, Apache 2.0. Enjoy!
 
 See also the `Tulip project <http://code.google.com/p/tulip/>`_.
@@ -28,9 +55,16 @@ The documentation of the asyncio is part of the Python project. It can be read
 online: `asyncio - Asynchronous I/O, event loop, coroutines and tasks
 <http://docs.python.org/dev/library/asyncio.html>`_.
 
+To adapt asyncio examples for Trollius, "just":
 
-Hello World
-===========
+* replace ``asyncio`` with ``trollius``
+  (or use ``import trollius as asyncio``)
+* replace ``yield from ...`` with ``yield From(...)``
+* in coroutines, replace ``return res`` with ``raise Return(res)``
+
+
+Trollius Hello World
+====================
 
 Print ``Hello World`` every two seconds, using a coroutine::
 
@@ -53,7 +87,7 @@ Install Trollius
 Packages for Linux
 ------------------
 
-* `Debian package (0.1.4 available in Sid)
+* `Debian package
   <https://packages.debian.org/fr/sid/python-trollius>`_
 * `ArchLinux package
   <https://aur.archlinux.org/packages/python2-trollius/>`_
