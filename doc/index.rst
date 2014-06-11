@@ -172,19 +172,18 @@ Tulip               Trollius
 ``return x, y``     ``raise Return(x, y)``
 ==================  ======================
 
-.. note::
+Because of this major difference, it was decided to call the module
+``trollius`` instead of ``asyncio``. This choice also allows to use Trollius
+on Python 3.4 and later.
 
-   Trollius 0.1 used ``yield ...`` syntax in coroutines.
 
 Other differences
 -----------------
 
-* The name of the Trollius module is ``trollius``, whereas the asyncio module
-  name is ``asyncio`` in Tulip and Python 3.4+
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
-  ``ssl.SSLContext`` of Python 3.3: no options, verify_mode cannot be modified
-  (fixed to ``CERT_NONE``), no set_default_verify_paths() method, no SNI, etc.
-  The SSL transport does not have the ``compression`` extra info in Python 2.
+  ``ssl.SSLContext`` of Python 3.3: no options, verify_mode is set to
+  ``CERT_NONE`` and cannot be modified, no set_default_verify_paths() method,
+  no SNI, etc. The SSL transport does not have the ``compression`` extra info.
 * Python 2 does not support keyword-only parameters.
 * If the ``concurrent.futures`` module is missing,
   ``BaseEventLoop.run_in_executor()`` uses a synchronous executor instead of a
@@ -226,7 +225,7 @@ Write code working on Trollius and Tulip
 ========================================
 
 Trollius and Tulip are different, especially for coroutines (``yield
-From(...)`` vs ``yield from``).
+From(...)`` vs ``yield from ...``).
 
 To use asyncio or Trollius on Python 2 and Python 3, add the following code at
 the top of your file::
@@ -259,9 +258,9 @@ Tulip). This option is used by the `aiodns <https://github.com/saghul/aiodns>`_
 project for example.
 
 It is possible to write an application working on Trollius or asyncio with the
-same code base, but it is not possible yet to run an application using Tulip
-using a module using Trollius. The module must use the same module than
-modules.
+same code base. It is not possible yet to run an application using Tulip
+with a module using Trollius (or the opposite). Applications and modules
+should both use Tulip or both use Trollius. Be careful of imports.
 
 .. note::
 
