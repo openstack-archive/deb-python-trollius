@@ -26,11 +26,13 @@ def trollius_coroutine(coro):
     raise trollius.Return("trollius")
 
 def main():
+    # use trollius event loop policy in asyncio
+    policy = trollius.get_event_loop_policy()
+    asyncio.set_event_loop_policy(policy)
+
     # create an event loop for the main thread: use Trollius event loop
     loop = trollius.get_event_loop()
-
-    # set the asyncio event loop (for the main thread)
-    asyncio.set_event_loop(loop)
+    assert asyncio.get_event_loop() is loop
 
     print("[ asyncio coroutine called from trollius coroutine ]")
     coro1 = asyncio_noop()

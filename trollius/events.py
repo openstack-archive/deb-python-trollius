@@ -118,9 +118,11 @@ class AbstractServer(object):
 
 
 if asyncio is not None:
-    # Reuse asyncio class so asyncio.set_event_loop() accepts Trollius event
-    # loops
+    # Reuse asyncio classes so asyncio.set_event_loop() and
+    # asyncio.set_event_loop_policy() accept Trollius event loop and trollius
+    # event loop policy
     AbstractEventLoop = asyncio.AbstractEventLoop
+    AbstractEventLoopPolicy = asyncio.AbstractEventLoopPolicy
 else:
     class AbstractEventLoop(object):
         """Abstract event loop."""
@@ -359,30 +361,30 @@ else:
             raise NotImplementedError
 
 
-class AbstractEventLoopPolicy(object):
-    """Abstract policy for accessing the event loop."""
+    class AbstractEventLoopPolicy(object):
+        """Abstract policy for accessing the event loop."""
 
-    def get_event_loop(self):
-        """XXX"""
-        raise NotImplementedError
+        def get_event_loop(self):
+            """XXX"""
+            raise NotImplementedError
 
-    def set_event_loop(self, loop):
-        """XXX"""
-        raise NotImplementedError
+        def set_event_loop(self, loop):
+            """XXX"""
+            raise NotImplementedError
 
-    def new_event_loop(self):
-        """XXX"""
-        raise NotImplementedError
+        def new_event_loop(self):
+            """XXX"""
+            raise NotImplementedError
 
-    # Child processes handling (Unix only).
+        # Child processes handling (Unix only).
 
-    def get_child_watcher(self):
-        """XXX"""
-        raise NotImplementedError
+        def get_child_watcher(self):
+            """XXX"""
+            raise NotImplementedError
 
-    def set_child_watcher(self, watcher):
-        """XXX"""
-        raise NotImplementedError
+        def set_child_watcher(self, watcher):
+            """XXX"""
+            raise NotImplementedError
 
 
 class BaseDefaultEventLoopPolicy(AbstractEventLoopPolicy):
