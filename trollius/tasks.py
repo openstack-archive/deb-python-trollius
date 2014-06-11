@@ -16,6 +16,10 @@ try:
 except ImportError:
     # Python 2.6
     from .py27_weakrefset import WeakSet
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
 
 from . import events
 from . import executor
@@ -23,6 +27,13 @@ from . import futures
 from .locks import Lock, Condition, Semaphore, _ContextManager
 from .coroutines import Return, From, coroutine, iscoroutinefunction, iscoroutine
 from . import coroutines
+
+
+if asyncio is not None:
+    # Accept also asyncio Future objects for interoperability
+    _FUTURE_CLASSES = (futures.Future, asyncio.Future)
+else:
+    _FUTURE_CLASSES = futures.Future
 
 
 @coroutine
@@ -224,8 +235,10 @@ class Task(futures.Future):
         except Return as exc:
             exc.raised = True
             self.set_result(exc.value)
-        except StopIteration:
-            self.set_result(None)
+        except StopIteration as exc:
+            # asyncio Task object? get the result of the coroutine
+            result = getattr(exc, 'value', None)
+            self.set_result(result)
         except futures.CancelledError as exc:
             super(Task, self).cancel()  # I.e., Future.cancel(self).
         except Exception as exc:
@@ -252,7 +265,7 @@ class Task(futures.Future):
                 coro = _lock_coroutine(result)
                 result = Task(coro, loop=self._loop)
 
-            if isinstance(result, futures.Future):
+            if isinstance(result, _FUTURE_CLASSES):
                 # Yielded Future must come from Future.__iter__().
                 result.add_done_callback(self._wakeup)
                 self._fut_waiter = result
