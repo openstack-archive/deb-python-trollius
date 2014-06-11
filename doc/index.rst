@@ -207,8 +207,10 @@ Tulip               Trollius
 ==================  ======================
 
 Because of this major difference, it was decided to call the module
-``trollius`` instead of ``asyncio``. This choice also allows to use Trollius
-on Python 3.4 and later.
+``trollius`` instead of ``asyncio``. This choice also allows to use Trollius on
+Python 3.4 and later. Changing imports is not enough to use Trollius code with
+asyncio: the asyncio event loop explicit rejects coroutines using ``yield``
+(instead of ``yield from``).
 
 
 Other differences
