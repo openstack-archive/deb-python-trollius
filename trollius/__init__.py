@@ -1,10 +1,10 @@
-"""The asyncio package, tracking PEP 3156."""
+"""The trollius package, tracking PEP 3156."""
 
 import sys
 
 # The selectors module is in the stdlib in Python 3.4 but not in 3.3.
 # Do this first, so the other submodules can use "from . import selectors".
-# Prefer asyncio/selectors.py over the stdlib one, as ours may be newer.
+# Prefer trollius/selectors.py over the stdlib one, as ours may be newer.
 try:
     from . import selectors
 except ImportError:

@@ -285,7 +285,7 @@ class Task(futures.Future):
 
 # wait() and as_completed() similar to those in PEP 3148.
 
-# Export symbols in asyncio.tasks for compatibility with Tulip
+# Export symbols in trollius.tasks for compatibility with Tulip
 FIRST_COMPLETED = executor.FIRST_COMPLETED
 FIRST_EXCEPTION = executor.FIRST_EXCEPTION
 ALL_COMPLETED = executor.ALL_COMPLETED
@@ -301,7 +301,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
 
     Usage:
 
-        done, pending = yield From(asyncio.wait(fs))
+        done, pending = yield From(trollius.wait(fs))
 
     Note: This does not raise TimeoutError! Futures that aren't done
     when the timeout occurs are returned in the second set.
@@ -339,7 +339,7 @@ def wait_for(fut, timeout, loop=None):
 
     Usage:
 
-        result = yield From(asyncio.wait_for(fut, 10.0))
+        result = yield From(trollius.wait_for(fut, 10.0))
 
     """
     if loop is None:
