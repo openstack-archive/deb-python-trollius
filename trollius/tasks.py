@@ -21,6 +21,7 @@ try:
 except ImportError:
     asyncio = None
 
+from . import compat
 from . import events
 from . import executor
 from . import futures
@@ -232,12 +233,16 @@ class Task(futures.Future):
                 result = coro.send(value)
             else:
                 result = next(coro)
-        except Return as exc:
-            exc.raised = True
-            self.set_result(exc.value)
         except StopIteration as exc:
-            # asyncio Task object? get the result of the coroutine
-            result = getattr(exc, 'value', None)
+            if compat.PY33:
+                # asyncio Task object? get the result of the coroutine
+                result = exc.value
+            else:
+                if isinstance(exc, Return):
+                    exc.raised = True
+                    result = exc.value
+                else:
+                    result = None
             self.set_result(result)
         except futures.CancelledError as exc:
             super(Task, self).cancel()  # I.e., Future.cancel(self).
