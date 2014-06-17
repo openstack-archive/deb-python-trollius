@@ -21,7 +21,7 @@ from .log import logger
 # is that tracebacks show entries for the CoroWrapper.__next__ method
 # when _DEBUG is true.
 _DEBUG = (not sys.flags.ignore_environment
-          and bool(os.environ.get('PYTHONASYNCIODEBUG')))
+          and bool(os.environ.get('TROLLIUSDEBUG')))
 
 
 if compat.PY33:
