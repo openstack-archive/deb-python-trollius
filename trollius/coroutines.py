@@ -2,8 +2,13 @@ import functools
 import inspect
 import os
 import sys
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
 
-from trollius import futures
+from . import compat
+from . import futures
 from .log import logger
 
 # If you set _DEBUG to true, @coroutine will wrap the resulting
@@ -19,20 +24,37 @@ _DEBUG = (not sys.flags.ignore_environment
           and bool(os.environ.get('PYTHONASYNCIODEBUG')))
 
 
-class Return(StopIteration):
-    def __init__(self, *value):
-        StopIteration.__init__(self)
-        if not value:
-            self.value = None
-        elif len(value) == 1:
-            self.value = value[0]
+if compat.PY33:
+    # Don't use the Return class on Python 3.3 and later to support asyncio
+    # coroutines (to avoid the warning emited in Return destructor).
+    #
+    # The problem is that Return inherits from StopIteration.  "yield from
+    # trollius_coroutine". Task._step() does not receive the Return exception,
+    # because "yield from" handles it internally. So it's not possible to set
+    # the raised attribute to True to avoid the warning in Return destructor.
+    def Return(*args):
+        if not args:
+            value = None
+        elif len(args) == 1:
+            value = args[0]
         else:
-            self.value = value
-        self.raised = False
+            value = args
+        return StopIteration(value)
+else:
+    class Return(StopIteration):
+        def __init__(self, *args):
+            StopIteration.__init__(self)
+            if not args:
+                self.value = None
+            elif len(args) == 1:
+                self.value = args[0]
+            else:
+                self.value = args
+            self.raised = False
 
-    def __del__(self):
-        if not self.raised:
-            logger.error('Return(%r) used without raise', self.value)
+        def __del__(self):
+            if not self.raised:
+                logger.error('Return(%r) used without raise', self.value)
 
 
 class CoroWrapper(object):
@@ -127,9 +149,16 @@ def iscoroutinefunction(func):
     return getattr(func, '_is_coroutine', False)
 
 
+if asyncio is not None:
+    # Accept also asyncio Future objects for interoperability
+    _COROUTINE_TYPES = (CoroWrapper, asyncio.tasks.CoroWrapper)
+else:
+    _COROUTINE_TYPES = CoroWrapper
+
+
 def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
-    return isinstance(obj, CoroWrapper) or inspect.isgenerator(obj)
+    return isinstance(obj, _COROUTINE_TYPES) or inspect.isgenerator(obj)
 
 class FromWrapper(object):
     __slots__ = ('obj',)
