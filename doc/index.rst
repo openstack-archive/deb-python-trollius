@@ -385,6 +385,7 @@ Version 0.4
 
 Changes between Trollius 0.3 and 0.4:
 
+* Trollius event loop now supports asyncio coroutines.
 * The ``PYTHONASYNCIODEBUG`` envrionment variable has been renamed to
   ``TROLLIUSDEBUG``
 * Synchronize with Tulip.
