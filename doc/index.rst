@@ -216,6 +216,8 @@ asyncio: the asyncio event loop explicit rejects coroutines using ``yield``
 Other differences
 -----------------
 
+* Trollius uses the ``TROLLIUSDEBUG`` envrionment variable instead of
+  the ``PYTHONASYNCIODEBUG`` envrionment variable
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
   ``ssl.SSLContext`` of Python 3.3: no options, verify_mode is set to
   ``CERT_NONE`` and cannot be modified, no set_default_verify_paths() method,
@@ -378,10 +380,15 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Version 0.3.1
--------------
+Version 0.4
+-----------
 
-Synchronize with Tulip.
+Changes between Trollius 0.3 and 0.4:
+
+* The ``PYTHONASYNCIODEBUG`` envrionment variable has been renamed to
+  ``TROLLIUSDEBUG``
+* Synchronize with Tulip.
+
 
 2014-05-26: version 0.3
 -----------------------
