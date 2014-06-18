@@ -135,29 +135,6 @@ if not hasattr(_TestCase, 'assertRaisesRegex'):
             return True
 
 
-    class TestCase(_TestCase):
-        def assertRaisesRegex(self, expected_exception, expected_regex,
-                              callable_obj=None, *args, **kwargs):
-            """Asserts that the message in a raised exception matches a regex.
-
-            Args:
-                expected_exception: Exception class expected to be raised.
-                expected_regex: Regex (re pattern object or string) expected
-                        to be found in error message.
-                callable_obj: Function to be called.
-                msg: Optional message used in case of failure. Can only be used
-                        when assertRaisesRegex is used as a context manager.
-                args: Extra args.
-                kwargs: Extra kwargs.
-            """
-            context = _AssertRaisesContext(expected_exception, self, callable_obj,
-                                           expected_regex)
-
-            return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
-else:
-    TestCase = _TestCase
-
-
 def dummy_ssl_context():
     if ssl is None:
         return None
@@ -499,3 +476,47 @@ class MockPattern(str):
     """
     def __eq__(self, other):
         return bool(re.search(str(self), other, re.S))
+
+
+def get_function_source(func):
+    source = events._get_function_source(func)
+    if source is None:
+        raise ValueError("unable to get the source of %r" % (func,))
+    return source
+
+
+class TestCase(_TestCase):
+    def set_event_loop(self, loop, cleanup=True):
+        assert loop is not None
+        # ensure that the event loop is passed explicitly in asyncio
+        events.set_event_loop(None)
+        if cleanup:
+            self.addCleanup(loop.close)
+
+    def new_test_loop(self, gen=None):
+        loop = TestLoop(gen)
+        self.set_event_loop(loop)
+        return loop
+
+    def tearDown(self):
+        events.set_event_loop(None)
+
+    if not hasattr(_TestCase, 'assertRaisesRegex'):
+        def assertRaisesRegex(self, expected_exception, expected_regex,
+                              callable_obj=None, *args, **kwargs):
+            """Asserts that the message in a raised exception matches a regex.
+
+            Args:
+                expected_exception: Exception class expected to be raised.
+                expected_regex: Regex (re pattern object or string) expected
+                        to be found in error message.
+                callable_obj: Function to be called.
+                msg: Optional message used in case of failure. Can only be used
+                        when assertRaisesRegex is used as a context manager.
+                args: Extra args.
+                kwargs: Extra kwargs.
+            """
+            context = _AssertRaisesContext(expected_exception, self, callable_obj,
+                                           expected_regex)
+
+            return context.handle('assertRaisesRegex', callable_obj, args, kwargs)

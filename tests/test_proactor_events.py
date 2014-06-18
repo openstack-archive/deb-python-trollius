@@ -16,7 +16,7 @@ import trollius as asyncio
 class ProactorSocketTransportTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
+        self.loop = self.new_test_loop()
         self.proactor = mock.Mock()
         self.loop._proactor = self.proactor
         self.protocol = test_utils.make_test_protocol(asyncio.Protocol)
@@ -357,6 +357,7 @@ class BaseProactorEventLoopTests(test_utils.TestCase):
                 return (self.ssock, self.csock)
 
         self.loop = EventLoop(self.proactor)
+        self.set_event_loop(self.loop, cleanup=False)
 
     @mock.patch.object(BaseProactorEventLoop, 'call_soon')
     @mock.patch.object(BaseProactorEventLoop, '_socketpair')

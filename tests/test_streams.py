@@ -24,7 +24,7 @@ class StreamReaderTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
+        self.set_event_loop(self.loop)
 
     def tearDown(self):
         # just in case if we have transport close callbacks
@@ -32,6 +32,7 @@ class StreamReaderTests(test_utils.TestCase):
 
         self.loop.close()
         gc.collect()
+        super(StreamReaderTests, self).tearDown()
 
     @mock.patch('trollius.streams.events')
     def test_ctor_global_loop(self, m_events):

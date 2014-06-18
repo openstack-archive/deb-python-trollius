@@ -1,4 +1,5 @@
 from trollius import subprocess
+from trollius import test_utils
 import trollius as asyncio
 import os
 import signal
@@ -6,7 +7,6 @@ import sys
 import unittest
 from trollius import From, Return
 from trollius import test_support as support
-from trollius import test_utils
 if sys.platform != 'win32':
     from trollius import unix_events
 from trollius.py33_exceptions import BrokenPipeError
@@ -28,7 +28,7 @@ else:
                             'sys.stdout.write(data)'))
 PROGRAM_CAT = [sys.executable, '-c', PROGRAM_CAT]
 
-class SubprocessMixin:
+class SubprocessMixin(object):
 
     def test_stdin_stdout(self):
         args = PROGRAM_CAT
@@ -163,7 +163,7 @@ if sys.platform != 'win32':
             policy = asyncio.get_event_loop_policy()
             policy.set_child_watcher(None)
             self.loop.close()
-            policy.set_event_loop(None)
+            super(SubprocessWatcherMixin, self).tearDown()
 
     class SubprocessSafeWatcherTests(SubprocessWatcherMixin,
                                      test_utils.TestCase):
@@ -190,6 +190,7 @@ else:
             policy = asyncio.get_event_loop_policy()
             self.loop.close()
             policy.set_event_loop(None)
+            super(SubprocessProactorTests, self).tearDown()
 
 
 if __name__ == '__main__':

@@ -35,10 +35,7 @@ class SelectorEventLoopSignalTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = asyncio.SelectorEventLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.set_event_loop(self.loop)
 
     def test_check_signal(self):
         self.assertRaises(
@@ -214,10 +211,7 @@ class SelectorEventLoopUnixSocketTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = asyncio.SelectorEventLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.set_event_loop(self.loop)
 
     def test_create_unix_server_existing_path_sock(self):
         with test_utils.unix_socket_path() as path:
@@ -310,7 +304,7 @@ class SelectorEventLoopUnixSocketTests(test_utils.TestCase):
 class UnixReadPipeTransportTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
+        self.loop = self.new_test_loop()
         self.protocol = test_utils.make_test_protocol(asyncio.Protocol)
         self.pipe = mock.Mock(spec_set=io.RawIOBase)
         self.pipe.fileno.return_value = 5
@@ -454,8 +448,9 @@ class UnixReadPipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(4, sys.getrefcount(self.loop))
-                         #pprint.pformat(gc.get_referrers(self.loop)))
+        self.assertEqual(5, sys.getrefcount(self.loop)
+                         #, pprint.pformat(gc.get_referrers(self.loop))
+                         )
 
     def test__call_connection_lost_with_err(self):
         tr = unix_events._UnixReadPipeTransport(
@@ -471,14 +466,15 @@ class UnixReadPipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(4, sys.getrefcount(self.loop))
-                         #pprint.pformat(gc.get_referrers(self.loop)))
+        self.assertEqual(5, sys.getrefcount(self.loop)
+                         #, pprint.pformat(gc.get_referrers(self.loop))
+                         )
 
 
 class UnixWritePipeTransportTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
+        self.loop = self.new_test_loop()
         self.protocol = test_utils.make_test_protocol(asyncio.BaseProtocol)
         self.pipe = mock.Mock(spec_set=io.RawIOBase)
         self.pipe.fileno.return_value = 5
@@ -740,8 +736,9 @@ class UnixWritePipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(4, sys.getrefcount(self.loop))
-                         #pprint.pformat(gc.get_referrers(self.loop)))
+        self.assertEqual(5, sys.getrefcount(self.loop)
+                         #, pprint.pformat(gc.get_referrers(self.loop))
+                         )
 
     def test__call_connection_lost_with_err(self):
         tr = unix_events._UnixWritePipeTransport(
@@ -756,8 +753,9 @@ class UnixWritePipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(4, sys.getrefcount(self.loop))
-                         #pprint.pformat(gc.get_referrers(self.loop)))
+        self.assertEqual(5, sys.getrefcount(self.loop)
+                         #, pprint.pformat(gc.get_referrers(self.loop))
+                         )
 
     def test_close(self):
         tr = unix_events._UnixWritePipeTransport(
@@ -837,7 +835,7 @@ class ChildWatcherTestsMixin:
     ignore_warnings = mock.patch.object(log.logger, "warning")
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
+        self.loop = self.new_test_loop()
         self.running = False
         self.zombies = {}
 
@@ -1404,7 +1402,7 @@ class ChildWatcherTestsMixin:
 
         # attach a new loop
         old_loop = self.loop
-        self.loop = test_utils.TestLoop()
+        self.loop = self.new_test_loop()
         patch = mock.patch.object
 
         with patch(old_loop, "remove_signal_handler") as m_old_remove:
@@ -1459,7 +1457,7 @@ class ChildWatcherTestsMixin:
         self.assertFalse(callback3.called)
 
         # attach a new loop
-        self.loop = test_utils.TestLoop()
+        self.loop = self.new_test_loop()
 
         with mock.patch.object(
                 self.loop, "add_signal_handler") as m_add_signal_handler:

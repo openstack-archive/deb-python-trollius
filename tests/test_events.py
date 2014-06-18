@@ -6,6 +6,7 @@ import gc
 import io
 import os
 import platform
+import re
 import signal
 import socket
 import subprocess
@@ -235,7 +236,7 @@ class EventLoopTestsMixin(object):
     def setUp(self):
         super(EventLoopTestsMixin, self).setUp()
         self.loop = self.create_event_loop()
-        asyncio.set_event_loop(None)
+        self.set_event_loop(self.loop)
 
     def tearDown(self):
         # just in case if we have transport close callbacks
@@ -1765,48 +1766,46 @@ else:
             return asyncio.SelectorEventLoop(selectors.SelectSelector())
 
 
+def noop():
+    pass
+
+
 class HandleTests(test_utils.TestCase):
+
+    def setUp(self):
+        self.loop = None
 
     def test_handle(self):
         def callback(*args):
             return args
 
         args = ()
-        h = asyncio.Handle(callback, args, mock.Mock())
+        h = asyncio.Handle(callback, args, self.loop)
         self.assertIs(h._callback, callback)
         self.assertIs(h._args, args)
         self.assertFalse(h._cancelled)
 
-        r = repr(h)
-        self.assertTrue(r.startswith('Handle(<function '))
-        self.assertTrue(r.endswith('>, ())'))
-
         h.cancel()
         self.assertTrue(h._cancelled)
-
-        r = repr(h)
-        self.assertTrue(r.startswith('Handle(<function '))
-        self.assertTrue(r.endswith('())<cancelled>'), r)
 
     def test_handle_from_handle(self):
         def callback(*args):
             return args
-        m_loop = object()
-        h1 = asyncio.Handle(callback, (), loop=m_loop)
+        h1 = asyncio.Handle(callback, (), loop=self.loop)
         self.assertRaises(
-            AssertionError, asyncio.Handle, h1, (), m_loop)
+            AssertionError, asyncio.Handle, h1, (), self.loop)
 
     def test_callback_with_exception(self):
         def callback():
             raise ValueError()
 
-        m_loop = mock.Mock()
-        m_loop.call_exception_handler = mock.Mock()
+        self.loop = mock.Mock()
+        self.loop.call_exception_handler = mock.Mock()
 
-        h = asyncio.Handle(callback, (), m_loop)
+        h = asyncio.Handle(callback, (), self.loop)
         h._run()
 
-        m_loop.call_exception_handler.assert_called_with({
+        self.loop.call_exception_handler.assert_called_with({
             'message': test_utils.MockPattern('Exception in callback.*'),
             'exception': mock.ANY,
             'handle': h
@@ -1814,8 +1813,49 @@ class HandleTests(test_utils.TestCase):
 
     def test_handle_weakref(self):
         wd = weakref.WeakValueDictionary()
-        h = asyncio.Handle(lambda: None, (), object())
+        h = asyncio.Handle(lambda: None, (), self.loop)
         wd['h'] = h  # Would fail without __weakref__ slot.
+
+    def test_repr(self):
+        # simple function
+        h = asyncio.Handle(noop, (), self.loop)
+        src = test_utils.get_function_source(noop)
+        self.assertEqual(repr(h),
+                        'Handle(noop at %s:%s, ())' % src)
+
+        # cancelled handle
+        h.cancel()
+        self.assertEqual(repr(h),
+                        'Handle(noop at %s:%s, ())<cancelled>' % src)
+
+        # decorated function
+        cb = asyncio.coroutine(noop)
+        h = asyncio.Handle(cb, (), self.loop)
+        self.assertEqual(repr(h),
+                        'Handle(noop at %s:%s, ())' % src)
+
+        # partial function
+        cb = functools.partial(noop)
+        h = asyncio.Handle(cb, (), self.loop)
+        filename, lineno = src
+        regex = (r'^Handle\(functools.partial\('
+                 r'<function noop .*>\) at %s:%s, '
+                 r'\(\)\)$' % (re.escape(filename), lineno))
+        self.assertRegex(repr(h), regex)
+
+        # partial method
+        if sys.version_info >= (3, 4):
+            method = HandleTests.test_repr
+            cb = functools.partialmethod(method)
+            src = test_utils.get_function_source(method)
+            h = asyncio.Handle(cb, (), self.loop)
+
+            filename, lineno = src
+            regex = (r'^Handle\(functools.partialmethod\('
+                     r'<function HandleTests.test_repr .*>, , \) at %s:%s, '
+                     r'\(\)\)$' % (re.escape(filename), lineno))
+            self.assertRegex(repr(h), regex)
+
 
 
 class TimerTests(test_utils.TestCase):
