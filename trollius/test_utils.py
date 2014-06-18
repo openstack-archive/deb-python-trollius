@@ -520,3 +520,15 @@ class TestCase(_TestCase):
                                            expected_regex)
 
             return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
+
+    if not hasattr(_TestCase, 'assertRegex'):
+        def assertRegex(self, text, expected_regex, msg=None):
+            """Fail the test unless the text matches the regular expression."""
+            if isinstance(expected_regex, (str, bytes)):
+                assert expected_regex, "expected_regex must not be empty."
+                expected_regex = re.compile(expected_regex)
+            if not expected_regex.search(text):
+                msg = msg or "Regex didn't match"
+                msg = '%s: %r not found in %r' % (msg, expected_regex.pattern, text)
+                raise self.failureException(msg)
+
