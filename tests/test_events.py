@@ -1838,9 +1838,12 @@ class HandleTests(test_utils.TestCase):
         cb = functools.partial(noop)
         h = asyncio.Handle(cb, (), self.loop)
         filename, lineno = src
-        regex = (r'^Handle\(functools.partial\('
-                 r'<function noop .*>\) at %s:%s, '
-                 r'\(\)\)$' % (re.escape(filename), lineno))
+        if sys.version_info >= (3,):
+            partial_regex = r'functools.partial\(<function noop .*>\)'
+        else:
+            partial_regex = r'<functools.partial object at 0x[a-f0-9]+>'
+        regex = (r'^Handle\(%s at %s:%s, '
+                 r'\(\)\)$' % (partial_regex, re.escape(filename), lineno))
         self.assertRegex(repr(h), regex)
 
         # partial method
