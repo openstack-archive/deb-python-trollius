@@ -4,6 +4,7 @@ import errno
 import logging
 import socket
 import sys
+import time
 import unittest
 
 import trollius as asyncio
@@ -26,7 +27,7 @@ class BaseEventLoopTests(test_utils.TestCase):
     def setUp(self):
         self.loop = base_events.BaseEventLoop()
         self.loop._selector = mock.Mock()
-        asyncio.set_event_loop(None)
+        self.set_event_loop(self.loop)
 
     def test_not_implemented(self):
         m = mock.Mock()
@@ -242,31 +243,23 @@ class BaseEventLoopTests(test_utils.TestCase):
         self.loop.set_debug(False)
         self.assertFalse(self.loop.get_debug())
 
-    @mock.patch('trollius.base_events.time_monotonic')
     @mock.patch('trollius.base_events.logger')
-    def test__run_once_logging(self, m_logger, m_time_monotonic):
+    def test__run_once_logging(self, m_logger):
+        def slow_select(timeout):
+            time.sleep(1.0)
+            return []
+
         # Log to INFO level if timeout > 1.0 sec.
-        non_local = {
-            'idx': -1,
-            'data': [10.0, 10.0, 12.0, 13.0],
-        }
-
-        def time_monotonic():
-            non_local['idx'] += 1
-            return non_local['data'][non_local['idx']]
-
-        m_time_monotonic.side_effect = time_monotonic
-
-        self.loop._scheduled.append(
-            asyncio.TimerHandle(11.0, lambda: True, (), self.loop))
+        self.loop._selector.select = slow_select
         self.loop._process_events = mock.Mock()
         self.loop._run_once()
         self.assertEqual(logging.INFO, m_logger.log.call_args[0][0])
 
-        non_local['idx'] = -1
-        non_local['data'] = [10.0, 10.0, 10.3, 13.0]
-        self.loop._scheduled = [asyncio.TimerHandle(11.0, lambda: True, (),
-                                                    self.loop)]
+        def fast_select(timeout):
+            time.sleep(0.001)
+            return []
+
+        self.loop._selector.select = fast_select
         self.loop._run_once()
         self.assertEqual(logging.DEBUG, m_logger.log.call_args[0][0])
 
@@ -562,10 +555,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.set_event_loop(self.loop)
 
     @mock.patch('trollius.base_events.socket')
     def test_create_connection_multiple_errors(self, m_socket):
