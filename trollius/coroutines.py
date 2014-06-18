@@ -129,6 +129,8 @@ def coroutine(func):
             if isinstance(res, futures.Future) or inspect.isgenerator(res):
                 res = yield From(res)
             raise Return(res)
+        if not compat.PY3:
+            coro.__wrapped__ = func
 
     if not _DEBUG:
         wrapper = coro
@@ -141,6 +143,8 @@ def coroutine(func):
                 w.__qualname__ = func.__qualname__
             w.__doc__ = func.__doc__
             return w
+        if not compat.PY3:
+            wrapper.__wrapped__ = func
 
     wrapper._is_coroutine = True  # For iscoroutinefunction().
     return wrapper
