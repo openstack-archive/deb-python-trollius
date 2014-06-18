@@ -110,7 +110,7 @@ class Task(futures.Future):
                 text += ' at %s:%s' % (filename, coro.gi_frame.f_lineno)
             else:
                 text += ' done at %s' % filename
-        res = res[:i] + '(<{}>)'.format(text) + res[i:]
+        res = res[:i] + '(<{0}>)'.format(text) + res[i:]
         return res
 
     def get_stack(self, limit=None):
