@@ -56,7 +56,6 @@ class Handle(object):
             cb_repr = getattr(self._callback, '__qualname__', None)
         else:
             cb_repr = getattr(self._callback, '__name__', None)
-        print("HERE %r, %r" % (cb_repr, self._callback))
         if not cb_repr:
             cb_repr = str(self._callback)
 
