@@ -386,11 +386,42 @@ Version 0.4
 
 Changes between Trollius 0.3 and 0.4:
 
-* Trollius event loop now supports asyncio coroutines.
+* Trollius event loop now supports asyncio coroutines:
+
+  - Trollius coroutines can yield asyncio coroutines,
+  - asyncio coroutines can yield Trollius coroutines,
+  - asyncio.set_event_loop() accepts a Trollius event loop,
+  - asyncio.set_event_loop_policy() accepts a Trollius event loop policy.
+
 * The ``PYTHONASYNCIODEBUG`` envrionment variable has been renamed to
   ``TROLLIUSDEBUG``. The environment variable is now used event if the Python
   command line option ``-E`` is used.
 * Synchronize with Tulip.
+
+Tulip changes:
+
+* Python issue 21723: asyncio.Queue: support any type of number (ex: float) for
+  the maximum size. Patch written by Vajrasky Kok.
+* Issue #173: Enhance repr(Handle) and repr(Task): add the filename and line
+  number, when available. For task, the current line number of the coroutine
+  is used.
+* Add BaseEventLoop.is_closed() method. run_forever() and run_until_complete()
+  methods now raises an exception if the event loop was closed.
+* Make sure that socketpair() close sockets on error. Close the listening
+  socket if sock.bind() raises an exception.
+* Fix ResourceWarning: close sockets on errors.
+  BaseEventLoop.create_connection(), BaseEventLoop.create_datagram_endpoint()
+  and _UnixSelectorEventLoop.create_unix_server() now close the newly created
+  socket on error.
+* Rephrase and fix docstrings.
+* Fix tests on Windows: wait for the subprocess exit. Before, regrtest failed
+  to remove the temporary test directory because the process was still running
+  in this directory.
+* Refactor unit tests.
+
+On Python 3.5, generators now get their name from the function, no more from
+the code. So the ``@coroutine`` decorator doesn't loose the original name of
+the function anymore.
 
 
 2014-05-26: version 0.3
