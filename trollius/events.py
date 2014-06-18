@@ -63,7 +63,7 @@ class Handle(object):
         if source:
             cb_repr += ' at %s:%s' % source
 
-        res = 'Handle({}, {})'.format(cb_repr, self._args)
+        res = 'Handle({0}, {1})'.format(cb_repr, self._args)
         if self._cancelled:
             res += '<cancelled>'
         return res
