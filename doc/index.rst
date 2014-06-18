@@ -217,7 +217,8 @@ Other differences
 -----------------
 
 * Trollius uses the ``TROLLIUSDEBUG`` envrionment variable instead of
-  the ``PYTHONASYNCIODEBUG`` envrionment variable
+  the ``PYTHONASYNCIODEBUG`` envrionment variable. ``TROLLIUSDEBUG`` variable
+  is used even if the Python command line option ``-E`` is used.
 * On Python 2.7, ``asyncio.SSLContext`` has less features than the
   ``ssl.SSLContext`` of Python 3.3: no options, verify_mode is set to
   ``CERT_NONE`` and cannot be modified, no set_default_verify_paths() method,
@@ -387,7 +388,8 @@ Changes between Trollius 0.3 and 0.4:
 
 * Trollius event loop now supports asyncio coroutines.
 * The ``PYTHONASYNCIODEBUG`` envrionment variable has been renamed to
-  ``TROLLIUSDEBUG``
+  ``TROLLIUSDEBUG``. The environment variable is now used event if the Python
+  command line option ``-E`` is used.
 * Synchronize with Tulip.
 
 

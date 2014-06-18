@@ -1568,11 +1568,6 @@ class GatherTestsBase:
             'import trollius.coroutines',
             'print(trollius.coroutines._DEBUG)'))
 
-        # Test with -E to not fail if the unit test was run with
-        # TROLLIUSDEBUG set to a non-empty string
-        sts, stdout, stderr = assert_python_ok('-E', '-c', code)
-        self.assertEqual(stdout.rstrip(), b'False')
-
         sts, stdout, stderr = assert_python_ok('-c', code,
                                                TROLLIUSDEBUG='')
         self.assertEqual(stdout.rstrip(), b'False')
@@ -1580,10 +1575,6 @@ class GatherTestsBase:
         sts, stdout, stderr = assert_python_ok('-c', code,
                                                TROLLIUSDEBUG='1')
         self.assertEqual(stdout.rstrip(), b'True')
-
-        sts, stdout, stderr = assert_python_ok('-E', '-c', code,
-                                               TROLLIUSDEBUG='1')
-        self.assertEqual(stdout.rstrip(), b'False')
 
 
 class FutureGatherTests(GatherTestsBase, test_utils.TestCase):
