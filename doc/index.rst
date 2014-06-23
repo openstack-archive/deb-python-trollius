@@ -290,8 +290,10 @@ This option is used by the following projects which work on Trollius and Tulip:
   performing one or several activities in different threads and/or processes.
   Trollius 0.3 requires Pulsar 0.8.2 or later. Pulsar uses the ``asyncio``
   module if available, or import ``trollius``.
-* It looks like `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and
-  Trollius.
+* `Tornado <http://www.tornadoweb.org/>`_ supports Tulip and Trollius since
+  Tornado 3.2: `tornado.platform.asyncio — Bridge between asyncio and Tornado
+  <http://tornado.readthedocs.org/en/latest/asyncio.html>`_. It tries to import
+  asyncio or fallback on importing trollius.
 
 Another option is to provide functions returning ``Future`` objects, so the
 caller can decide to use callback using ``fut.add_done_callback(callback)`` or
