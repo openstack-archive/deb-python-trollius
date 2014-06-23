@@ -297,10 +297,9 @@ to use coroutines (``yield From(fut)`` for Trollius, or ``yield from fut`` for
 Tulip). This option is used by the `aiodns <https://github.com/saghul/aiodns>`_
 project for example.
 
-It is possible to write an application working on Trollius or asyncio with the
-same code base. It is not possible yet to run an application using Tulip
-with a module using Trollius (or the opposite). Applications and modules
-should both use Tulip or both use Trollius. Be careful of imports.
+Since Trollius 0.4, it's possible to use Tulip and Trollius coroutines in the
+same process. The only limit is that the event loop must be a Trollius event
+loop.
 
 .. note::
 
