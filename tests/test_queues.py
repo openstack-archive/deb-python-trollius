@@ -33,7 +33,7 @@ class QueueBasicTests(_QueueTestBase):
 
         q = asyncio.Queue(loop=loop)
         self.assertTrue(fn(q).startswith('<Queue'), fn(q))
-        id_is_present = hex(id(q)) in fn(q)
+        id_is_present = ("%x" % id(q)) in fn(q)
         self.assertEqual(expect_id, id_is_present)
 
         @asyncio.coroutine
