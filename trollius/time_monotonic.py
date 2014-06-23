@@ -128,7 +128,16 @@ elif sys.platform.startswith(("linux", "freebsd", "openbsd", "sunos")):
             library = None
 
     if library is not None:
-        time_t = ctypes.c_long
+        if sys.platform.startswith("openbsd"):
+            import platform
+            release = platform.release()
+            release = tuple(map(int, release.split('.')))
+            if release >= (5, 5):
+                time_t = ctypes.c_int64
+            else:
+                time_t = ctypes.c_int32
+        else:
+            time_t = ctypes.c_long
         clockid_t = ctypes.c_int
 
         class timespec(ctypes.Structure):
