@@ -117,8 +117,7 @@ class TaskTests(test_utils.TestCase):
     def test_task_repr(self):
         @asyncio.coroutine
         def noop():
-            if 0:
-                yield
+            yield From(None)
             raise Return('abc')
 
         @asyncio.coroutine

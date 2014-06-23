@@ -584,8 +584,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def getaddrinfo(*args, **kw):
-            if 0:
-                yield
+            yield From(None)
             raise Return([(2, 1, 6, '', ('107.6.106.82', 80)),
                           (2, 1, 6, '', ('107.6.106.82', 80))])
 
@@ -646,8 +645,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
     def test_create_connection_no_getaddrinfo(self):
         @asyncio.coroutine
         def getaddrinfo(*args, **kw):
-            if 0:
-                yield
+            yield From(None)
 
         def getaddrinfo_task(*args, **kwds):
             return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
@@ -660,8 +658,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
     def test_create_connection_connect_err(self):
         @asyncio.coroutine
         def getaddrinfo(*args, **kw):
-            if 0:
-                yield
+            yield From(None)
             raise Return([(2, 1, 6, '', ('107.6.106.82', 80))])
 
         def getaddrinfo_task(*args, **kwds):
@@ -833,8 +830,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             non_local['host'] = args[0]
-            if 0:
-                yield
+            yield From(None)
 
         def getaddrinfo_task(*args, **kwds):
             return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
@@ -1019,8 +1015,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def stop_loop_coro(loop):
-            if 0:
-                yield
+            yield From(None)
             loop.stop()
 
         asyncio.set_event_loop(self.loop)
