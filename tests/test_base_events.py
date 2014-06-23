@@ -16,6 +16,7 @@ from trollius.py33_exceptions import BlockingIOError
 from trollius.test_utils import mock
 from trollius import test_support as support   # IPV6_ENABLED, gc_collect
 from trollius.time_monotonic import time_monotonic
+from trollius.test_support import assert_python_ok
 
 
 MOCK_ANY = mock.ANY
@@ -248,6 +249,9 @@ class BaseEventLoopTests(test_utils.TestCase):
         def slow_select(timeout):
             time.sleep(1.0)
             return []
+
+        # logging needs debug flag
+        self.loop.set_debug(True)
 
         # Log to INFO level if timeout > 1.0 sec.
         self.loop._selector.select = slow_select
@@ -492,6 +496,20 @@ class BaseEventLoopTests(test_utils.TestCase):
             self.assertIn('context', context)
             self.assertIs(type(context['context']['exception']),
                           ZeroDivisionError)
+
+    def test_env_var_debug(self):
+        code = '\n'.join((
+            'import trollius',
+            'loop = trollius.get_event_loop()',
+            'print(loop.get_debug())'))
+
+        sts, stdout, stderr = assert_python_ok('-c', code,
+                                               TROLLIUSDEBUG='')
+        self.assertEqual(stdout.rstrip(), b'False')
+
+        sts, stdout, stderr = assert_python_ok('-c', code,
+                                               TROLLIUSDEBUG='1')
+        self.assertEqual(stdout.rstrip(), b'True')
 
 
 class MyProto(asyncio.Protocol):
@@ -987,6 +1005,34 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
             self.loop.call_at(self.loop.time() + 60, coroutine_function)
         with self.assertRaises(TypeError):
             self.loop.run_in_executor(None, coroutine_function)
+
+    @mock.patch('trollius.base_events.logger')
+    def test_log_slow_callbacks(self, m_logger):
+        def stop_loop_cb(loop):
+            loop.stop()
+
+        @asyncio.coroutine
+        def stop_loop_coro(loop):
+            yield from ()
+            loop.stop()
+
+        asyncio.set_event_loop(self.loop)
+        self.loop.set_debug(True)
+        self.loop.slow_callback_duration = 0.0
+
+        # slow callback
+        self.loop.call_soon(stop_loop_cb, self.loop)
+        self.loop.run_forever()
+        fmt, *args = m_logger.warning.call_args[0]
+        self.assertRegex(fmt % tuple(args),
+                         "^Executing Handle.*stop_loop_cb.* took .* seconds$")
+
+        # slow task
+        asyncio.async(stop_loop_coro(self.loop), loop=self.loop)
+        self.loop.run_forever()
+        fmt, *args = m_logger.warning.call_args[0]
+        self.assertRegex(fmt % tuple(args),
+                         "^Executing Task.*stop_loop_coro.* took .* seconds$")
 
 
 if __name__ == '__main__':

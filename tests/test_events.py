@@ -1390,6 +1390,15 @@ class EventLoopTestsMixin(object):
         with self.assertRaises(RuntimeError):
             loop.add_writer(w, callback)
 
+    def test_close_running_event_loop(self):
+        @asyncio.coroutine
+        def close_loop(loop):
+            self.loop.close()
+
+        coro = close_loop(self.loop)
+        with self.assertRaises(RuntimeError):
+            self.loop.run_until_complete(coro)
+
 
 class SubprocessTestsMixin(object):
 
