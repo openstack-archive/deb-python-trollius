@@ -8,7 +8,7 @@ if sys.platform != 'win32':
     from trollius.test_utils import SkipTest
     raise SkipTest('Windows only')
 
-import asyncio.test_support as support
+import trollius.test_support as support
 from trollius.test_support import IPV6_ENABLED
 from trollius import _overlapped
 from trollius import py33_winapi as _winapi
