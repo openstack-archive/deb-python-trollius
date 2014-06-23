@@ -8,12 +8,13 @@ if sys.platform != 'win32':
     from trollius.test_utils import SkipTest
     raise SkipTest('Windows only')
 
-import trollius.test_support as support
-from trollius.test_support import IPV6_ENABLED
 from trollius import _overlapped
 from trollius import py33_winapi as _winapi
+from trollius import test_utils
 from trollius import windows_utils
+from trollius.test_support import IPV6_ENABLED
 from trollius.test_utils import mock
+import trollius.test_support as support
 
 
 class WinsocketpairTests(unittest.TestCase):
