@@ -395,14 +395,10 @@ Changes between Trollius 0.3 and 0.4:
   - asyncio.set_event_loop_policy() accepts a Trollius event loop policy.
 
 * The ``PYTHONASYNCIODEBUG`` envrionment variable has been renamed to
-  ``TROLLIUSDEBUG``. The environment variable is now used event if the Python
+  ``TROLLIUSDEBUG``. The environment variable is now used even if the Python
   command line option ``-E`` is used.
 * Synchronize with Tulip.
-* Fix PyPy bugs
-
-  - fix UNIX subprocess transport: don't use file.makefile(), but
-    os.dup()+file.close() which is more reliable
-  - tests: better PyPy support, explicit garbage collection to call destructors
+* Support PyPy.
 
 Tulip changes:
 
