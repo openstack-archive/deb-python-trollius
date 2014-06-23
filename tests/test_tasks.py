@@ -117,7 +117,9 @@ class TaskTests(test_utils.TestCase):
     def test_task_repr(self):
         @asyncio.coroutine
         def noop():
-            pass
+            if 0:
+                yield
+            raise Return('abc')
 
         @asyncio.coroutine
         def notmuch():
@@ -1482,7 +1484,9 @@ class TaskTests(test_utils.TestCase):
 
     def test_corowrapper_weakref(self):
         wd = weakref.WeakValueDictionary()
-        def foo(): yield From([])
+        def foo():
+            if 0:
+                yield
         cw = asyncio.coroutines.CoroWrapper(foo(), foo)
         wd['cw'] = cw  # Would fail without __weakref__ slot.
         cw.gen = None  # Suppress warning from __del__.
