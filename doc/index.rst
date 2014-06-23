@@ -203,6 +203,8 @@ The major difference between Trollius and Tulip is the syntax of coroutines:
 Tulip               Trollius
 ==================  ======================
 ``yield from ...``  ``yield From(...)``
+``yield from []``   ``yield From(None)``
+``return``          ``raise Return()``
 ``return x``        ``raise Return(x)``
 ``return x, y``     ``raise Return(x, y)``
 ==================  ======================
