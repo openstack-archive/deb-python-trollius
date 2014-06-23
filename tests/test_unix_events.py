@@ -448,9 +448,6 @@ class UnixReadPipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(5, sys.getrefcount(self.loop)
-                         #, pprint.pformat(gc.get_referrers(self.loop))
-                         )
 
     def test__call_connection_lost_with_err(self):
         tr = unix_events._UnixReadPipeTransport(
@@ -466,9 +463,6 @@ class UnixReadPipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(5, sys.getrefcount(self.loop)
-                         #, pprint.pformat(gc.get_referrers(self.loop))
-                         )
 
 
 class UnixWritePipeTransportTests(test_utils.TestCase):
@@ -736,9 +730,6 @@ class UnixWritePipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(5, sys.getrefcount(self.loop)
-                         #, pprint.pformat(gc.get_referrers(self.loop))
-                         )
 
     def test__call_connection_lost_with_err(self):
         tr = unix_events._UnixWritePipeTransport(
@@ -753,9 +744,6 @@ class UnixWritePipeTransportTests(test_utils.TestCase):
         self.assertEqual(2, sys.getrefcount(self.protocol))
                          #pprint.pformat(gc.get_referrers(self.protocol)))
         self.assertIsNone(tr._loop)
-        self.assertEqual(5, sys.getrefcount(self.loop)
-                         #, pprint.pformat(gc.get_referrers(self.loop))
-                         )
 
     def test_close(self):
         tr = unix_events._UnixWritePipeTransport(

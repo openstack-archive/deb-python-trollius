@@ -357,12 +357,12 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
     def close(self):
         if self.is_closed():
             return
+        super(BaseProactorEventLoop, self).close()
         self._stop_accept_futures()
         self._close_self_pipe()
         self._proactor.close()
         self._proactor = None
         self._selector = None
-        super(BaseProactorEventLoop, self).close()
 
     def sock_recv(self, sock, n):
         return self._proactor.recv(sock, n)

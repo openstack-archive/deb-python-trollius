@@ -79,11 +79,11 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
     def close(self):
         if self.is_closed():
             return
+        super(BaseSelectorEventLoop, self).close()
         self._close_self_pipe()
         if self._selector is not None:
             self._selector.close()
             self._selector = None
-        super(BaseSelectorEventLoop, self).close()
 
     def _socketpair(self):
         raise NotImplementedError
@@ -105,10 +105,15 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
         self.add_reader(self._ssock.fileno(), self._read_from_self)
 
     def _read_from_self(self):
-        try:
-            wrap_error(self._ssock.recv, 1)
-        except (BlockingIOError, InterruptedError):
-            pass
+        while True:
+            try:
+                data = wrap_error(self._ssock.recv, 4096)
+                if not data:
+                    break
+            except InterruptedError:
+                continue
+            except BlockingIOError:
+                break
 
     def _write_to_self(self):
         # This may be called from a different thread, possibly after
@@ -243,7 +248,14 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
                 return False
 
     def sock_recv(self, sock, n):
-        """XXX"""
+        """Receive data from the socket.
+
+        The return value is a bytes object representing the data received.
+        The maximum amount of data to be received at once is specified by
+        nbytes.
+
+        This method is a coroutine.
+        """
         fut = futures.Future(loop=self)
         self._sock_recv(fut, False, sock, n)
         return fut
@@ -270,7 +282,16 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             fut.set_result(data)
 
     def sock_sendall(self, sock, data):
-        """XXX"""
+        """Send data to the socket.
+
+        The socket must be connected to a remote socket. This method continues
+        to send data from data until either all data has been sent or an
+        error occurs. None is returned on success. On error, an exception is
+        raised, and there is no way to determine how much data, if any, was
+        successfully processed by the receiving end of the connection.
+
+        This method is a coroutine.
+        """
         fut = futures.Future(loop=self)
         if data:
             self._sock_sendall(fut, False, sock, data)
@@ -302,7 +323,16 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             self.add_writer(fd, self._sock_sendall, fut, True, sock, data)
 
     def sock_connect(self, sock, address):
-        """XXX"""
+        """Connect to a remote socket at address.
+
+        The address must be already resolved to avoid the trap of hanging the
+        entire event loop when the address requires doing a DNS lookup. For
+        example, it must be an IP address, not an hostname, for AF_INET and
+        AF_INET6 address families. Use getaddrinfo() to resolve the hostname
+        asynchronously.
+
+        This method is a coroutine.
+        """
         fut = futures.Future(loop=self)
         try:
             base_events._check_resolved_address(sock, address)
@@ -332,7 +362,15 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             fut.set_result(None)
 
     def sock_accept(self, sock):
-        """XXX"""
+        """Accept a connection.
+
+        The socket must be bound to an address and listening for connections.
+        The return value is a pair (conn, address) where conn is a new socket
+        object usable to send and receive data on the connection, and address
+        is the address bound to the socket on the other end of the connection.
+
+        This method is a coroutine.
+        """
         fut = futures.Future(loop=self)
         self._sock_accept(fut, False, sock)
         return fut

@@ -1559,12 +1559,8 @@ class GatherTestsBase:
         self.assertEqual(fut.result(), [3, 1, exc, exc2])
 
     def test_env_var_debug(self):
-        path = os.path.dirname(asyncio.__file__)
-        path = os.path.normpath(os.path.join(path, '..'))
         code = '\n'.join((
-            'import sys',
-            'sys.path.insert(0, %r)' % path,
-            'import trollius.coroutines',
+            'import trollius.tasks',
             'print(trollius.coroutines._DEBUG)'))
 
         sts, stdout, stderr = assert_python_ok('-c', code,
@@ -1686,6 +1682,8 @@ class CoroutineGatherTests(GatherTestsBase, test_utils.TestCase):
         self.assertIs(fut._loop, self.one_loop)
         gen1.close()
         gen2.close()
+
+        self.set_event_loop(self.other_loop, cleanup=False)
         gen3 = coro()
         gen4 = coro()
         fut = asyncio.gather(gen3, gen4, loop=self.other_loop)
