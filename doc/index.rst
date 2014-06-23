@@ -45,7 +45,8 @@ Linux, Mac OS X, FreeBSD and OpenIndiana.
 * `Trollius project at Bitbucket <https://bitbucket.org/enovance/trollius>`_
 * Copyright/license: Open source, Apache 2.0. Enjoy!
 
-See also the `Tulip project <http://code.google.com/p/tulip/>`_.
+See also the `Tulip project <http://code.google.com/p/tulip/>`_ (asyncio module
+for Python 3.3).
 
 
 Documentation of the asyncio module
