@@ -9,6 +9,7 @@ import unittest
 
 import trollius as asyncio
 from trollius import test_utils
+from trollius import test_support as support   # gc_collect
 from trollius.test_utils import mock
 
 
@@ -167,6 +168,7 @@ class FutureTests(test_utils.TestCase):
         fut.set_exception(RuntimeError('boom'))
         del fut
         test_utils.run_briefly(self.loop)
+        support.gc_collect()
         self.assertTrue(m_log.error.called)
 
     @mock.patch('trollius.base_events.logger')
