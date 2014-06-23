@@ -1850,7 +1850,7 @@ class HandleTests(test_utils.TestCase):
         if sys.version_info >= (3,):
             partial_regex = r'functools.partial\(<function noop .*>\)'
         else:
-            partial_regex = r'<_?functools.partial object at 0x[a-f0-9]+>'
+            partial_regex = r'<_?functools.partial object at 0x[a-fA-F0-9]+>'
         regex = (r'^Handle\(%s at %s:%s, '
                  r'\(\)\)$' % (partial_regex, re.escape(filename), lineno))
         self.assertRegex(repr(h), regex)
