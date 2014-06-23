@@ -398,10 +398,24 @@ Changes between Trollius 0.3 and 0.4:
   ``TROLLIUSDEBUG``. The environment variable is now used even if the Python
   command line option ``-E`` is used.
 * Synchronize with Tulip.
-* Support PyPy.
+* Support PyPy (fix subproces, fix unit tests).
 
 Tulip changes:
 
+* Tulip issue #171: BaseEventLoop.close() now raises an exception if the event
+  loop is running. You must first stop the event loop and then wait until it
+  stopped, before closing it.
+* Tulip issue #172: only log selector timing in debug mode
+* Enable the debug mode of event loops when the ``TROLLIUSDEBUG`` environment
+  variable is set
+* BaseEventLoop._assert_is_current_event_loop() now only raises an exception if
+  the current loop is set.
+* Tulip issue #105: in debug mode, log callbacks taking more than 100 ms to be
+  executed.
+* Python issue 21595: ``BaseSelectorEventLoop._read_from_self()`` reads all
+  available bytes from the "self pipe", not only a single byte. This change
+  reduces the risk of having the pipe full and so getting the "BlockingIOError:
+  [Errno 11] Resource temporarily unavailable" message.
 * Python issue 21723: asyncio.Queue: support any type of number (ex: float) for
   the maximum size. Patch written by Vajrasky Kok.
 * Issue #173: Enhance repr(Handle) and repr(Task): add the filename and line
