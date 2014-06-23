@@ -14,7 +14,7 @@ from trollius import constants
 from trollius import test_utils
 from trollius.py33_exceptions import BlockingIOError
 from trollius.test_utils import mock
-from trollius.test_support import IPV6_ENABLED
+from trollius import test_support as support   # IPV6_ENABLED, gc_collect
 from trollius.time_monotonic import time_monotonic
 
 
@@ -376,6 +376,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             fut.add_done_callback(lambda *args: self.loop.stop())
             self.loop.run_forever()
             fut = None # Trigger Future.__del__ or futures._TracebackLogger
+            support.gc_collect()
             if PY34:
                 # Future.__del__ in Python 3.4 logs error with
                 # an actual exception context
@@ -904,7 +905,8 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
 
-    @test_utils.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
+    @test_utils.skipUnless(support.IPV6_ENABLED,
+                           'IPv6 not supported or enabled')
     def test_create_datagram_endpoint_no_matching_family(self):
         coro = self.loop.create_datagram_endpoint(
             asyncio.DatagramProtocol,
