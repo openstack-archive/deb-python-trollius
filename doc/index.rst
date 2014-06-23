@@ -383,8 +383,8 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
-Version 0.4
------------
+2014-06-23: version 0.4
+-----------------------
 
 Changes between Trollius 0.3 and 0.4:
 
