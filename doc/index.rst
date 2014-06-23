@@ -33,10 +33,10 @@ Here is a more detailed list of the package contents:
 * an interface for passing work off to a threadpool, for times when you
   absolutely, positively have to use a library that makes blocking I/O calls.
 
-Trollius is a portage of the Tulip project (``asyncio`` module, `PEP 3156
-<http://legacy.python.org/dev/peps/pep-3156/>`_) on Python 2. Trollius works on
-Python 2.6-3.5. It has been tested on Windows, Linux, Mac OS X, FreeBSD and
-OpenIndiana.
+Trollius is a portage of the `Tulip project <http://code.google.com/p/tulip/>`_
+(``asyncio`` module, `PEP 3156 <http://legacy.python.org/dev/peps/pep-3156/>`_)
+on Python 2. Trollius works on Python 2.6-3.5. It has been tested on Windows,
+Linux, Mac OS X, FreeBSD and OpenIndiana.
 
 * `Asyncio documentation <http://docs.python.org/dev/library/asyncio.html>`_
 * `Trollius documentation <http://trollius.readthedocs.org/>`_ (this document)
