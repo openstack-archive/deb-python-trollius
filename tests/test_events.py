@@ -249,7 +249,7 @@ class EventLoopTestsMixin(object):
     def test_run_until_complete_nesting(self):
         @asyncio.coroutine
         def coro1():
-            yield
+            yield From(None)
 
         @asyncio.coroutine
         def coro2():
