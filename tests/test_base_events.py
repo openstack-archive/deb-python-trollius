@@ -584,6 +584,8 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def getaddrinfo(*args, **kw):
+            if 0:
+                yield
             raise Return([(2, 1, 6, '', ('107.6.106.82', 80)),
                           (2, 1, 6, '', ('107.6.106.82', 80))])
 
@@ -642,27 +644,30 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         self.assertRaises(ValueError, self.loop.run_until_complete, coro)
 
     def test_create_connection_no_getaddrinfo(self):
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
-            fut = asyncio.Future(loop=self.loop)
-            fut.set_result([])
-            return fut
+            if 0:
+                yield
 
-        self.loop.getaddrinfo = getaddrinfo
-        f = asyncio.Future(loop=self.loop)
-        f.set_result([])
+        def getaddrinfo_task(*args, **kwds):
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
 
-        self.loop.getaddrinfo.return_value = f
+        self.loop.getaddrinfo = getaddrinfo_task
         coro = self.loop.create_connection(MyProto, 'example.com', 80)
         self.assertRaises(
             socket.error, self.loop.run_until_complete, coro)
 
     def test_create_connection_connect_err(self):
+        @asyncio.coroutine
         def getaddrinfo(*args, **kw):
-            fut = asyncio.Future(loop=self.loop)
-            fut.set_result([(2, 1, 6, '', ('107.6.106.82', 80))])
-            return fut
+            if 0:
+                yield
+            raise Return([(2, 1, 6, '', ('107.6.106.82', 80))])
 
-        self.loop.getaddrinfo = getaddrinfo
+        def getaddrinfo_task(*args, **kwds):
+            return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
+
+        self.loop.getaddrinfo = getaddrinfo_task
         self.loop.sock_connect = mock.Mock()
         self.loop.sock_connect.side_effect = socket.error
 
@@ -828,7 +833,8 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         @asyncio.coroutine
         def getaddrinfo(*args, **kw):
             non_local['host'] = args[0]
-            raise Return([])
+            if 0:
+                yield
 
         def getaddrinfo_task(*args, **kwds):
             return asyncio.Task(getaddrinfo(*args, **kwds), loop=self.loop)
