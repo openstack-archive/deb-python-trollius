@@ -1013,7 +1013,8 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def stop_loop_coro(loop):
-            yield from ()
+            if 0:
+                yield
             loop.stop()
 
         asyncio.set_event_loop(self.loop)
@@ -1023,14 +1024,16 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         # slow callback
         self.loop.call_soon(stop_loop_cb, self.loop)
         self.loop.run_forever()
-        fmt, *args = m_logger.warning.call_args[0]
+        fmt = m_logger.warning.call_args[0][0]
+        args = m_logger.warning.call_args[0][1:]
         self.assertRegex(fmt % tuple(args),
                          "^Executing Handle.*stop_loop_cb.* took .* seconds$")
 
         # slow task
         asyncio.async(stop_loop_coro(self.loop), loop=self.loop)
         self.loop.run_forever()
-        fmt, *args = m_logger.warning.call_args[0]
+        fmt = m_logger.warning.call_args[0][0]
+        args = m_logger.warning.call_args[0][1:]
         self.assertRegex(fmt % tuple(args),
                          "^Executing Task.*stop_loop_coro.* took .* seconds$")
 

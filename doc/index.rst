@@ -60,6 +60,7 @@ To adapt asyncio examples for Trollius, "just":
 * replace ``asyncio`` with ``trollius``
   (or use ``import trollius as asyncio``)
 * replace ``yield from ...`` with ``yield From(...)``
+* replace ``yield from ()`` with ``if 0: yield``
 * in coroutines, replace ``return res`` with ``raise Return(res)``
 
 
