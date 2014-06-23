@@ -398,7 +398,11 @@ Changes between Trollius 0.3 and 0.4:
   ``TROLLIUSDEBUG``. The environment variable is now used event if the Python
   command line option ``-E`` is used.
 * Synchronize with Tulip.
-* tests: better PyPy support, explicit garbage collection to call destructors
+* Fix PyPy bugs
+
+  - fix UNIX subprocess transport: don't use file.makefile(), but
+    os.dup()+file.close() which is more reliable
+  - tests: better PyPy support, explicit garbage collection to call destructors
 
 Tulip changes:
 

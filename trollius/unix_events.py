@@ -514,12 +514,13 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             args, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr,
             universal_newlines=False, bufsize=bufsize, **kwargs)
         if stdin_w is not None:
+            # Retrieve the file descriptor from stdin_w, stdin_w should not
+            # "own" the file descriptor anymore: closing stdin_fd file
+            # descriptor must close immediatly the file
             stdin.close()
             if hasattr(stdin_w, 'detach'):
                 stdin_fd = stdin_w.detach()
                 self._proc.stdin = os.fdopen(stdin_fd, 'rb', bufsize)
-            elif hasattr(stdin_w, 'makefile'):
-                self._proc.stdin = stdin_w.makefile('rb', bufsize)
             else:
                 stdin_dup = os.dup(stdin_w.fileno())
                 stdin_w.close()
