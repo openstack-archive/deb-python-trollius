@@ -2,12 +2,14 @@ import functools
 import inspect
 import os
 import sys
+import traceback
 try:
     import asyncio
 except ImportError:
     asyncio = None
 
 from . import compat
+from . import events
 from . import futures
 from .log import logger
 
@@ -65,6 +67,7 @@ class CoroWrapper(object):
         assert inspect.isgenerator(gen), gen
         self.gen = gen
         self.func = func
+        self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
     def __iter__(self):
         return self
@@ -104,14 +107,13 @@ class CoroWrapper(object):
         gen = getattr(self, 'gen', None)
         frame = getattr(gen, 'gi_frame', None)
         if frame is not None and frame.f_lasti == -1:
-            func = self.func
-            code = func.__code__
-            filename = code.co_filename
-            lineno = code.co_firstlineno
-            logger.error(
-                'Coroutine %r defined at %s:%s was never yielded from',
-                func.__name__, filename, lineno)
-
+            func = events._format_callback(self.func, ())
+            tb = ''.join(traceback.format_list(self._source_traceback))
+            message = ('Coroutine %s was never yielded from\n'
+                       'Coroutine object created at (most recent call last):\n'
+                       '%s'
+                       % (func, tb.rstrip()))
+            logger.error(message)
 
 def coroutine(func):
     """Decorator to mark coroutines.
@@ -137,6 +139,8 @@ def coroutine(func):
         @functools.wraps(func)
         def wrapper(*args, **kwds):
             w = CoroWrapper(coro(*args, **kwds), func)
+            if w._source_traceback:
+                del w._source_traceback[-1]
             w.__name__ = func.__name__
             if _PY35:
                 w.__qualname__ = func.__qualname__
