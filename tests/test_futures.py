@@ -4,6 +4,7 @@ try:
     import concurrent.futures
 except ImportError:
     concurrent = None
+import re
 import threading
 import unittest
 
@@ -13,11 +14,18 @@ from trollius import test_support as support   # gc_collect
 from trollius.test_utils import mock
 
 
+def get_thread_ident():
+    return threading.current_thread().ident
+
 def _fakefunc(f):
     return f
 
-def get_thread_ident():
-    return threading.current_thread().ident
+def first_cb():
+    pass
+
+def last_cb():
+    pass
+
 
 class FutureTests(test_utils.TestCase):
 
@@ -79,39 +87,61 @@ class FutureTests(test_utils.TestCase):
         f.set_exception(RuntimeError)
         self.assertIsInstance(f.exception(), RuntimeError)
 
-    def test_repr(self):
+    def test_future_repr(self):
         f_pending = asyncio.Future(loop=self.loop)
-        self.assertEqual(repr(f_pending), 'Future<PENDING>')
+        self.assertEqual(repr(f_pending), '<Future pending>')
         f_pending.cancel()
 
         f_cancelled = asyncio.Future(loop=self.loop)
         f_cancelled.cancel()
-        self.assertEqual(repr(f_cancelled), 'Future<CANCELLED>')
+        self.assertEqual(repr(f_cancelled), '<Future cancelled>')
 
         f_result = asyncio.Future(loop=self.loop)
         f_result.set_result(4)
-        self.assertEqual(repr(f_result), 'Future<result=4>')
+        self.assertEqual(repr(f_result), '<Future finished result=4>')
         self.assertEqual(f_result.result(), 4)
 
         exc = RuntimeError()
         f_exception = asyncio.Future(loop=self.loop)
         f_exception.set_exception(exc)
-        self.assertEqual(repr(f_exception), 'Future<exception=RuntimeError()>')
+        self.assertEqual(repr(f_exception), '<Future finished exception=RuntimeError()>')
         self.assertIs(f_exception.exception(), exc)
 
-        f_few_callbacks = asyncio.Future(loop=self.loop)
-        f_few_callbacks.add_done_callback(_fakefunc)
-        self.assertIn('Future<PENDING, [<function _fakefunc',
-                      repr(f_few_callbacks))
-        f_few_callbacks.cancel()
+        def func_repr(func):
+            filename, lineno = test_utils.get_function_source(func)
+            func_name = getattr(func, '__qualname__', func.__name__)
+            text = '%s() at %s:%s' % (func_name, filename, lineno)
+            return re.escape(text)
+
+        f_one_callbacks = asyncio.Future(loop=self.loop)
+        f_one_callbacks.add_done_callback(_fakefunc)
+        fake_repr = func_repr(_fakefunc)
+        self.assertRegex(repr(f_one_callbacks),
+                         r'<Future pending cb=\[%s\]>' % fake_repr)
+        f_one_callbacks.cancel()
+        self.assertEqual(repr(f_one_callbacks),
+                         '<Future cancelled>')
+
+        f_two_callbacks = asyncio.Future(loop=self.loop)
+        f_two_callbacks.add_done_callback(first_cb)
+        f_two_callbacks.add_done_callback(last_cb)
+        first_repr = func_repr(first_cb)
+        last_repr = func_repr(last_cb)
+        self.assertRegex(repr(f_two_callbacks),
+                         r'<Future pending cb=\[%s, %s\]>'
+                         % (first_repr, last_repr))
 
         f_many_callbacks = asyncio.Future(loop=self.loop)
-        for i in range(20):
+        f_many_callbacks.add_done_callback(first_cb)
+        for i in range(8):
             f_many_callbacks.add_done_callback(_fakefunc)
-        r = repr(f_many_callbacks)
-        self.assertIn('Future<PENDING, [<function _fakefunc', r)
-        self.assertIn('<18 more>', r)
+        f_many_callbacks.add_done_callback(last_cb)
+        cb_regex = r'%s, <8 more>, %s' % (first_repr, last_repr)
+        self.assertRegex(repr(f_many_callbacks),
+                         r'<Future pending cb=\[%s\]>' % cb_regex)
         f_many_callbacks.cancel()
+        self.assertEqual(repr(f_many_callbacks),
+                         '<Future cancelled>')
 
     def test_copy_state(self):
         # Test the internal _copy_state method since it's being directly

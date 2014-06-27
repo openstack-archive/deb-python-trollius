@@ -247,7 +247,8 @@ class BaseEventLoopTests(test_utils.TestCase):
     @mock.patch('trollius.base_events.logger')
     def test__run_once_logging(self, m_logger):
         def slow_select(timeout):
-            time.sleep(1.0)
+            # Sleep a bit longer than a second to avoid timer resolution issues.
+            time.sleep(1.1)
             return []
 
         # logging needs debug flag
@@ -287,6 +288,12 @@ class BaseEventLoopTests(test_utils.TestCase):
     def test_run_until_complete_type_error(self):
         self.assertRaises(TypeError,
             self.loop.run_until_complete, 'blah')
+
+    def test_run_until_complete_loop(self):
+        task = asyncio.Future(loop=self.loop)
+        other_loop = self.new_test_loop()
+        self.assertRaises(ValueError,
+            other_loop.run_until_complete, task)
 
     def test_subprocess_exec_invalid_args(self):
         args = [sys.executable, '-c', 'pass']
@@ -1028,7 +1035,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         fmt = m_logger.warning.call_args[0][0]
         args = m_logger.warning.call_args[0][1:]
         self.assertRegex(fmt % tuple(args),
-                         "^Executing Handle.*stop_loop_cb.* took .* seconds$")
+                         "^Executing <Handle.*stop_loop_cb.*> took .* seconds$")
 
         # slow task
         asyncio.async(stop_loop_coro(self.loop), loop=self.loop)
@@ -1036,7 +1043,7 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         fmt = m_logger.warning.call_args[0][0]
         args = m_logger.warning.call_args[0][1:]
         self.assertRegex(fmt % tuple(args),
-                         "^Executing Task.*stop_loop_coro.* took .* seconds$")
+                         "^Executing <Task.*stop_loop_coro.*> took .* seconds$")
 
 
 if __name__ == '__main__':
