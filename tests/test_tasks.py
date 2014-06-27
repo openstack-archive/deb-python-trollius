@@ -1,6 +1,7 @@
 """Tests for tasks.py."""
 
 import os.path
+import re
 import sys
 import types
 import unittest
@@ -1512,13 +1513,10 @@ class TaskTests(test_utils.TestCase):
     def test_corowrapper_weakref(self):
         wd = weakref.WeakValueDictionary()
         def foo():
-            if 0:
-                yield
+            yield From(None)
         cw = asyncio.coroutines.CoroWrapper(foo(), foo)
         wd['cw'] = cw  # Would fail without __weakref__ slot.
         cw.gen = None  # Suppress warning from __del__.
-        def foo():
-            yield From(None)
 
     @test_utils.skipUnless(PY34,
                            'need python 3.4 or later')
@@ -1532,6 +1530,7 @@ class TaskTests(test_utils.TestCase):
             raise Exception("code never reached")
 
         mock_handler = mock.Mock()
+        self.loop.set_debug(True)
         self.loop.set_exception_handler(mock_handler)
 
         # schedule the task
@@ -1546,6 +1545,7 @@ class TaskTests(test_utils.TestCase):
         # remove the future used in kill_me(), and references to the task
         del coro.gi_frame.f_locals['future']
         coro = None
+        source_traceback = task._source_traceback
         task = None
 
         # no more reference to kill_me() task: the task is destroyed by the GC
@@ -1556,8 +1556,52 @@ class TaskTests(test_utils.TestCase):
         mock_handler.assert_called_with(self.loop, {
             'message': 'Task was destroyed but it is pending!',
             'task': mock.ANY,
+            'source_traceback': source_traceback,
         })
         mock_handler.reset_mock()
+
+    @mock.patch('trollius.coroutines.logger')
+    def test_coroutine_never_yielded(self, m_log):
+        debug = asyncio.coroutines._DEBUG
+        try:
+            asyncio.coroutines._DEBUG = True
+            @asyncio.coroutine
+            def coro_noop():
+                pass
+        finally:
+            asyncio.coroutines._DEBUG = debug
+
+        tb_filename = __file__
+        tb_lineno = sys._getframe().f_lineno + 1
+        coro = coro_noop()
+        coro = None
+        support.gc_collect()
+
+        self.assertTrue(m_log.error.called)
+        message = m_log.error.call_args[0][0]
+        func_filename, func_lineno = test_utils.get_function_source(coro_noop)
+        coro_name = getattr(coro_noop, '__qualname__', coro_noop.__name__)
+        regex = (r'^Coroutine %s\(\) at %s:%s was never yielded from\n'
+                 r'Coroutine object created at \(most recent call last\):\n'
+                 r'.*\n'
+                 r'  File "%s", line %s, in test_coroutine_never_yielded\n'
+                 r'    coro = coro_noop\(\)$'
+                 % (re.escape(coro_name),
+                    func_filename, func_lineno,
+                    tb_filename, tb_lineno))
+
+        self.assertRegex(message, re.compile(regex, re.DOTALL))
+
+    def test_task_source_traceback(self):
+        self.loop.set_debug(True)
+
+        task = asyncio.Task(coroutine_function(), loop=self.loop)
+        lineno = sys._getframe().f_lineno - 1
+        self.assertIsInstance(task._source_traceback, list)
+        self.assertEqual(task._source_traceback[-1][:3],
+                         (__file__,
+                          lineno,
+                          'test_task_source_traceback'))
 
 
 class GatherTestsBase:
