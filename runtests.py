@@ -48,7 +48,7 @@ except ImportError:
     import unittest2 as unittest
     from unittest2.signals import installHandler
 
-ARGS = optparse.OptionParser(description="Run all unittests.", usage="%prog")
+ARGS = optparse.OptionParser(description="Run all unittests.", usage="%prog [options] [pattern] [pattern2 ...]")
 ARGS.add_option(
     '-v', '--verbose', action="store_true", dest='verbose',
     default=0, help='verbose')
@@ -80,9 +80,6 @@ ARGS.add_option(
 ARGS.add_option(
     '--coverage', action="store_true", dest='coverage',
     help='enable html coverage report')
-ARGS.add_option(
-    '--pattern', action="append",
-    help='optional regex patterns to match test ids (default all tests)')
 
 
 if PY33:
@@ -222,7 +219,7 @@ class TestRunner(unittest.TextTestRunner):
 
 
 def runtests():
-    args, commands = ARGS.parse_args()
+    args, pattern = ARGS.parse_args()
 
     if args.coverage and coverage is None:
         URL = "bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py"
@@ -248,9 +245,9 @@ def runtests():
 
     excludes = includes = []
     if args.exclude:
-        excludes = args.pattern
+        excludes = pattern
     else:
-        includes = args.pattern
+        includes = pattern
 
     v = 0 if args.quiet else args.verbose + 1
     failfast = args.failfast
