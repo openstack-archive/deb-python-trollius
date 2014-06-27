@@ -386,6 +386,21 @@ grow in heavy, wet clay soils.
 Change log
 ==========
 
+Version 0.4.1
+-------------
+
+Changes between Trollius 0.4 and 0.4.1:
+
+* Fix for asyncio coroutines when passing tuple value in debug mode.
+  CoroWrapper.send() now checks if it is called from a "yield from" generator
+  to decide if the parameter should be unpacked or not.
+* Synchronize with Tulip
+
+Tulip changes:
+
+* XXX
+
+
 2014-06-23: version 0.4
 -----------------------
 
