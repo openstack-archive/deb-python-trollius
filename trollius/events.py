@@ -24,6 +24,7 @@ except ImportError:
 
 _PY34 = sys.version_info >= (3, 4)
 
+
 def _get_function_source(func):
     if _PY34:
         func = inspect.unwrap(func)
@@ -39,6 +40,38 @@ def _get_function_source(func):
     return None
 
 
+def _format_args(args):
+    # function formatting ('hello',) as ('hello')
+    args_repr = repr(args)
+    if len(args) == 1 and args_repr.endswith(',)'):
+        args_repr = args_repr[:-2] + ')'
+    return args_repr
+
+
+def _format_callback(func, args, suffix=''):
+    if isinstance(func, functools.partial):
+        if args is not None:
+            suffix = _format_args(args) + suffix
+        return _format_callback(func.func, func.args, suffix)
+
+    if compat.PY33:
+        func_repr = getattr(func, '__qualname__', None)
+    else:
+        func_repr = getattr(func, '__name__', None)
+    if not func_repr:
+        func_repr = repr(func)
+
+    if args is not None:
+        func_repr += _format_args(args)
+    if suffix:
+        func_repr += suffix
+
+    source = _get_function_source(func)
+    if source:
+        func_repr += ' at %s:%s' % source
+    return func_repr
+
+
 class Handle(object):
     """Object returned by callback registration methods."""
 
@@ -52,21 +85,11 @@ class Handle(object):
         self._cancelled = False
 
     def __repr__(self):
-        if compat.PY33:
-            cb_repr = getattr(self._callback, '__qualname__', None)
-        else:
-            cb_repr = getattr(self._callback, '__name__', None)
-        if not cb_repr:
-            cb_repr = str(self._callback)
-
-        source = _get_function_source(self._callback)
-        if source:
-            cb_repr += ' at %s:%s' % source
-
-        res = 'Handle({0}, {1})'.format(cb_repr, self._args)
+        info = []
         if self._cancelled:
-            res += '<cancelled>'
-        return res
+            info.append('cancelled')
+        info.append(_format_callback(self._callback, self._args))
+        return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
 
     def cancel(self):
         self._cancelled = True
@@ -75,8 +98,8 @@ class Handle(object):
         try:
             self._callback(*self._args)
         except Exception as exc:
-            msg = 'Exception in callback {0}{1!r}'.format(self._callback,
-                                                          self._args)
+            cb = _format_callback(self._callback, self._args)
+            msg = 'Exception in callback {0}'.format(cb)
             self._loop.call_exception_handler({
                 'message': msg,
                 'exception': exc,
@@ -97,13 +120,12 @@ class TimerHandle(Handle):
         self._when = when
 
     def __repr__(self):
-        res = 'TimerHandle({0}, {1}, {2})'.format(self._when,
-                                                  self._callback,
-                                                  self._args)
+        info = []
         if self._cancelled:
-            res += '<cancelled>'
-
-        return res
+            info.append('cancelled')
+        info.append('when=%s' % self._when)
+        info.append(_format_callback(self._callback, self._args))
+        return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
 
     def __hash__(self):
         return hash(self._when)

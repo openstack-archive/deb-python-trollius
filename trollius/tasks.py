@@ -10,6 +10,7 @@ __all__ = ['coroutine', 'Task',
 
 import functools
 import linecache
+import sys
 import traceback
 try:
     from weakref import WeakSet
@@ -36,11 +37,30 @@ if asyncio is not None:
 else:
     _FUTURE_CLASSES = futures.Future
 
+_PY34 = (sys.version_info >= (3, 4))
+_PY35 = (sys.version_info >= (3, 5))
+
 
 @coroutine
 def _lock_coroutine(lock):
     yield From(lock.acquire())
     raise Return(_ContextManager(lock))
+
+
+def _format_coroutine(coro):
+    assert iscoroutine(coro)
+    if _PY35:
+        coro_name = coro.__qualname__
+    else:
+        coro_name = coro.__name__
+
+    filename = coro.gi_code.co_filename
+    if coro.gi_frame is not None:
+        lineno = coro.gi_frame.f_lineno
+        return '%s() at %s:%s' % (coro_name, filename, lineno)
+    else:
+        lineno = coro.gi_code.co_firstlineno
+        return '%s() done at %s:%s' % (coro_name, filename, lineno)
 
 
 class Task(futures.Future):
@@ -93,25 +113,34 @@ class Task(futures.Future):
         self._loop.call_soon(self._step)
         self.__class__._all_tasks.add(self)
 
+    # On Python 3.3 or older, objects with a destructor part of a reference
+    # cycle are never destroyed. It's not more the case on Python 3.4 thanks to
+    # the PEP 442.
+    if _PY34:
+        def __del__(self):
+            if self._state == futures._PENDING:
+                self._loop.call_exception_handler({
+                    'task': self,
+                    'message': 'Task was destroyed but it is pending!',
+                })
+            futures.Future.__del__(self)
+
     def __repr__(self):
-        res = super(Task, self).__repr__()
-        if (self._must_cancel and
-            self._state == futures._PENDING and
-            '<PENDING' in res):
-            res = res.replace('<PENDING', '<CANCELLING', 1)
-        i = res.find('<')
-        if i < 0:
-            i = len(res)
-        text = self._coro.__name__
-        coro = self._coro
-        if iscoroutine(coro):
-            filename = coro.gi_code.co_filename
-            if coro.gi_frame is not None:
-                text += ' at %s:%s' % (filename, coro.gi_frame.f_lineno)
-            else:
-                text += ' done at %s' % filename
-        res = res[:i] + '(<{0}>)'.format(text) + res[i:]
-        return res
+        info = []
+        if self._must_cancel:
+            info.append('cancelling')
+        else:
+            info.append(self._state.lower())
+
+        info.append(_format_coroutine(self._coro))
+
+        if self._state == futures._FINISHED:
+            info.append(self._format_result())
+
+        if self._callbacks:
+            info.append(self._format_callbacks())
+
+        return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
 
     def get_stack(self, limit=None):
         """Return the list of stack frames for this task's coroutine.

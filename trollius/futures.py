@@ -147,25 +147,44 @@ class Future(object):
             self._loop = loop
         self._callbacks = []
 
-    def __repr__(self):
-        res = self.__class__.__name__
-        if self._state == _FINISHED:
-            if self._exception is not None:
-                res += '<exception={0!r}>'.format(self._exception)
-            else:
-                res += '<result={0!r}>'.format(self._result)
-        elif self._callbacks:
-            size = len(self._callbacks)
-            if size > 2:
-                res += '<{0}, [{1}, <{2} more>, {3}]>'.format(
-                    self._state, self._callbacks[0],
-                    size-2, self._callbacks[-1])
-            else:
-                res += '<{0}, {1}>'.format(self._state, self._callbacks)
-        else:
-            res += '<{0}>'.format(self._state)
-        return res
+    def _format_callbacks(self):
+        cb = self._callbacks
+        size = len(cb)
+        if not size:
+            cb = ''
 
+        def format_cb(callback):
+            return events._format_callback(callback, ())
+
+        if size == 1:
+            cb = format_cb(cb[0])
+        elif size == 2:
+            cb = '{0}, {1}'.format(format_cb(cb[0]), format_cb(cb[1]))
+        elif size > 2:
+            cb = '{0}, <{1} more>, {2}'.format(format_cb(cb[0]),
+                                               size-2,
+                                               format_cb(cb[-1]))
+        return 'cb=[%s]' % cb
+
+    def _format_result(self):
+        if self._state != _FINISHED:
+            return None
+        elif self._exception is not None:
+            return 'exception={0!r}'.format(self._exception)
+        else:
+            return 'result={0!r}'.format(self._result)
+
+    def __repr__(self):
+        info = [self._state.lower()]
+        if self._state == _FINISHED:
+            info.append(self._format_result())
+        if self._callbacks:
+            info.append(self._format_callbacks())
+        return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
+
+    # On Python 3.3 or older, objects with a destructor part of a reference
+    # cycle are never destroyed. It's not more the case on Python 3.4 thanks to
+    # the PEP 442.
     if _PY34:
         def __del__(self):
             if not self._log_traceback:
