@@ -1,5 +1,6 @@
 import functools
 import inspect
+import opcode
 import os
 import sys
 import traceback
@@ -13,6 +14,10 @@ from . import events
 from . import futures
 from .log import logger
 
+
+# Opcode of "yield from" instruction
+YIELD_FROM = opcode.opmap.get('YIELD_FROM', None)
+
 # If you set _DEBUG to true, @coroutine will wrap the resulting
 # generator objects in a CoroWrapper instance (defined below).  That
 # instance will log a message when the generator is never iterated
@@ -25,6 +30,32 @@ from .log import logger
 _DEBUG = bool(os.environ.get('TROLLIUSDEBUG'))
 
 _PY35 = (sys.version_info >= (3, 5))
+
+
+if YIELD_FROM is not None:
+    exec('''if 1:
+        def has_yield_from_bug():
+            class MyGen:
+                def __iter__(self):
+                    return self
+                def __next__(self):
+                    return 42
+                def send(self, *what):
+                    nonlocal v
+                    v = what
+                    return None
+            def outer():
+                v = yield from MyGen()
+            g = outer()
+            next(g)
+            v = None
+            g.send((1, 2, 3))
+            return v !=  ((1, 2, 3),)
+''')
+    YIELD_FROM_BUG = has_yield_from_bug()
+    del has_yield_from_bug
+else:
+    YIELD_FROM_BUG = False
 
 
 if compat.PY33:
@@ -76,13 +107,21 @@ class CoroWrapper(object):
         return next(self.gen)
     next = __next__
 
-    def send(self, *value):
-        # We use `*value` because of a bug in CPythons prior
-        # to 3.4.1. See issue #21209 and test_yield_from_corowrapper
-        # for details.  This workaround should be removed in 3.5.0.
-        if len(value) == 1:
-            value = value[0]
-        return self.gen.send(value)
+    if YIELD_FROM_BUG:
+        # For for CPython issue #21209: using "yield from" and a custom
+        # generator, generator.send(tuple) unpacks the tuple instead of passing
+        # the tuple unchanged. Check if the caller is a generator using "yield
+        # from" to decide if the parameter should be unpacked or not.
+        def send(self, *value):
+            frame = sys._getframe()
+            caller = frame.f_back
+            if (caller.f_lasti != -1
+                and caller.f_code.co_code[caller.f_lasti] != YIELD_FROM):
+                value = value[0]
+            return self.gen.send(value)
+    else:
+        def send(self, value):
+            return self.gen.send(value)
 
     def throw(self, exc):
         return self.gen.throw(exc)
