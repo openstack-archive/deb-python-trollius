@@ -10,7 +10,7 @@ from . import futures
 from . import protocols
 from . import streams
 from . import tasks
-from .coroutines import From, Return
+from .coroutines import coroutine, From, Return
 from .py33_exceptions import ProcessLookupError
 
 
@@ -99,7 +99,7 @@ class Process:
     def returncode(self):
         return self._transport.get_returncode()
 
-    @tasks.coroutine
+    @coroutine
     def wait(self):
         """Wait until the process exit and return the process return code."""
         returncode = self._transport.get_returncode()
@@ -127,17 +127,17 @@ class Process:
         self._check_alive()
         self._transport.kill()
 
-    @tasks.coroutine
+    @coroutine
     def _feed_stdin(self, input):
         self.stdin.write(input)
         yield From(self.stdin.drain())
         self.stdin.close()
 
-    @tasks.coroutine
+    @coroutine
     def _noop(self):
         return None
 
-    @tasks.coroutine
+    @coroutine
     def _read_stream(self, fd):
         transport = self._transport.get_pipe_transport(fd)
         if fd == 2:
@@ -149,7 +149,7 @@ class Process:
         transport.close()
         raise Return(output)
 
-    @tasks.coroutine
+    @coroutine
     def communicate(self, input=None):
         if input:
             stdin = self._feed_stdin(input)
@@ -169,7 +169,7 @@ class Process:
         raise Return(stdout, stderr)
 
 
-@tasks.coroutine
+@coroutine
 def create_subprocess_shell(cmd, **kwds):
     stdin = kwds.pop('stdin', None)
     stdout = kwds.pop('stdout', None)
@@ -187,7 +187,7 @@ def create_subprocess_shell(cmd, **kwds):
     yield From(protocol.waiter)
     raise Return(Process(transport, protocol, loop))
 
-@tasks.coroutine
+@coroutine
 def create_subprocess_exec(program, *args, **kwds):
     stdin = kwds.pop('stdin', None)
     stdout = kwds.pop('stdout', None)

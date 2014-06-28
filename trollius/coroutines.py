@@ -1,3 +1,6 @@
+__all__ = ['coroutine',
+           'iscoroutinefunction', 'iscoroutine']
+
 import functools
 import inspect
 import opcode
@@ -199,7 +202,11 @@ def iscoroutinefunction(func):
 
 if asyncio is not None:
     # Accept also asyncio Future objects for interoperability
-    _COROUTINE_TYPES = (CoroWrapper, asyncio.tasks.CoroWrapper)
+    if hasattr(asyncio, 'coroutines'):
+        _COROUTINE_TYPES = (CoroWrapper, asyncio.coroutines.CoroWrapper)
+    else:
+        # old Tulip/Python versions
+        _COROUTINE_TYPES = (CoroWrapper, asyncio.tasks.CoroWrapper)
 else:
     _COROUTINE_TYPES = CoroWrapper
 
@@ -207,6 +214,23 @@ else:
 def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
     return isinstance(obj, _COROUTINE_TYPES) or inspect.isgenerator(obj)
+
+
+def _format_coroutine(coro):
+    assert iscoroutine(coro)
+    if _PY35:
+        coro_name = coro.__qualname__
+    else:
+        coro_name = coro.__name__
+
+    filename = coro.gi_code.co_filename
+    if coro.gi_frame is not None:
+        lineno = coro.gi_frame.f_lineno
+        return '%s() at %s:%s' % (coro_name, filename, lineno)
+    else:
+        lineno = coro.gi_code.co_firstlineno
+        return '%s() done at %s:%s' % (coro_name, filename, lineno)
+
 
 class FromWrapper(object):
     __slots__ = ('obj',)

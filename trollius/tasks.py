@@ -1,8 +1,7 @@
 """Support for tasks, coroutines and the scheduler."""
 from __future__ import print_function
 
-__all__ = ['coroutine', 'Task',
-           'iscoroutinefunction', 'iscoroutine',
+__all__ = ['Task',
            'FIRST_COMPLETED', 'FIRST_EXCEPTION', 'ALL_COMPLETED',
            'wait', 'wait_for', 'as_completed', 'sleep', 'async',
            'gather', 'shield', 'Return', 'From',
@@ -23,12 +22,12 @@ except ImportError:
     asyncio = None
 
 from . import compat
+from . import coroutines
 from . import events
 from . import executor
 from . import futures
 from .locks import Lock, Condition, Semaphore, _ContextManager
-from .coroutines import Return, From, coroutine, iscoroutinefunction, iscoroutine
-from . import coroutines
+from .coroutines import coroutine, From, Return, iscoroutinefunction, iscoroutine
 
 
 if asyncio is not None:
@@ -38,29 +37,12 @@ else:
     _FUTURE_CLASSES = futures.Future
 
 _PY34 = (sys.version_info >= (3, 4))
-_PY35 = (sys.version_info >= (3, 5))
 
 
 @coroutine
 def _lock_coroutine(lock):
     yield From(lock.acquire())
     raise Return(_ContextManager(lock))
-
-
-def _format_coroutine(coro):
-    assert iscoroutine(coro)
-    if _PY35:
-        coro_name = coro.__qualname__
-    else:
-        coro_name = coro.__name__
-
-    filename = coro.gi_code.co_filename
-    if coro.gi_frame is not None:
-        lineno = coro.gi_frame.f_lineno
-        return '%s() at %s:%s' % (coro_name, filename, lineno)
-    else:
-        lineno = coro.gi_code.co_firstlineno
-        return '%s() done at %s:%s' % (coro_name, filename, lineno)
 
 
 class Task(futures.Future):
@@ -105,7 +87,7 @@ class Task(futures.Future):
         return set(t for t in cls._all_tasks if t._loop is loop)
 
     def __init__(self, coro, loop=None):
-        assert iscoroutine(coro), repr(coro)  # Not a coroutine function!
+        assert coroutines.iscoroutine(coro), repr(coro)  # Not a coroutine function!
         super(Task, self).__init__(loop=loop)
         if self._source_traceback:
             del self._source_traceback[-1]
@@ -137,7 +119,7 @@ class Task(futures.Future):
         else:
             info.append(self._state.lower())
 
-        info.append(_format_coroutine(self._coro))
+        info.append(coroutines._format_coroutine(self._coro))
 
         if self._state == futures._FINISHED:
             info.append(self._format_result())
@@ -368,7 +350,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
     Note: This does not raise TimeoutError! Futures that aren't done
     when the timeout occurs are returned in the second set.
     """
-    if isinstance(fs, futures.Future) or iscoroutine(fs):
+    if isinstance(fs, futures.Future) or coroutines.iscoroutine(fs):
         raise TypeError("expect a list of futures, not %s" % type(fs).__name__)
     if not fs:
         raise ValueError('Set of coroutines/Futures is empty.')
@@ -490,7 +472,7 @@ def as_completed(fs, loop=None, timeout=None):
 
     Note: The futures 'f' are not necessarily members of fs.
     """
-    if isinstance(fs, futures.Future) or iscoroutine(fs):
+    if isinstance(fs, futures.Future) or coroutines.iscoroutine(fs):
         raise TypeError("expect a list of futures, not %s" % type(fs).__name__)
     loop = loop if loop is not None else events.get_event_loop()
     todo = set(async(f, loop=loop) for f in set(fs))
@@ -552,7 +534,7 @@ def async(coro_or_future, loop=None):
         if loop is not None and loop is not coro_or_future._loop:
             raise ValueError('loop argument must agree with Future')
         return coro_or_future
-    elif iscoroutine(coro_or_future):
+    elif coroutines.iscoroutine(coro_or_future):
         task = Task(coro_or_future, loop=loop)
         if task._source_traceback:
             del task._source_traceback[-1]

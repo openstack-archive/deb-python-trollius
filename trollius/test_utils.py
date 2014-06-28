@@ -39,6 +39,7 @@ from . import events
 from . import futures
 from . import selectors
 from . import tasks
+from .coroutines import coroutine
 
 
 if sys.platform == 'win32':  # pragma: no cover
@@ -143,7 +144,7 @@ def dummy_ssl_context():
 
 
 def run_briefly(loop, steps=1):
-    @tasks.coroutine
+    @coroutine
     def once():
         pass
     for step in range(steps):
