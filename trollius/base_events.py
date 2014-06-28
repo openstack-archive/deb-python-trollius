@@ -31,10 +31,11 @@ except ImportError:
     from ordereddict import OrderedDict
 
 from . import compat
+from . import coroutines
 from . import events
 from . import futures
 from . import tasks
-from .coroutines import From, Return
+from .coroutines import coroutine, From, Return
 from .executor import get_default_executor
 from .log import logger
 from .time_monotonic import time_monotonic, time_monotonic_resolution
@@ -126,7 +127,7 @@ class Server(events.AbstractServer):
             if not waiter.done():
                 waiter.set_result(waiter)
 
-    @tasks.coroutine
+    @coroutine
     def wait_closed(self):
         if self.sockets is None or self.waiters is None:
             raise Return()
@@ -182,7 +183,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         """Create write pipe transport."""
         raise NotImplementedError
 
-    @tasks.coroutine
+    @coroutine
     def _make_subprocess_transport(self, protocol, args, shell,
                                    stdin, stdout, stderr, bufsize,
                                    extra=None, **kwargs):
@@ -305,7 +306,7 @@ class BaseEventLoop(events.AbstractEventLoop):
 
     def call_at(self, when, callback, *args):
         """Like call_later(), but uses an absolute time."""
-        if tasks.iscoroutinefunction(callback):
+        if coroutines.iscoroutinefunction(callback):
             raise TypeError("coroutines cannot be used with call_at()")
         if self._debug:
             self._assert_is_current_event_loop()
@@ -331,7 +332,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         return handle
 
     def _call_soon(self, callback, args, check_loop):
-        if tasks.iscoroutinefunction(callback):
+        if coroutines.iscoroutinefunction(callback):
             raise TypeError("coroutines cannot be used with call_soon()")
         if self._debug and check_loop:
             self._assert_is_current_event_loop()
@@ -368,7 +369,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         return handle
 
     def run_in_executor(self, executor, callback, *args):
-        if tasks.iscoroutinefunction(callback):
+        if coroutines.iscoroutinefunction(callback):
             raise TypeError("coroutines cannot be used with run_in_executor()")
         if isinstance(callback, events.Handle):
             assert not args
@@ -396,7 +397,7 @@ class BaseEventLoop(events.AbstractEventLoop):
     def getnameinfo(self, sockaddr, flags=0):
         return self.run_in_executor(None, socket.getnameinfo, sockaddr, flags)
 
-    @tasks.coroutine
+    @coroutine
     def create_connection(self, protocol_factory, host=None, port=None,
                           ssl=None, family=0, proto=0, flags=0, sock=None,
                           local_addr=None, server_hostname=None):
@@ -512,7 +513,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             sock, protocol_factory, ssl, server_hostname))
         raise Return(transport, protocol)
 
-    @tasks.coroutine
+    @coroutine
     def _create_connection_transport(self, sock, protocol_factory, ssl,
                                      server_hostname):
         protocol = protocol_factory()
@@ -528,7 +529,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         yield From(waiter)
         raise Return(transport, protocol)
 
-    @tasks.coroutine
+    @coroutine
     def create_datagram_endpoint(self, protocol_factory,
                                  local_addr=None, remote_addr=None,
                                  family=0, proto=0, flags=0):
@@ -600,7 +601,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         transport = self._make_datagram_transport(sock, protocol, r_addr)
         raise Return(transport, protocol)
 
-    @tasks.coroutine
+    @coroutine
     def create_server(self, protocol_factory, host=None, port=None,
                       family=socket.AF_UNSPEC,
                       flags=socket.AI_PASSIVE,
@@ -679,7 +680,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             self._start_serving(protocol_factory, sock, ssl, server)
         raise Return(server)
 
-    @tasks.coroutine
+    @coroutine
     def connect_read_pipe(self, protocol_factory, pipe):
         protocol = protocol_factory()
         waiter = futures.Future(loop=self)
@@ -687,7 +688,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         yield From(waiter)
         raise Return(transport, protocol)
 
-    @tasks.coroutine
+    @coroutine
     def connect_write_pipe(self, protocol_factory, pipe):
         protocol = protocol_factory()
         waiter = futures.Future(loop=self)
@@ -695,7 +696,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         yield From(waiter)
         raise Return(transport, protocol)
 
-    @tasks.coroutine
+    @coroutine
     def subprocess_shell(self, protocol_factory, cmd, stdin=subprocess.PIPE,
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          universal_newlines=False, shell=True, bufsize=0,
@@ -713,7 +714,7 @@ class BaseEventLoop(events.AbstractEventLoop):
             protocol, cmd, True, stdin, stdout, stderr, bufsize, **kwargs))
         raise Return(transport, protocol)
 
-    @tasks.coroutine
+    @coroutine
     def subprocess_exec(self, protocol_factory, program, *args, **kwargs):
         stdin = kwargs.pop('stdin', subprocess.PIPE)
         stdout = kwargs.pop('stdout', subprocess.PIPE)

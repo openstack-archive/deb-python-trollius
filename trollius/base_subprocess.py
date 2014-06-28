@@ -2,9 +2,8 @@ import collections
 import subprocess
 
 from . import protocols
-from . import tasks
 from . import transports
-from .coroutines import From
+from .coroutines import coroutine, From
 
 
 class BaseSubprocessTransport(transports.SubprocessTransport):
@@ -66,7 +65,7 @@ class BaseSubprocessTransport(transports.SubprocessTransport):
     def kill(self):
         self._proc.kill()
 
-    @tasks.coroutine
+    @coroutine
     def _post_init(self):
         proc = self._proc
         loop = self._loop

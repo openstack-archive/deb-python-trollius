@@ -6,8 +6,7 @@ import collections
 
 from . import events
 from . import futures
-from . import coroutines as tasks
-from .coroutines import From, Return
+from .coroutines import coroutine, From, Return
 
 
 class _ContextManager:
@@ -113,7 +112,7 @@ class Lock(object):
         """Return True if lock is acquired."""
         return self._locked
 
-    @tasks.coroutine
+    @coroutine
     def acquire(self):
         """Acquire a lock.
 
@@ -210,7 +209,7 @@ class Event(object):
         to true again."""
         self._value = False
 
-    @tasks.coroutine
+    @coroutine
     def wait(self):
         """Block until the internal flag is true.
 
@@ -263,7 +262,7 @@ class Condition(object):
             extra = '{0},waiters:{1}'.format(extra, len(self._waiters))
         return '<{0} [{1}]>'.format(res[1:-1], extra)
 
-    @tasks.coroutine
+    @coroutine
     def wait(self):
         """Wait until notified.
 
@@ -291,7 +290,7 @@ class Condition(object):
         finally:
             yield From(self.acquire())
 
-    @tasks.coroutine
+    @coroutine
     def wait_for(self, predicate):
         """Wait until a predicate becomes true.
 
@@ -382,7 +381,7 @@ class Semaphore(object):
         """Returns True if semaphore can not be acquired immediately."""
         return self._value == 0
 
-    @tasks.coroutine
+    @coroutine
     def acquire(self):
         """Acquire a semaphore.
 
