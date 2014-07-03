@@ -395,10 +395,34 @@ Changes between Trollius 0.4 and 0.4.1:
   CoroWrapper.send() now checks if it is called from a "yield from" generator
   to decide if the parameter should be unpacked or not.
 * Synchronize with Tulip
+* Fix runtests.py command line for patterns.
+
 
 Tulip changes:
 
-* XXX
+* Fix for asyncio coroutines when passing tuple value in debug mode.
+  CoroWrapper.send() now checks if it is called from a "yield from" generator
+  to decide if the parameter should be unpacked or not.
+* Tulip issue #137: In debug mode, save traceback where Future, Task and Handle
+  objects are created. Pass the traceback to call_exception_handler() in the
+  'source_traceback' key.
+* Tulip issue #137: In debug mode, add the traceback where the coroutine object
+  was created to the "coroutine ... was never yield from" log
+* Handle error handler: enhance formatting of the callback
+* Tulip issue #177: Rewite repr() of Future, Task, Handle and TimerHandle
+
+  - Uniformize repr() output to format "<Class ...>"
+  - On Python 3.5+, repr(Task) uses the qualified name instead of the short name
+    of the coroutine
+
+* repr(Task) now also contains the line number even if the coroutine is done:
+  use the first line number of the code object instead of the current line
+  number of the generator frame. The name of the coroutine is not enough
+  because many coroutines may have the same name. It's a common case in asyncio
+  tests for example.
+* Log an error if a Task is destroyed while it is still pending, but only on
+  Python 3.4 and newer.
+* Make slow_select() unit test pass on Windows.
 
 
 2014-06-23: version 0.4
