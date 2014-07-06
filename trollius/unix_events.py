@@ -280,7 +280,7 @@ class _UnixReadPipeTransport(transports.ReadTransport):
         self._loop.add_reader(self._fileno, self._read_ready)
         self._loop.call_soon(self._protocol.connection_made, self)
         if waiter is not None:
-            self._loop.call_soon(waiter.set_result, None)
+            self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
     def _read_ready(self):
         try:
@@ -364,7 +364,7 @@ class _UnixWritePipeTransport(transports._FlowControlMixin,
 
         self._loop.call_soon(self._protocol.connection_made, self)
         if waiter is not None:
-            self._loop.call_soon(waiter.set_result, None)
+            self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
     def get_write_buffer_size(self):
         return sum(len(data) for data in self._buffer)
@@ -519,11 +519,11 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             stdin.close()
             if hasattr(stdin_w, 'detach'):
                 stdin_fd = stdin_w.detach()
-                self._proc.stdin = os.fdopen(stdin_fd, 'rb', bufsize)
+                self._proc.stdin = os.fdopen(stdin_fd, 'wb', bufsize)
             else:
                 stdin_dup = os.dup(stdin_w.fileno())
                 stdin_w.close()
-                self._proc.stdin = os.fdopen(stdin_dup, 'rb', bufsize)
+                self._proc.stdin = os.fdopen(stdin_dup, 'wb', bufsize)
 
 
 class AbstractChildWatcher(object):

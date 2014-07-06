@@ -7,6 +7,7 @@ import opcode
 import os
 import sys
 import traceback
+import types
 try:
     import asyncio
 except ImportError:
@@ -19,7 +20,7 @@ from .log import logger
 
 
 # Opcode of "yield from" instruction
-YIELD_FROM = opcode.opmap.get('YIELD_FROM', None)
+_YIELD_FROM = opcode.opmap.get('YIELD_FROM', None)
 
 # If you set _DEBUG to true, @coroutine will wrap the resulting
 # generator objects in a CoroWrapper instance (defined below).  That
@@ -35,30 +36,33 @@ _DEBUG = bool(os.environ.get('TROLLIUSDEBUG'))
 _PY35 = (sys.version_info >= (3, 5))
 
 
-if YIELD_FROM is not None:
+if _YIELD_FROM is not None:
+    # Check for CPython issue #21209
     exec('''if 1:
         def has_yield_from_bug():
             class MyGen:
+                def __init__(self):
+                    self.send_args = None
                 def __iter__(self):
                     return self
                 def __next__(self):
                     return 42
                 def send(self, *what):
-                    nonlocal v
-                    v = what
+                    self.send_args = what
                     return None
-            def outer():
-                v = yield from MyGen()
-            g = outer()
-            next(g)
-            v = None
-            g.send((1, 2, 3))
-            return v !=  ((1, 2, 3),)
+            def yield_from_gen(gen):
+                yield from gen
+            value = (1, 2, 3)
+            gen = MyGen()
+            coro = yield_from_gen(gen)
+            next(coro)
+            coro.send(value)
+            return gen.send_args != (value,)
 ''')
-    YIELD_FROM_BUG = has_yield_from_bug()
+    _YIELD_FROM_BUG = has_yield_from_bug()
     del has_yield_from_bug
 else:
-    YIELD_FROM_BUG = False
+    _YIELD_FROM_BUG = False
 
 
 if compat.PY33:
@@ -102,6 +106,12 @@ class CoroWrapper(object):
         self.gen = gen
         self.func = func
         self._source_traceback = traceback.extract_stack(sys._getframe(1))
+        # __name__, __qualname__, __doc__ attributes are set by the coroutine()
+        # decorator
+
+    def __repr__(self):
+        return ('<%s %s>'
+                % (self.__class__.__name__, _format_coroutine(self)))
 
     def __iter__(self):
         return self
@@ -110,7 +120,7 @@ class CoroWrapper(object):
         return next(self.gen)
     next = __next__
 
-    if YIELD_FROM_BUG:
+    if _YIELD_FROM_BUG:
         # For for CPython issue #21209: using "yield from" and a custom
         # generator, generator.send(tuple) unpacks the tuple instead of passing
         # the tuple unchanged. Check if the caller is a generator using "yield
@@ -118,8 +128,8 @@ class CoroWrapper(object):
         def send(self, *value):
             frame = sys._getframe()
             caller = frame.f_back
-            if (caller.f_lasti != -1
-                and caller.f_code.co_code[caller.f_lasti] != YIELD_FROM):
+            assert caller.f_lasti >= 0
+            if caller.f_code.co_code[caller.f_lasti] != _YIELD_FROM:
                 value = value[0]
             return self.gen.send(value)
     else:
@@ -150,12 +160,14 @@ class CoroWrapper(object):
         frame = getattr(gen, 'gi_frame', None)
         if frame is not None and frame.f_lasti == -1:
             func = events._format_callback(self.func, ())
-            tb = ''.join(traceback.format_list(self._source_traceback))
-            message = ('Coroutine %s was never yielded from\n'
-                       'Coroutine object created at (most recent call last):\n'
-                       '%s'
-                       % (func, tb.rstrip()))
-            logger.error(message)
+            msg = 'Coroutine %s was never yielded from' % func
+            tb = getattr(self, '_source_traceback', ())
+            if tb:
+                tb = ''.join(traceback.format_list(tb))
+                msg += ('\nCoroutine object created at '
+                        '(most recent call last):\n')
+                msg += tb.rstrip()
+            logger.error(msg)
 
 def coroutine(func):
     """Decorator to mark coroutines.
@@ -200,20 +212,18 @@ def iscoroutinefunction(func):
     return getattr(func, '_is_coroutine', False)
 
 
+_COROUTINE_TYPES = (types.GeneratorType, CoroWrapper)
 if asyncio is not None:
     # Accept also asyncio Future objects for interoperability
     if hasattr(asyncio, 'coroutines'):
-        _COROUTINE_TYPES = (CoroWrapper, asyncio.coroutines.CoroWrapper)
+        _COROUTINE_TYPES += (asyncio.coroutines.CoroWrapper,)
     else:
         # old Tulip/Python versions
-        _COROUTINE_TYPES = (CoroWrapper, asyncio.tasks.CoroWrapper)
-else:
-    _COROUTINE_TYPES = CoroWrapper
-
+        _COROUTINE_TYPES = (asyncio.tasks.CoroWrapper,)
 
 def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
-    return isinstance(obj, _COROUTINE_TYPES) or inspect.isgenerator(obj)
+    return isinstance(obj, _COROUTINE_TYPES)
 
 
 def _format_coroutine(coro):
