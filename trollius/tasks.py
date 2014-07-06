@@ -96,13 +96,16 @@ class Task(futures.Future):
         self._must_cancel = False
         self._loop.call_soon(self._step)
         self.__class__._all_tasks.add(self)
+        # If False, don't log a message if the task is destroyed whereas its
+        # status is still pending
+        self._log_destroy_pending = True
 
     # On Python 3.3 or older, objects with a destructor part of a reference
     # cycle are never destroyed. It's not more the case on Python 3.4 thanks to
     # the PEP 442.
     if _PY34:
         def __del__(self):
-            if self._state == futures._PENDING:
+            if self._state == futures._PENDING and self._log_destroy_pending:
                 context = {
                     'task': self,
                     'message': 'Task was destroyed but it is pending!',
@@ -126,6 +129,9 @@ class Task(futures.Future):
 
         if self._callbacks:
             info.append(self._format_callbacks())
+
+        if self._fut_waiter is not None:
+            info.append('wait_for=%r' % self._fut_waiter)
 
         return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
 
@@ -514,7 +520,8 @@ def as_completed(fs, loop=None, timeout=None):
 def sleep(delay, result=None, loop=None):
     """Coroutine that completes after a given time (in seconds)."""
     future = futures.Future(loop=loop)
-    h = future._loop.call_later(delay, future.set_result, result)
+    h = future._loop.call_later(delay,
+                                future._set_result_unless_cancelled, result)
     try:
         result = yield From(future)
         raise Return(result)

@@ -34,5 +34,7 @@ def task():
 
     stdout, stderr = yield From(proc.communicate())
     print("stdout = %r" % stdout.decode())
+    pipe.close()
 
 loop.run_until_complete(task())
+loop.close()

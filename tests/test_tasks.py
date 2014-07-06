@@ -217,12 +217,27 @@ class TaskTests(test_utils.TestCase):
         coro = ('%s() at %s:%s'
                 % (coro_qualname, code.co_filename, code.co_firstlineno))
 
+        # test repr(CoroWrapper)
+        if coroutines._DEBUG:
+            self.assertEqual(repr(gen), '<CoroWrapper %s>' % coro)
+
         # test pending Task
         t = asyncio.Task(gen, loop=self.loop)
         t.add_done_callback(Dummy())
         self.assertEqual(repr(t),
                          '<Task pending %s cb=[<Dummy>()]>' % coro)
         self.loop.run_until_complete(t)
+
+    def test_task_repr_wait_for(self):
+        @asyncio.coroutine
+        def wait_for(fut):
+            return (yield From(fut))
+
+        fut = asyncio.Future(loop=self.loop)
+        task = asyncio.Task(wait_for(fut), loop=self.loop)
+        test_utils.run_briefly(self.loop)
+        self.assertRegex(repr(task),
+                         '<Task .* wait_for=%s>' % re.escape(repr(fut)))
 
     def test_task_basics(self):
         @asyncio.coroutine
@@ -1013,8 +1028,8 @@ class TaskTests(test_utils.TestCase):
         non_local = {'handle': None}
         orig_call_later = loop.call_later
 
-        def call_later(self, delay, callback, *args):
-            non_local['handle'] = orig_call_later(self, delay, callback, *args)
+        def call_later(delay, callback, *args):
+            non_local['handle'] = orig_call_later(delay, callback, *args)
             return non_local['handle']
 
         loop.call_later = call_later
@@ -1606,6 +1621,7 @@ class TaskTests(test_utils.TestCase):
                          (__file__,
                           lineno,
                           'test_task_source_traceback'))
+        self.loop.run_until_complete(task)
 
 
 class GatherTestsBase:
