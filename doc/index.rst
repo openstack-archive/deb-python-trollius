@@ -391,6 +391,18 @@ Version 0.4.1
 
 Changes between Trollius 0.4 and 0.4.1:
 
+* Python issue #21447 and #21886: Fix a race condition when setting the result
+  of a Future with ``call_soon()``. Add an helper, a private method, to set
+  the result only if the future was not cancelled.
+* Add ``repr(CoroWrapper)``
+* _UnixSubprocessTransport: fix file mode of stdin: open stdin in write mode,
+  not in read mode.
+* More reliable CoroWrapper.__del__. If the constructor is interrupted by
+  KeyboardInterrupt or the coroutine objet is destroyed lately, some the
+  _source_traceback attribute doesn't exist anymore.
+* ``repr(Task)``: include also the future the task is waiting for
+* Simplify/optimize iscoroutine(). Inline inspect.isgenerator(obj): replace it
+  with isinstance(obj, types.GeneratorType).
 * Fix for asyncio coroutines when passing tuple value in debug mode.
   CoroWrapper.send() now checks if it is called from a "yield from" generator
   to decide if the parameter should be unpacked or not.
