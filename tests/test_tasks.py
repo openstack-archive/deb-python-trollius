@@ -231,7 +231,8 @@ class TaskTests(test_utils.TestCase):
     def test_task_repr_wait_for(self):
         @asyncio.coroutine
         def wait_for(fut):
-            return (yield From(fut))
+            res = yield From(fut)
+            raise Return(res)
 
         fut = asyncio.Future(loop=self.loop)
         task = asyncio.Task(wait_for(fut), loop=self.loop)
