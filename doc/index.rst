@@ -391,6 +391,15 @@ Version 0.4.1
 
 Changes between Trollius 0.4 and 0.4.1:
 
+* Fix for asyncio coroutines when passing tuple value in debug mode.
+  CoroWrapper.send() now checks if it is called from a "yield from" generator
+  to decide if the parameter should be unpacked or not.
+* Synchronize with Tulip
+* Fix runtests.py command line for patterns.
+
+
+Tulip changes:
+
 * Python issue #21447 and #21886: Fix a race condition when setting the result
   of a Future with ``call_soon()``. Add an helper, a private method, to set
   the result only if the future was not cancelled.
@@ -403,15 +412,6 @@ Changes between Trollius 0.4 and 0.4.1:
 * ``repr(Task)``: include also the future the task is waiting for
 * Simplify/optimize iscoroutine(). Inline inspect.isgenerator(obj): replace it
   with isinstance(obj, types.GeneratorType).
-* Fix for asyncio coroutines when passing tuple value in debug mode.
-  CoroWrapper.send() now checks if it is called from a "yield from" generator
-  to decide if the parameter should be unpacked or not.
-* Synchronize with Tulip
-* Fix runtests.py command line for patterns.
-
-
-Tulip changes:
-
 * Fix for asyncio coroutines when passing tuple value in debug mode.
   CoroWrapper.send() now checks if it is called from a "yield from" generator
   to decide if the parameter should be unpacked or not.
