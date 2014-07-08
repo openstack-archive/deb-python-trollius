@@ -270,12 +270,7 @@ class FutureTests(test_utils.TestCase):
         self.loop.set_debug(True)
 
         future = asyncio.Future(loop=self.loop)
-        lineno = sys._getframe().f_lineno - 1
-        self.assertIsInstance(future._source_traceback, list)
-        self.assertEqual(future._source_traceback[-1][:3],
-                         (__file__,
-                          lineno,
-                          'test_future_source_traceback'))
+        self.check_soure_traceback(future._source_traceback, -1)
 
     @mock.patch('trollius.base_events.logger')
     def test_future_exception_never_retrieved(self, m_log):

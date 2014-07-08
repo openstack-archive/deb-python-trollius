@@ -1594,7 +1594,7 @@ class TaskTests(test_utils.TestCase):
         finally:
             asyncio.coroutines._DEBUG = debug
 
-        tb_filename = __file__
+        tb_filename = sys._getframe().f_code.co_filename
         tb_lineno = sys._getframe().f_lineno + 1
         coro = coro_noop()
         coro = None
@@ -1619,12 +1619,7 @@ class TaskTests(test_utils.TestCase):
         self.loop.set_debug(True)
 
         task = asyncio.Task(coroutine_function(), loop=self.loop)
-        lineno = sys._getframe().f_lineno - 1
-        self.assertIsInstance(task._source_traceback, list)
-        self.assertEqual(task._source_traceback[-1][:3],
-                         (__file__,
-                          lineno,
-                          'test_task_source_traceback'))
+        self.check_soure_traceback(task._source_traceback, -1)
         self.loop.run_until_complete(task)
 
 
