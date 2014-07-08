@@ -521,6 +521,29 @@ class BaseEventLoopTests(test_utils.TestCase):
                                                TROLLIUSDEBUG='1')
         self.assertEqual(stdout.rstrip(), b'True')
 
+    def test_create_task(self):
+        class MyTask(asyncio.Task):
+            pass
+
+        @asyncio.coroutine
+        def test():
+            pass
+
+        class EventLoop(base_events.BaseEventLoop):
+            def create_task(self, coro):
+                return MyTask(coro, loop=loop)
+
+        loop = EventLoop()
+        self.set_event_loop(loop)
+
+        coro = test()
+        task = asyncio.async(coro, loop=loop)
+        self.assertIsInstance(task, MyTask)
+
+        # make warnings quiet
+        task._log_destroy_pending = False
+        coro.close()
+
 
 class MyProto(asyncio.Protocol):
     done = None

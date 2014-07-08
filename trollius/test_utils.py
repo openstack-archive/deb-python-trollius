@@ -149,7 +149,7 @@ def run_briefly(loop, steps=1):
         pass
     for step in range(steps):
         gen = once()
-        t = tasks.Task(gen, loop=loop)
+        t = loop.create_task(gen)
         # Don't log a warning if the task is not done after run_until_complete().
         # It occurs if the loop is stopped or if a task raises a BaseException.
         t._log_destroy_pending = False

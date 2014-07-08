@@ -216,6 +216,10 @@ else:
             """Return whether the event loop is currently running."""
             raise NotImplementedError
 
+        def is_closed(self):
+            """Returns True if the event loop was closed."""
+            raise NotImplementedError
+
         def close(self):
             """Close the loop.
 
@@ -239,6 +243,11 @@ else:
             raise NotImplementedError
 
         def time(self):
+            raise NotImplementedError
+
+        # Method scheduling a coroutine object: create a task.
+
+        def create_task(self, coro):
             raise NotImplementedError
 
         # Methods for interacting with threads.
