@@ -298,7 +298,7 @@ class Task(futures.Future):
             # FIXME: faster check. common base class? hasattr?
             elif isinstance(result, (Lock, Condition, Semaphore)):
                 coro = _lock_coroutine(result)
-                result = Task(coro, loop=self._loop)
+                result = self._loop.create_task(coro)
 
             if isinstance(result, _FUTURE_CLASSES):
                 # Yielded Future must come from Future.__iter__().
@@ -542,7 +542,9 @@ def async(coro_or_future, loop=None):
             raise ValueError('loop argument must agree with Future')
         return coro_or_future
     elif coroutines.iscoroutine(coro_or_future):
-        task = Task(coro_or_future, loop=loop)
+        if loop is None:
+            loop = events.get_event_loop()
+        task = loop.create_task(coro_or_future)
         if task._source_traceback:
             del task._source_traceback[-1]
         return task

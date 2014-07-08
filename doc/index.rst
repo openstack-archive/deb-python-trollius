@@ -397,9 +397,15 @@ Changes between Trollius 0.4 and 0.4.1:
 * Synchronize with Tulip
 * Fix runtests.py command line for patterns.
 
-
 Tulip changes:
 
+* Tulip issue #185: Add a ``create_task()`` method to event loops. The
+  ``create_task()`` method can be overriden in custom event loop to implement
+  their own task class. For example, greenio and Pulsar projects use their own
+  task class. The ``create_task()`` method is now preferred over creating
+  directly task using the ``Task`` class.
+* Update AbstractEventLoop: add new event loop methods; update also the unit
+  test.
 * Python issue #21447 and #21886: Fix a race condition when setting the result
   of a Future with ``call_soon()``. Add an helper, a private method, to set
   the result only if the future was not cancelled.
