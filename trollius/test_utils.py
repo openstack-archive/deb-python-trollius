@@ -536,3 +536,13 @@ class TestCase(_TestCase):
                 msg = '%s: %r not found in %r' % (msg, expected_regex.pattern, text)
                 raise self.failureException(msg)
 
+    def check_soure_traceback(self, source_traceback, lineno_delta):
+        frame = sys._getframe(1)
+        filename = frame.f_code.co_filename
+        lineno = frame.f_lineno + lineno_delta
+        name = frame.f_code.co_name
+        self.assertIsInstance(source_traceback, list)
+        self.assertEqual(source_traceback[-1][:3],
+                         (filename,
+                          lineno,
+                          name))

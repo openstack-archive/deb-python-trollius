@@ -1872,29 +1872,21 @@ class HandleTests(test_utils.TestCase):
         loop.set_debug(True)
         self.set_event_loop(loop)
 
-        def check_source_traceback(h):
-            lineno = sys._getframe(1).f_lineno - 1
-            self.assertIsInstance(h._source_traceback, list)
-            self.assertEqual(h._source_traceback[-1][:3],
-                             (__file__,
-                              lineno,
-                              'test_handle_source_traceback'))
-
         # call_soon
         h = loop.call_soon(noop)
-        check_source_traceback(h)
+        self.check_soure_traceback(h._source_traceback, -1)
 
         # call_soon_threadsafe
         h = loop.call_soon_threadsafe(noop)
-        check_source_traceback(h)
+        self.check_soure_traceback(h._source_traceback, -1)
 
         # call_later
         h = loop.call_later(0, noop)
-        check_source_traceback(h)
+        self.check_soure_traceback(h._source_traceback, -1)
 
         # call_at
         h = loop.call_later(0, noop)
-        check_source_traceback(h)
+        self.check_soure_traceback(h._source_traceback, -1)
 
 
 class TimerTests(test_utils.TestCase):
