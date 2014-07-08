@@ -389,8 +389,8 @@ class BaseEventLoop(events.AbstractEventLoop):
         if executor is None:
             executor = self._default_executor
             if executor is None:
-                self._default_executor = get_default_executor()
-                executor = self._default_executor
+                executor = get_default_executor()
+                self._default_executor = executor
         return futures.wrap_future(executor.submit(callback, *args), loop=self)
 
     def set_default_executor(self, executor):
