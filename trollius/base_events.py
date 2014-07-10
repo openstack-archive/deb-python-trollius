@@ -161,7 +161,10 @@ class BaseEventLoop(events.AbstractEventLoop):
         """Schedule a coroutine object.
 
         Return a task object."""
-        return tasks.Task(coro, loop=self)
+        task = tasks.Task(coro, loop=self)
+        if task._source_traceback:
+            del task._source_traceback[-1]
+        return task
 
     def _make_socket_transport(self, sock, protocol, waiter=None,
                                extra=None, server=None):
@@ -175,7 +178,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         raise NotImplementedError
 
     def _make_datagram_transport(self, sock, protocol,
-                                 address=None, extra=None):
+                                 address=None, waiter=None, extra=None):
         """Create datagram transport."""
         raise NotImplementedError
 
@@ -611,7 +614,10 @@ class BaseEventLoop(events.AbstractEventLoop):
             raise exceptions[0]
 
         protocol = protocol_factory()
-        transport = self._make_datagram_transport(sock, protocol, r_addr)
+        waiter = futures.Future(loop=self)
+        transport = self._make_datagram_transport(sock, protocol, r_addr,
+                                                  waiter)
+        yield From(waiter)
         raise Return(transport, protocol)
 
     @coroutine

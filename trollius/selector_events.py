@@ -73,8 +73,9 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
             server_side, server_hostname, extra, server)
 
     def _make_datagram_transport(self, sock, protocol,
-                                 address=None, extra=None):
-        return _SelectorDatagramTransport(self, sock, protocol, address, extra)
+                                 address=None, waiter=None, extra=None):
+        return _SelectorDatagramTransport(self, sock, protocol,
+                                          address, waiter, extra)
 
     def close(self):
         if self.is_closed():
@@ -500,6 +501,7 @@ class _SelectorSocketTransport(_SelectorTransport):
         self._loop.add_reader(self._sock_fd, self._read_ready)
         self._loop.call_soon(self._protocol.connection_made, self)
         if waiter is not None:
+            # wait until protocol.connection_made() has been called
             self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
     def pause_reading(self):
@@ -710,6 +712,7 @@ class _SelectorSslTransport(_SelectorTransport):
         self._loop.add_reader(self._sock_fd, self._read_ready)
         self._loop.call_soon(self._protocol.connection_made, self)
         if self._waiter is not None:
+            # wait until protocol.connection_made() has been called
             self._loop.call_soon(self._waiter._set_result_unless_cancelled,
                                  None)
 
@@ -834,11 +837,16 @@ class _SelectorDatagramTransport(_SelectorTransport):
 
     _buffer_factory = collections.deque
 
-    def __init__(self, loop, sock, protocol, address=None, extra=None):
-        super(_SelectorDatagramTransport, self).__init__(loop, sock, protocol, extra)
+    def __init__(self, loop, sock, protocol, address=None,
+                 waiter=None, extra=None):
+        super(_SelectorDatagramTransport, self).__init__(loop, sock,
+                                                         protocol, extra)
         self._address = address
         self._loop.add_reader(self._sock_fd, self._read_ready)
         self._loop.call_soon(self._protocol.connection_made, self)
+        if waiter is not None:
+            # wait until protocol.connection_made() has been called
+            self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
     def get_write_buffer_size(self):
         return sum(len(data) for data, _ in self._buffer)
