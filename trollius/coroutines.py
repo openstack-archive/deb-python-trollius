@@ -99,7 +99,7 @@ else:
 
 
 class CoroWrapper(object):
-    # Wrapper for coroutine in _DEBUG mode.
+    # Wrapper for coroutine object in _DEBUG mode.
 
     def __init__(self, gen, func):
         assert inspect.isgenerator(gen), gen
@@ -110,8 +110,11 @@ class CoroWrapper(object):
         # decorator
 
     def __repr__(self):
-        return ('<%s %s>'
-                % (self.__class__.__name__, _format_coroutine(self)))
+        coro_repr = _format_coroutine(self)
+        if self._source_traceback:
+            frame = self._source_traceback[-1]
+            coro_repr += ', created at %s:%s' % (frame[0], frame[1])
+        return '<%s %s>' % (self.__class__.__name__, coro_repr)
 
     def __iter__(self):
         return self
@@ -234,12 +237,21 @@ def _format_coroutine(coro):
         coro_name = coro.__name__
 
     filename = coro.gi_code.co_filename
-    if coro.gi_frame is not None:
+    if (isinstance(coro, CoroWrapper)
+    and not inspect.isgeneratorfunction(coro.func)):
+        filename, lineno = events._get_function_source(coro.func)
+        if coro.gi_frame is None:
+            coro_repr = '%s() done, defined at %s:%s' % (coro_name, filename, lineno)
+        else:
+            coro_repr = '%s() running, defined at %s:%s' % (coro_name, filename, lineno)
+    elif coro.gi_frame is not None:
         lineno = coro.gi_frame.f_lineno
-        return '%s() at %s:%s' % (coro_name, filename, lineno)
+        coro_repr = '%s() running at %s:%s' % (coro_name, filename, lineno)
     else:
         lineno = coro.gi_code.co_firstlineno
-        return '%s() done at %s:%s' % (coro_name, filename, lineno)
+        coro_repr = '%s() done, defined at %s:%s' % (coro_name, filename, lineno)
+
+    return coro_repr
 
 
 class FromWrapper(object):
