@@ -17,6 +17,7 @@ from . import base_subprocess
 from . import constants
 from . import events
 from . import selector_events
+from . import selectors
 from . import transports
 from .compat import flatten_bytes
 from .coroutines import coroutine, From, Return
@@ -283,6 +284,20 @@ class _UnixReadPipeTransport(transports.ReadTransport):
             # wait until protocol.connection_made() has been called
             self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
+    def __repr__(self):
+        info = [self.__class__.__name__, 'fd=%s' % self._fileno]
+        if self._pipe is not None:
+            polling = selector_events._test_selector_event(
+                          self._loop._selector,
+                          self._fileno, selectors.EVENT_READ)
+            if polling:
+                info.append('polling')
+            else:
+                info.append('idle')
+        else:
+            info.append('closed')
+        return '<%s>' % ' '.join(info)
+
     def _read_ready(self):
         try:
             data = wrap_error(os.read, self._fileno, self.max_size)
@@ -294,6 +309,8 @@ class _UnixReadPipeTransport(transports.ReadTransport):
             if data:
                 self._protocol.data_received(data)
             else:
+                if self._loop.get_debug():
+                    logger.info("%r was closed by peer", self)
                 self._closing = True
                 self._loop.remove_reader(self._fileno)
                 self._loop.call_soon(self._protocol.eof_received)
@@ -368,11 +385,30 @@ class _UnixWritePipeTransport(transports._FlowControlMixin,
             # wait until protocol.connection_made() has been called
             self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
+    def __repr__(self):
+        info = [self.__class__.__name__, 'fd=%s' % self._fileno]
+        if self._pipe is not None:
+            polling = selector_events._test_selector_event(
+                          self._loop._selector,
+                          self._fileno, selectors.EVENT_WRITE)
+            if polling:
+                info.append('polling')
+            else:
+                info.append('idle')
+
+            bufsize = self.get_write_buffer_size()
+            info.append('bufsize=%s' % bufsize)
+        else:
+            info.append('closed')
+        return '<%s>' % ' '.join(info)
+
     def get_write_buffer_size(self):
         return sum(len(data) for data in self._buffer)
 
     def _read_ready(self):
         # Pipe was closed by peer.
+        if self._loop.get_debug():
+            logger.info("%r was closed by peer", self)
         if self._buffer:
             self._close(BrokenPipeError())
         else:

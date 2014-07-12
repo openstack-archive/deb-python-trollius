@@ -45,6 +45,17 @@ def _get_socket_error(sock, address):
         raise OSError(err, 'Connect call failed %s' % (address,))
 
 
+def _test_selector_event(selector, fd, event):
+    # Test if the selector is monitoring 'event' events
+    # for the file descriptor 'fd'.
+    try:
+        key = selector.get_key(fd)
+    except KeyError:
+        return False
+    else:
+        return bool(key.events & event)
+
+
 class BaseSelectorEventLoop(base_events.BaseEventLoop):
     """Selector event loop.
 
@@ -138,6 +149,9 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
                            sslcontext=None, server=None):
         try:
             conn, addr = wrap_error(sock.accept)
+            if self._debug:
+                logger.debug("%r got a new connection from %r: %r",
+                             server, addr, conn)
             conn.setblocking(False)
         except (BlockingIOError, InterruptedError, ConnectionAbortedError):
             pass  # False alarm.
@@ -436,7 +450,27 @@ class _SelectorTransport(transports._FlowControlMixin,
         self._conn_lost = 0  # Set when call to connection_lost scheduled.
         self._closing = False  # Set when close() called.
         if self._server is not None:
-            self._server.attach(self)
+            self._server._attach()
+
+    def __repr__(self):
+        info = [self.__class__.__name__, 'fd=%s' % self._sock_fd]
+        polling = _test_selector_event(self._loop._selector,
+                                       self._sock_fd, selectors.EVENT_READ)
+        if polling:
+            info.append('read=polling')
+        else:
+            info.append('read=idle')
+
+        polling = _test_selector_event(self._loop._selector,
+                                       self._sock_fd, selectors.EVENT_WRITE)
+        if polling:
+            state = 'polling'
+        else:
+            state = 'idle'
+
+        bufsize = self.get_write_buffer_size()
+        info.append('write=<%s, bufsize=%s>' % (state, bufsize))
+        return '<%s>' % ' '.join(info)
 
     def abort(self):
         self._force_close(None)
@@ -452,7 +486,10 @@ class _SelectorTransport(transports._FlowControlMixin,
 
     def _fatal_error(self, exc, message='Fatal error on transport'):
         # Should be called from exception handler only.
-        if not isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+        if isinstance(exc, (BrokenPipeError, ConnectionResetError)):
+            if self._loop.get_debug():
+                logger.debug("%r: %s", self, message, exc_info=True)
+        else:
             self._loop.call_exception_handler({
                 'message': message,
                 'exception': exc,
@@ -483,7 +520,7 @@ class _SelectorTransport(transports._FlowControlMixin,
             self._loop = None
             server = self._server
             if server is not None:
-                server.detach(self)
+                server._detach()
                 self._server = None
 
     def get_write_buffer_size(self):
@@ -511,6 +548,8 @@ class _SelectorSocketTransport(_SelectorTransport):
             raise RuntimeError('Already paused')
         self._paused = True
         self._loop.remove_reader(self._sock_fd)
+        if self._loop.get_debug():
+            logger.debug("%r pauses reading", self)
 
     def resume_reading(self):
         if not self._paused:
@@ -519,6 +558,8 @@ class _SelectorSocketTransport(_SelectorTransport):
         if self._closing:
             return
         self._loop.add_reader(self._sock_fd, self._read_ready)
+        if self._loop.get_debug():
+            logger.debug("%r resumes reading", self)
 
     def _read_ready(self):
         try:
@@ -531,6 +572,8 @@ class _SelectorSocketTransport(_SelectorTransport):
             if data:
                 self._protocol.data_received(data)
             else:
+                if self._loop.get_debug():
+                    logger.debug("%r received EOF", self)
                 keep_open = self._protocol.eof_received()
                 if keep_open:
                     # We're keeping the connection open so the
@@ -657,31 +700,37 @@ class _SelectorSslTransport(_SelectorTransport):
         # SSL-specific extra info.  (peercert is set later)
         self._extra.update(sslcontext=sslcontext)
 
-        self._on_handshake()
+        if self._loop.get_debug():
+            logger.debug("%r starts SSL handshake", self)
+            start_time = self._loop.time()
+        else:
+            start_time = None
+        self._on_handshake(start_time)
 
-    def _on_handshake(self):
+    def _on_handshake(self, start_time):
         try:
             wrap_ssl_error(self._sock.do_handshake)
         except SSLWantReadError:
-            self._loop.add_reader(self._sock_fd, self._on_handshake)
+            self._loop.add_reader(self._sock_fd,
+                                  self._on_handshake, start_time)
             return
         except SSLWantWriteError:
-            self._loop.add_writer(self._sock_fd, self._on_handshake)
-            return
-        except Exception as exc:
-            self._loop.remove_reader(self._sock_fd)
-            self._loop.remove_writer(self._sock_fd)
-            self._sock.close()
-            if self._waiter is not None:
-                self._waiter.set_exception(exc)
+            self._loop.add_writer(self._sock_fd,
+                                  self._on_handshake, start_time)
             return
         except BaseException as exc:
+            if self._loop.get_debug():
+                logger.warning("%r: SSL handshake failed",
+                               self, exc_info=True)
             self._loop.remove_reader(self._sock_fd)
             self._loop.remove_writer(self._sock_fd)
             self._sock.close()
             if self._waiter is not None:
                 self._waiter.set_exception(exc)
-            raise
+            if isinstance(exc, Exception):
+                return
+            else:
+                raise
 
         self._loop.remove_reader(self._sock_fd)
         self._loop.remove_writer(self._sock_fd)
@@ -695,6 +744,10 @@ class _SelectorSslTransport(_SelectorTransport):
                 try:
                     ssl.match_hostname(peercert, self._server_hostname)
                 except Exception as exc:
+                    if self._loop.get_debug():
+                        logger.warning("%r: SSL handshake failed "
+                                       "on matching the hostname",
+                                       self, exc_info=True)
                     self._sock.close()
                     if self._waiter is not None:
                         self._waiter.set_exception(exc)
@@ -716,6 +769,10 @@ class _SelectorSslTransport(_SelectorTransport):
             self._loop.call_soon(self._waiter._set_result_unless_cancelled,
                                  None)
 
+        if self._loop.get_debug():
+            dt = self._loop.time() - start_time
+            logger.debug("%r: SSL handshake took %.1f ms", self, dt * 1e3)
+
     def pause_reading(self):
         # XXX This is a bit icky, given the comment at the top of
         # _read_ready().  Is it possible to evoke a deadlock?  I don't
@@ -729,6 +786,8 @@ class _SelectorSslTransport(_SelectorTransport):
             raise RuntimeError('Already paused')
         self._paused = True
         self._loop.remove_reader(self._sock_fd)
+        if self._loop.get_debug():
+            logger.debug("%r pauses reading", self)
 
     def resume_reading(self):
         if not self._paused:
@@ -737,6 +796,8 @@ class _SelectorSslTransport(_SelectorTransport):
         if self._closing:
             return
         self._loop.add_reader(self._sock_fd, self._read_ready)
+        if self._loop.get_debug():
+            logger.debug("%r resumes reading", self)
 
     def _sock_recv(self):
         return wrap_ssl_error(self._sock.recv, self.max_size)
@@ -770,6 +831,8 @@ class _SelectorSslTransport(_SelectorTransport):
                 self._protocol.data_received(data)
             else:
                 try:
+                    if self._loop.get_debug():
+                        logger.debug("%r received EOF", self)
                     keep_open = self._protocol.eof_received()
                     if keep_open:
                         logger.warning('returning true from eof_received() '
