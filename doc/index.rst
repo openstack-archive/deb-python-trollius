@@ -399,11 +399,42 @@ Changes between Trollius 0.4 and 0.4.1:
 
 Tulip changes:
 
+* Tulip issue #183: log socket events in debug mode
+
+  - Log most important socket events: socket connected, new client, connection
+    reset or closed by peer (EOF), etc.
+  - Log time elapsed in DNS resolution (getaddrinfo)
+  - Log pause/resume reading
+  - Log time of SSL handshake
+  - Log SSL handshake errors
+  - Add a __repr__() method to many classes
+
+* Fix ProactorEventLoop() in debug mode
+* Tulip issue #180: Make Server attributes and methods private, the sockets
+  attribute remains public.
 * Tulip issue #185: Add a ``create_task()`` method to event loops. The
   ``create_task()`` method can be overriden in custom event loop to implement
   their own task class. For example, greenio and Pulsar projects use their own
   task class. The ``create_task()`` method is now preferred over creating
   directly task using the ``Task`` class.
+* Tulip issue #182: Improve logs of BaseEventLoop._run_once()
+* Improve CoroWrapper: copy also the qualified name on Python 3.4, not only on
+  Python 3.5+
+* CoroWrapper.__del__() now reuses repr(CoroWrapper) to log the "... was never
+  yielded from" warning
+* repr(Task) and repr(CoroWrapper) now also includes where these objects were
+  created.
+* Handle.cancel() now clears references to callback and args
+* Tulip issue #181: BaseEventLoop.create_datagram_endpoint() now waits until
+  protocol.connection_made() has been called. Document also why transport
+  constructors use a waiter.
+* The task factory feature was implemented in Tulip and merged back to
+  Trollius: it's the new BaseEventLoop.create_task() method.
+* Tulip issue #185: Add a create_task() method to event loops. The
+  create_task() method can be overriden in custom event loop to implement their
+  own task class. For example, greenio and Pulsar projects use their own task
+  class. The create_task() method is now preferred over creating directly task
+  using the Task class.
 * Update AbstractEventLoop: add new event loop methods; update also the unit
   test.
 * Python issue #21447 and #21886: Fix a race condition when setting the result
