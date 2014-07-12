@@ -726,7 +726,7 @@ class EventLoopTestsMixin(object):
             with self.assertRaisesRegex(ValueError,
                                         'path and sock can not be specified '
                                         'at the same time'):
-                server = self.loop.run_until_complete(f)
+                self.loop.run_until_complete(f)
         finally:
             sock.close()
 
@@ -1883,7 +1883,7 @@ class HandleTests(test_utils.TestCase):
         self.loop.get_debug.return_value = True
 
         # simple function
-        create_filename = __file__
+        create_filename = sys._getframe().f_code.co_filename
         create_lineno = sys._getframe().f_lineno + 1
         h = asyncio.Handle(noop, (1, 2), self.loop)
         filename, lineno = test_utils.get_function_source(noop)
@@ -1970,7 +1970,7 @@ class TimerTests(test_utils.TestCase):
         self.loop.get_debug.return_value = True
 
         # simple function
-        create_filename = __file__
+        create_filename = sys._getframe().f_code.co_filename
         create_lineno = sys._getframe().f_lineno + 1
         h = asyncio.TimerHandle(123, noop, (), self.loop)
         filename, lineno = test_utils.get_function_source(noop)

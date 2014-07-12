@@ -96,43 +96,47 @@ def _raise_stop_error(*args):
 class Server(events.AbstractServer):
 
     def __init__(self, loop, sockets):
-        self.loop = loop
+        self._loop = loop
         self.sockets = sockets
-        self.active_count = 0
-        self.waiters = []
+        self._active_count = 0
+        self._waiters = []
 
-    def attach(self, transport):
+    def __repr__(self):
+        return '<%s sockets=%r>' % (self.__class__.__name__, self.sockets)
+
+    def _attach(self):
         assert self.sockets is not None
-        self.active_count += 1
+        self._active_count += 1
 
-    def detach(self, transport):
-        assert self.active_count > 0
-        self.active_count -= 1
-        if self.active_count == 0 and self.sockets is None:
+    def _detach(self):
+        assert self._active_count > 0
+        self._active_count -= 1
+        if self._active_count == 0 and self.sockets is None:
             self._wakeup()
 
     def close(self):
         sockets = self.sockets
-        if sockets is not None:
-            self.sockets = None
-            for sock in sockets:
-                self.loop._stop_serving(sock)
-            if self.active_count == 0:
-                self._wakeup()
+        if sockets is None:
+            return
+        self.sockets = None
+        for sock in sockets:
+            self._loop._stop_serving(sock)
+        if self._active_count == 0:
+            self._wakeup()
 
     def _wakeup(self):
-        waiters = self.waiters
-        self.waiters = None
+        waiters = self._waiters
+        self._waiters = None
         for waiter in waiters:
             if not waiter.done():
                 waiter.set_result(waiter)
 
     @coroutine
     def wait_closed(self):
-        if self.sockets is None or self.waiters is None:
+        if self.sockets is None or self._waiters is None:
             raise Return()
-        waiter = futures.Future(loop=self.loop)
-        self.waiters.append(waiter)
+        waiter = futures.Future(loop=self._loop)
+        self._waiters.append(waiter)
         yield From(waiter)
 
 
@@ -279,6 +283,8 @@ class BaseEventLoop(events.AbstractEventLoop):
             raise RuntimeError("cannot close a running event loop")
         if self._closed:
             return
+        if self._debug:
+            logger.debug("Close %r", self)
         self._closed = True
         self._ready.clear()
         del self._scheduled[:]
@@ -405,10 +411,39 @@ class BaseEventLoop(events.AbstractEventLoop):
     def set_default_executor(self, executor):
         self._default_executor = executor
 
+    def _getaddrinfo_debug(self, host, port, family, type, proto, flags):
+        msg = ["%s:%r" % (host, port)]
+        if family:
+            msg.append('family=%r' % family)
+        if type:
+            msg.append('type=%r' % type)
+        if proto:
+            msg.append('proto=%r' % proto)
+        if flags:
+            msg.append('flags=%r' % flags)
+        msg = ', '.join(msg)
+        logger.debug('Get addresss info %s', msg)
+
+        t0 = self.time()
+        addrinfo = socket.getaddrinfo(host, port, family, type, proto, flags)
+        dt = self.time() - t0
+
+        msg = ('Getting addresss info %s took %.3f ms: %r'
+               % (msg, dt * 1e3, addrinfo))
+        if dt >= self.slow_callback_duration:
+            logger.info(msg)
+        else:
+            logger.debug(msg)
+        return addrinfo
+
     def getaddrinfo(self, host, port,
                     family=0, type=0, proto=0, flags=0):
-        return self.run_in_executor(None, socket.getaddrinfo,
-                                    host, port, family, type, proto, flags)
+        if self._debug:
+            return self.run_in_executor(None, self._getaddrinfo_debug,
+                                        host, port, family, type, proto, flags)
+        else:
+            return self.run_in_executor(None, socket.getaddrinfo,
+                                        host, port, family, type, proto, flags)
 
     def getnameinfo(self, sockaddr, flags=0):
         return self.run_in_executor(None, socket.getnameinfo, sockaddr, flags)
@@ -495,6 +530,8 @@ class BaseEventLoop(events.AbstractEventLoop):
                             sock.close()
                             sock = None
                             continue
+                    if self._debug:
+                        logger.debug("connect %r to %r", sock, address)
                     yield From(self.sock_connect(sock, address))
                 except socket.error as exc:
                     if sock is not None:
@@ -527,6 +564,9 @@ class BaseEventLoop(events.AbstractEventLoop):
 
         transport, protocol = yield From(self._create_connection_transport(
             sock, protocol_factory, ssl, server_hostname))
+        if self._debug:
+            logger.debug("connected to %s:%r: (%r, %r)",
+                         host, port, transport, protocol)
         raise Return(transport, protocol)
 
     @coroutine
@@ -617,6 +657,15 @@ class BaseEventLoop(events.AbstractEventLoop):
         waiter = futures.Future(loop=self)
         transport = self._make_datagram_transport(sock, protocol, r_addr,
                                                   waiter)
+        if self._debug:
+            if local_addr:
+                logger.info("Datagram endpoint local_addr=%r remote_addr=%r "
+                            "created: (%r, %r)",
+                            local_addr, remote_addr, transport, protocol)
+            else:
+                logger.debug("Datagram endpoint remote_addr=%r created: "
+                             "(%r, %r)",
+                             remote_addr, transport, protocol)
         yield From(waiter)
         raise Return(transport, protocol)
 
@@ -630,7 +679,7 @@ class BaseEventLoop(events.AbstractEventLoop):
                       reuse_address=None):
         """Create a TCP server bound to host and port.
 
-        Return an AbstractServer object which can be used to stop the service.
+        Return an Server object which can be used to stop the service.
 
         This method is a coroutine.
         """
@@ -697,6 +746,8 @@ class BaseEventLoop(events.AbstractEventLoop):
             sock.listen(backlog)
             sock.setblocking(False)
             self._start_serving(protocol_factory, sock, ssl, server)
+        if self._debug:
+            logger.info("%r is serving", server)
         raise Return(server)
 
     @coroutine
@@ -899,19 +950,26 @@ class BaseEventLoop(events.AbstractEventLoop):
             when = self._scheduled[0]._when
             timeout = max(0, when - self.time())
 
-        if self._debug:
+        if self._debug and timeout != 0:
             t0 = self.time()
             event_list = self._selector.select(timeout)
             dt = self.time() - t0
-            if dt >= 1:
+            if dt >= 1.0:
                 level = logging.INFO
             else:
                 level = logging.DEBUG
-            if timeout is not None:
-                logger.log(level, 'poll %.3f took %.3f seconds',
-                           timeout, dt)
-            else:
-                logger.log(level, 'poll took %.3f seconds', dt)
+            nevent = len(event_list)
+            if timeout is None:
+                logger.log(level, 'poll took %.3f ms: %s events',
+                           dt * 1e3, nevent)
+            elif nevent:
+                logger.log(level,
+                           'poll %.3f ms took %.3f ms: %s events',
+                           timeout * 1e3, dt * 1e3, nevent)
+            elif dt >= 1.0:
+                logger.log(level,
+                           'poll %.3f ms took %.3f ms: timeout',
+                           timeout * 1e3, dt * 1e3)
         else:
             event_list = self._selector.select(timeout)
         self._process_events(event_list)

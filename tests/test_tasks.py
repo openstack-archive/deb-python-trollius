@@ -1,6 +1,5 @@
 """Tests for tasks.py."""
 
-import os.path
 import re
 import sys
 import types
@@ -16,6 +15,7 @@ from trollius.test_support import assert_python_ok
 from trollius.test_utils import mock
 
 
+PY3 = (sys.version_info >= (3,))
 PY34 = (sys.version_info >= (3, 4))
 PY35 = (sys.version_info >= (3, 5))
 
@@ -156,7 +156,7 @@ class TaskTests(test_utils.TestCase):
 
         # test coroutine object
         gen = notmuch()
-        if PY35:
+        if PY35 or (coroutines._DEBUG and PY3):
             coro_qualname = 'TaskTests.test_task_repr.<locals>.notmuch'
         else:
             coro_qualname = 'notmuch'
@@ -211,17 +211,15 @@ class TaskTests(test_utils.TestCase):
 
         # test coroutine object
         gen = notmuch()
-        if PY35:
+        if PY35 or coroutines._DEBUG:
             # On Python >= 3.5, generators now inherit the name of the
             # function, as expected, and have a qualified name (__qualname__
             # attribute).
             coro_name = 'notmuch'
-            coro_qualname = 'TaskTests.test_task_repr_coro_decorator.<locals>.notmuch'
-        elif coroutines._DEBUG:
-            # In debug mode, @coroutine decorator uses CoroWrapper which gets
-            # its name (__name__ attribute) from the wrapped coroutine
-            # function.
-            coro_name = coro_qualname = 'notmuch'
+            if PY35 or (coroutines._DEBUG and PY3):
+                coro_qualname = 'TaskTests.test_task_repr_coro_decorator.<locals>.notmuch'
+            else:
+                coro_qualname = 'notmuch'
         else:
             # On Python < 3.5, generators inherit the name of the code, not of
             # the function. See: http://bugs.python.org/issue21205
@@ -1630,20 +1628,20 @@ class TaskTests(test_utils.TestCase):
             asyncio.coroutines._DEBUG = debug
 
         tb_filename = sys._getframe().f_code.co_filename
-        tb_lineno = sys._getframe().f_lineno + 1
-        coro = coro_noop()
-        coro = None
+        tb_lineno = sys._getframe().f_lineno + 2
+        # create a coroutine object but don't use it
+        coro_noop()
         support.gc_collect()
 
         self.assertTrue(m_log.error.called)
         message = m_log.error.call_args[0][0]
         func_filename, func_lineno = test_utils.get_function_source(coro_noop)
         coro_name = getattr(coro_noop, '__qualname__', coro_noop.__name__)
-        regex = (r'^Coroutine %s\(\) at %s:%s was never yielded from\n'
+        regex = (r'^<CoroWrapper %s\(\) .* at %s:%s, .*> was never yielded from\n'
                  r'Coroutine object created at \(most recent call last\):\n'
                  r'.*\n'
                  r'  File "%s", line %s, in test_coroutine_never_yielded\n'
-                 r'    coro = coro_noop\(\)$'
+                 r'    coro_noop\(\)$'
                  % (re.escape(coro_name),
                     re.escape(func_filename), func_lineno,
                     re.escape(tb_filename), tb_lineno))

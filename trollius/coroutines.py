@@ -33,8 +33,6 @@ _YIELD_FROM = opcode.opmap.get('YIELD_FROM', None)
 # when _DEBUG is true.
 _DEBUG = bool(os.environ.get('TROLLIUSDEBUG'))
 
-_PY35 = (sys.version_info >= (3, 5))
-
 
 if _YIELD_FROM is not None:
     # Check for CPython issue #21209
@@ -162,8 +160,7 @@ class CoroWrapper(object):
         gen = getattr(self, 'gen', None)
         frame = getattr(gen, 'gi_frame', None)
         if frame is not None and frame.f_lasti == -1:
-            func = events._format_callback(self.func, ())
-            msg = 'Coroutine %s was never yielded from' % func
+            msg = '%r was never yielded from' % self
             tb = getattr(self, '_source_traceback', ())
             if tb:
                 tb = ''.join(traceback.format_list(tb))
@@ -199,7 +196,7 @@ def coroutine(func):
             if w._source_traceback:
                 del w._source_traceback[-1]
             w.__name__ = func.__name__
-            if _PY35:
+            if hasattr(func, '__qualname__'):
                 w.__qualname__ = func.__qualname__
             w.__doc__ = func.__doc__
             return w
@@ -231,10 +228,7 @@ def iscoroutine(obj):
 
 def _format_coroutine(coro):
     assert iscoroutine(coro)
-    if _PY35:
-        coro_name = coro.__qualname__
-    else:
-        coro_name = coro.__name__
+    coro_name = getattr(coro, '__qualname__', coro.__name__)
 
     filename = coro.gi_code.co_filename
     if (isinstance(coro, CoroWrapper)
