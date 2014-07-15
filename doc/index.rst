@@ -216,6 +216,94 @@ Python 3.4 and later. Changing imports is not enough to use Trollius code with
 asyncio: the asyncio event loop explicit rejects coroutines using ``yield``
 (instead of ``yield from``).
 
+OSError and socket.error exceptions
+-----------------------------------
+
+The ``OSError`` exception changed in Python 3.3: there are now subclasses like
+``ConnectionResetError`` or ``BlockingIOError``. The exception hierarchy also
+changed: ``socket.error`` is now an alias to ``OSError``. The ``asyncio``
+module is written for Python 3.3 and newer and so is based on these new
+exceptions.
+
+.. seealso::
+
+   `PEP 3151: Reworking the OS and IO exception hierarchy
+   <https://www.python.org/dev/peps/pep-3151>`_.
+
+On Python 3.2 and older, Trollius wraps ``OSError``, ``IOError``,
+``socket.error`` and ``select.error`` exceptions on operating system and socket
+operations to raise more specific exceptions, subclasses of ``OSError``:
+
+* ``trollius.BlockingIOError``
+* ``trollius.BrokenPipeError``
+* ``trollius.ChildProcessError``
+* ``trollius.ConnectionAbortedError``
+* ``trollius.ConnectionRefusedError``
+* ``trollius.ConnectionResetError``
+* ``trollius.FileNotFoundError``
+* ``trollius.InterruptedError``
+* ``trollius.PermissionError``
+
+On Python 3.3 and newer, these symbols are just aliases to builtin exceptions.
+
+.. note::
+
+   ``ssl.SSLError`` exceptions are not wrapped to ``OSError``, even if
+   ``ssl.SSLError`` is a subclass of ``socket.error``.
+
+
+SSLError
+--------
+
+On Python 3.2 and older, Trollius wraps ``ssl.SSLError`` exceptions to raise
+more specific exceptions, subclasses of ``ssl.SSLError``, to mimic the Python
+3.3:
+
+* ``trollius.SSLEOFError``
+* ``trollius.SSLWantReadError``
+* ``trollius.SSLWantWriteError``
+
+On Python 3.3 and newer, these symbols are just aliases to exceptions of the
+``ssl`` module.
+
+``trollius.BACKPORT_SSL_ERRORS`` constant:
+
+* ``True`` if ``ssl.SSLError`` are wrapped to Trollius exceptions,
+* ``False`` is trollius SSL exceptions are just aliases.
+
+
+SSLContext
+----------
+
+Python 3.3 has a new ``ssl.SSLContext`` class: see the `documentaton of the
+ssl.SSLContext class
+<https://docs.python.org/3/library/ssl.html#ssl.SSLContext>`_.
+
+On Python 3.2 and older, Trollius has a basic ``trollius.SSLContext`` class to
+mimic Python 3.3 API, but it only has a few features:
+
+* ``protocol``, ``certfile`` and ``keyfile`` attributes
+* read-only ``verify_mode`` attribute: its value is ``CERT_NONE``
+* ``load_cert_chain(certfile, keyfile)`` method
+* ``wrap_socket(sock, **kw)`` method: see the ``ssl.wrap_socket()``
+  documentation of your Python version for the keyword parameters
+
+Example of missing features:
+
+* no ``options`` attribute
+* the ``verify_mode`` attriubte cannot be modified
+* no ``set_default_verify_paths()`` method
+* no "Server Name Indication" (SNI) support
+* etc.
+
+On Python 3.2 and older, the trollius SSL transport does not have the
+``'compression'`` extra info.
+
+``trollius.BACKPORT_SSL_CONTEXT`` constant:
+
+* ``True`` if ``trollius.SSLContext`` is the backported class,
+* ``False`` if ``trollius.SSLContext`` is just an alias to ``ssl.SSLContext``.
+
 
 Other differences
 -----------------
@@ -223,45 +311,17 @@ Other differences
 * Trollius uses the ``TROLLIUSDEBUG`` envrionment variable instead of
   the ``PYTHONASYNCIODEBUG`` envrionment variable. ``TROLLIUSDEBUG`` variable
   is used even if the Python command line option ``-E`` is used.
-* On Python 2.7, ``asyncio.SSLContext`` has less features than the
-  ``ssl.SSLContext`` of Python 3.3: no options, verify_mode is set to
-  ``CERT_NONE`` and cannot be modified, no set_default_verify_paths() method,
-  no SNI, etc. The SSL transport does not have the ``compression`` extra info.
+* ``asyncio.subprocess`` has no ``DEVNULL`` constant
 * Python 2 does not support keyword-only parameters.
 * If the ``concurrent.futures`` module is missing,
   ``BaseEventLoop.run_in_executor()`` uses a synchronous executor instead of a
   pool of threads. It blocks until the function returns. For example, DNS
   resolutions are blocking in this case.
-* ``asyncio.subprocess`` has no ``DEVNULL`` constant
-
-Symbols
--------
-
-Trollius has more symbols than Tulip in the main asyncio module for
-compatibility with Python older than 3.3:
-
-* Specific to Trollius:
+* Trollius has more symbols than Tulip for compatibility with Python older than
+  3.3:
 
   - ``From``: part of ``yield From(...)`` syntax
   - ``Return``: part of ``raise Return(...)`` syntax
-
-* SSL:
-
-  - ``SSLContext``
-  - Exceptions: ``SSLEOFError``, ``SSLWantReadError``, ``SSLWantWriteError``
-  - Flags (bool): ``BACKPORT_SSL_ERRORS``, ``BACKPORT_SSL_CONTEXT``
-
-* OS exceptions:
-
-  - ``BlockingIOError``
-  - ``BrokenPipeError``
-  - ``ChildProcessError``
-  - ``ConnectionAbortedError``
-  - ``ConnectionRefusedError``
-  - ``ConnectionResetError``
-  - ``FileNotFoundError``
-  - ``InterruptedError``
-  - ``PermissionError``
 
 
 Write code working on Trollius and Tulip
