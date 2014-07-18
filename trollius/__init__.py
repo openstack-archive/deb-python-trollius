@@ -30,12 +30,6 @@ from .subprocess import *
 from .tasks import *
 from .transports import *
 
-if sys.platform == 'win32':  # pragma: no cover
-    from .windows_events import *
-else:
-    from .unix_events import *  # pragma: no cover
-
-
 __all__ = (coroutines.__all__ +
            events.__all__ +
            py33_exceptions.__all__ +
@@ -47,6 +41,13 @@ __all__ = (coroutines.__all__ +
            subprocess.__all__ +
            tasks.__all__ +
            transports.__all__)
+
+if sys.platform == 'win32':  # pragma: no cover
+    from .windows_events import *
+    __all__ += windows_events.__all__
+else:
+    from .unix_events import *  # pragma: no cover
+    __all__ += unix_events.__all__
 
 try:
     from .py3_ssl import *

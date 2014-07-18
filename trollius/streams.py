@@ -16,6 +16,7 @@ from . import futures
 from . import protocols
 from .coroutines import coroutine, From, Return
 from .py33_exceptions import ConnectionResetError
+from .log import logger
 
 
 _DEFAULT_LIMIT = 2**16
@@ -156,10 +157,15 @@ class FlowControlMixin(protocols.Protocol):
     def pause_writing(self):
         assert not self._paused
         self._paused = True
+        if self._loop.get_debug():
+            logger.debug("%r pauses writing", self)
 
     def resume_writing(self):
         assert self._paused
         self._paused = False
+        if self._loop.get_debug():
+            logger.debug("%r resumes writing", self)
+
         waiter = self._drain_waiter
         if waiter is not None:
             self._drain_waiter = None
@@ -246,6 +252,12 @@ class StreamWriter(object):
         self._protocol = protocol
         self._reader = reader
         self._loop = loop
+
+    def __repr__(self):
+        info = [self.__class__.__name__, 'transport=%r' % self._transport]
+        if self._reader is not None:
+            info.append('reader=%r' % self._reader)
+        return '<%s>' % ' '.join(info)
 
     @property
     def transport(self):

@@ -1107,29 +1107,29 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.assertIsNone(waiter.result())
 
     def test_on_handshake_reader_retry(self):
+        self.loop.set_debug(False)
         self.sslsock.do_handshake.side_effect = SSLWantReadError
         transport = _SelectorSslTransport(
             self.loop, self.sock, self.protocol, self.sslcontext)
-        transport._on_handshake(None)
         self.loop.assert_reader(1, transport._on_handshake, None)
 
     def test_on_handshake_writer_retry(self):
+        self.loop.set_debug(False)
         self.sslsock.do_handshake.side_effect = SSLWantWriteError
         transport = _SelectorSslTransport(
             self.loop, self.sock, self.protocol, self.sslcontext)
-        transport._on_handshake(None)
         self.loop.assert_writer(1, transport._on_handshake, None)
 
     def test_on_handshake_exc(self):
         exc = ValueError()
         self.sslsock.do_handshake.side_effect = exc
-        transport = _SelectorSslTransport(
-            self.loop, self.sock, self.protocol, self.sslcontext)
-        transport._waiter = asyncio.Future(loop=self.loop)
-        transport._on_handshake(None)
+        with test_utils.disable_logger():
+            waiter = asyncio.Future(loop=self.loop)
+            transport = _SelectorSslTransport(
+                self.loop, self.sock, self.protocol, self.sslcontext, waiter)
+        self.assertTrue(waiter.done())
+        self.assertIs(exc, waiter.exception())
         self.assertTrue(self.sslsock.close.called)
-        self.assertTrue(transport._waiter.done())
-        self.assertIs(exc, transport._waiter.exception())
 
     def test_on_handshake_base_exc(self):
         transport = _SelectorSslTransport(
@@ -1137,7 +1137,8 @@ class SelectorSslTransportTests(test_utils.TestCase):
         transport._waiter = asyncio.Future(loop=self.loop)
         exc = BaseException()
         self.sslsock.do_handshake.side_effect = exc
-        self.assertRaises(BaseException, transport._on_handshake, None)
+        with test_utils.disable_logger():
+            self.assertRaises(BaseException, transport._on_handshake, 0)
         self.assertTrue(self.sslsock.close.called)
         self.assertTrue(transport._waiter.done())
         self.assertIs(exc, transport._waiter.exception())
