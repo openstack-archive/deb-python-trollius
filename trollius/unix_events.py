@@ -14,6 +14,7 @@ import threading
 
 from . import base_events
 from . import base_subprocess
+from . import compat
 from . import constants
 from . import events
 from . import selector_events
@@ -37,9 +38,10 @@ if sys.platform == 'win32':  # pragma: no cover
     raise ImportError('Signals are not really supported on Windows')
 
 
-def _sighandler_noop(signum, frame):
-    """Dummy signal handler."""
-    pass
+if compat.PY33:
+    def _sighandler_noop(signum, frame):
+        """Dummy signal handler."""
+        pass
 
 
 class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
@@ -60,12 +62,16 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         for sig in list(self._signal_handlers):
             self.remove_signal_handler(sig)
 
-    def _process_self_data(self, data):
-        for signum in data:
-            if not signum:
-                # ignore null bytes written by _write_to_self()
-                continue
-            self._handle_signal(signum)
+    # On Python <= 3.2, the C signal handler of Python writes a null byte into
+    # the wakeup file descriptor. We cannot retrieve the signal numbers from
+    # the file descriptor.
+    if compat.PY33:
+        def _process_self_data(self, data):
+            for signum in data:
+                if not signum:
+                    # ignore null bytes written by _write_to_self()
+                    continue
+                self._handle_signal(signum)
 
     def add_signal_handler(self, sig, callback, *args):
         """Add a handler for a signal.  UNIX only.
@@ -87,10 +93,21 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         self._signal_handlers[sig] = handle
 
         try:
-            # Register a dummy signal handler to ask Python to write the signal
-            # number in the wakup file descriptor. _process_self_data() will
-            # read signal numbers from this file descriptor to handle signals.
-            signal.signal(sig, _sighandler_noop)
+            if compat.PY33:
+                # On Python 3.3 and newer, the C signal handler writes the
+                # signal number into the wakeup file descriptor and then calls
+                # Py_AddPendingCall() to schedule the Python signal handler.
+                #
+                # Register a dummy signal handler to ask Python to write the
+                # signal number into the wakup file descriptor.
+                # _process_self_data() will read signal numbers from this file
+                # descriptor to handle signals.
+                signal.signal(sig, _sighandler_noop)
+            else:
+                # On Python 3.2 and older, the C signal handler first calls
+                # Py_AddPendingCall() to schedule the Python signal handler,
+                # and then write a null byte into the wakeup file descriptor.
+                signal.signal(sig, self._handle_signal)
 
             # Set SA_RESTART to limit EINTR occurrences.
             signal.siginterrupt(sig, False)
@@ -112,7 +129,7 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
             else:
                 reraise(exc_type, exc_value, tb)
 
-    def _handle_signal(self, sig):
+    def _handle_signal(self, sig, frame=None):
         """Internal helper that is the actual signal handler."""
         handle = self._signal_handlers.get(sig)
         if handle is None:
