@@ -9,7 +9,7 @@ from trollius import From, Return
 from trollius import test_support as support
 if sys.platform != 'win32':
     from trollius import unix_events
-from trollius.py33_exceptions import BrokenPipeError
+from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
 
 # Program blocking
 PROGRAM_BLOCKED = [sys.executable, '-c', 'import time; time.sleep(3600)']
@@ -119,7 +119,11 @@ class SubprocessMixin(object):
 
     @test_utils.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
     def test_send_signal(self):
-        code = 'import time; print("sleeping", flush=True); time.sleep(3600)'
+        code = '; '.join((
+            'import sys, time',
+            'print("sleeping")',
+            'sys.stdout.flush()',
+            'time.sleep(3600)'))
         args = [sys.executable, '-c', code]
         create = asyncio.create_subprocess_exec(*args, loop=self.loop, stdout=subprocess.PIPE)
         proc = self.loop.run_until_complete(create)
