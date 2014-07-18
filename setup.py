@@ -6,7 +6,7 @@
 #  - run unit tests without ssl: set sys.modules['ssl']=None at startup
 #  - test examples
 #  - update version in setup.py (version) and doc/conf.py (version, release)
-#  - set release date in doc/index.rst
+#  - set release date in doc/changelog.rst
 #  - hg ci
 #  - hg tag trollius-VERSION
 #  - hg push
