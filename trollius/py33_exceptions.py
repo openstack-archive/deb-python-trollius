@@ -98,14 +98,17 @@ else:
 """)
 
 
-def _wrap_error(mapping, key, err_args):
+def _wrap_error(exc, mapping, key):
     if key not in mapping:
         return
     new_err_cls = mapping[key]
-    new_err = new_err_cls(err_args)
+    new_err = new_err_cls(*exc.args)
 
     # raise a new exception with the original traceback
-    traceback = sys.exc_info()[2]
+    if hasattr(exc, '__traceback__'):
+        traceback = exc.__traceback__
+    else:
+        traceback = sys.exc_info()[2]
     reraise(new_err_cls, new_err, traceback)
 
 
@@ -117,16 +120,17 @@ if not PY33:
         """
         try:
             return func(*args, **kw)
-        except (socket.error, IOError, OSError) as err:
-            if hasattr(err, 'winerror'):
-                _wrap_error(_MAP_ERRNO, err.winerror, err.args)
+        except (socket.error, IOError, OSError) as exc:
+            if hasattr(exc, 'winerror'):
+                _wrap_error(exc, _MAP_ERRNO, exc.winerror)
                 # _MAP_ERRNO does not contain all Windows errors.
-                # For some errors like "file not found", err.errno should
+                # For some errors like "file not found", exc.errno should
                 # be used (ex: ENOENT).
-            _wrap_error(_MAP_ERRNO, err.errno, err.args)
+            _wrap_error(exc, _MAP_ERRNO, exc.errno)
             raise
-        except select.error as err:
-            _wrap_error(_MAP_ERRNO, err.args[0], err.args)
+        except select.error as exc:
+            if exc.args:
+                _wrap_error(exc, _MAP_ERRNO, exc.args[0])
             raise
 else:
     def wrap_error(func, *args, **kw):
