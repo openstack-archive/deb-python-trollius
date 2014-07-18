@@ -141,9 +141,9 @@ if BACKPORT_SSL_ERRORS:
     def wrap_ssl_error(func, *args, **kw):
         try:
             return func(*args, **kw)
-        except ssl.SSLError as err:
-            if err.args:
-                _wrap_error(_MAP_ERRORS, err.args[0], err.args)
+        except ssl.SSLError as exc:
+            if exc.args:
+                _wrap_error(exc, _MAP_ERRORS, exc.args[0])
             raise
 else:
     def wrap_ssl_error(func, *args, **kw):
