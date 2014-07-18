@@ -11,7 +11,8 @@ from . import protocols
 from . import streams
 from . import tasks
 from .coroutines import coroutine, From, Return
-from .py33_exceptions import ProcessLookupError
+from .py33_exceptions import (BrokenPipeError, ConnectionResetError,
+                              ProcessLookupError)
 from .log import logger
 
 
