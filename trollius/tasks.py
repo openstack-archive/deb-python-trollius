@@ -365,14 +365,14 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
         raise TypeError("expect a list of futures, not %s" % type(fs).__name__)
     if not fs:
         raise ValueError('Set of coroutines/Futures is empty.')
+    if return_when not in (FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED):
+        raise ValueError('Invalid return_when value: {0}'.format(return_when))
 
     if loop is None:
         loop = events.get_event_loop()
 
     fs = set(async(f, loop=loop) for f in set(fs))
 
-    if return_when not in (FIRST_COMPLETED, FIRST_EXCEPTION, ALL_COMPLETED):
-        raise ValueError('Invalid return_when value: {0}'.format(return_when))
     result = yield From(_wait(fs, timeout, return_when, loop))
     raise Return(result)
 
@@ -602,22 +602,33 @@ def gather(*coros_or_futures, **kw):
     if kw:
         raise TypeError("unexpected keyword")
 
-    arg_to_fut = dict((arg, async(arg, loop=loop))
-                      for arg in set(coros_or_futures))
-    children = [arg_to_fut[arg] for arg in coros_or_futures]
-    n = len(children)
-    if n == 0:
+    if not coros_or_futures:
         outer = futures.Future(loop=loop)
         outer.set_result([])
         return outer
-    if loop is None:
-        loop = children[0]._loop
-    for fut in children:
-        if fut._loop is not loop:
-            raise ValueError("futures are tied to different event loops")
+
+    arg_to_fut = {}
+    for arg in set(coros_or_futures):
+        if not isinstance(arg, futures.Future):
+            fut = async(arg, loop=loop)
+            if loop is None:
+                loop = fut._loop
+            # The caller cannot control this future, the "destroy pending task"
+            # warning should not be emitted.
+            fut._log_destroy_pending = False
+        else:
+            fut = arg
+            if loop is None:
+                loop = fut._loop
+            elif fut._loop is not loop:
+                raise ValueError("futures are tied to different event loops")
+        arg_to_fut[arg] = fut
+
+    children = [arg_to_fut[arg] for arg in coros_or_futures]
+    nchildren = len(children)
     outer = _GatheringFuture(children, loop=loop)
     non_local = {'nfinished': 0}
-    results = [None] * n
+    results = [None] * nchildren
 
     def _done_callback(i, fut):
         if outer._state != futures._PENDING:
@@ -639,7 +650,7 @@ def gather(*coros_or_futures, **kw):
             res = fut._result
         results[i] = res
         non_local['nfinished'] += 1
-        if non_local['nfinished'] == n:
+        if non_local['nfinished'] == nchildren:
             outer.set_result(results)
 
     for i, fut in enumerate(children):

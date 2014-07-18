@@ -14,9 +14,6 @@ from trollius.py33_exceptions import BrokenPipeError
 # Program blocking
 PROGRAM_BLOCKED = [sys.executable, '-c', 'import time; time.sleep(3600)']
 
-# Program sleeping during 1 second
-PROGRAM_SLEEP_1SEC = [sys.executable, '-c', 'import time; time.sleep(1)']
-
 # Program copying input to output
 if sys.version_info >= (3,):
     PROGRAM_CAT = ';'.join(('import sys',
@@ -122,23 +119,50 @@ class SubprocessMixin(object):
 
     @test_utils.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
     def test_send_signal(self):
-        args = PROGRAM_BLOCKED
-        create = asyncio.create_subprocess_exec(*args, loop=self.loop)
+        code = 'import time; print("sleeping", flush=True); time.sleep(3600)'
+        args = [sys.executable, '-c', code]
+        create = asyncio.create_subprocess_exec(*args, loop=self.loop, stdout=subprocess.PIPE)
         proc = self.loop.run_until_complete(create)
-        proc.send_signal(signal.SIGHUP)
-        returncode = self.loop.run_until_complete(proc.wait())
+
+        @asyncio.coroutine
+        def send_signal(proc):
+            # basic synchronization to wait until the program is sleeping
+            line = yield From(proc.stdout.readline())
+            self.assertEqual(line, b'sleeping\n')
+
+            proc.send_signal(signal.SIGHUP)
+            returncode = yield From(proc.wait())
+            raise Return(returncode)
+
+        returncode = self.loop.run_until_complete(send_signal(proc))
         self.assertEqual(-signal.SIGHUP, returncode)
 
-    def test_broken_pipe(self):
+    def prepare_broken_pipe_test(self):
+        # buffer large enough to feed the whole pipe buffer
         large_data = b'x' * support.PIPE_MAX_SIZE
 
+        # the program ends before the stdin can be feeded
         create = asyncio.create_subprocess_exec(
-                             *PROGRAM_SLEEP_1SEC,
+                             sys.executable, '-c', 'pass',
                              stdin=subprocess.PIPE,
                              loop=self.loop)
         proc = self.loop.run_until_complete(create)
-        with self.assertRaises(BrokenPipeError):
-            self.loop.run_until_complete(proc.communicate(large_data))
+        return (proc, large_data)
+
+    def test_stdin_broken_pipe(self):
+        proc, large_data = self.prepare_broken_pipe_test()
+
+        # drain() must raise BrokenPipeError or ConnectionResetError
+        proc.stdin.write(large_data)
+        self.assertRaises((BrokenPipeError, ConnectionResetError),
+                          self.loop.run_until_complete, proc.stdin.drain())
+        self.loop.run_until_complete(proc.wait())
+
+    def test_communicate_ignore_broken_pipe(self):
+        proc, large_data = self.prepare_broken_pipe_test()
+
+        # communicate() must ignore BrokenPipeError when feeding stdin
+        self.loop.run_until_complete(proc.communicate(large_data))
         self.loop.run_until_complete(proc.wait())
 
 

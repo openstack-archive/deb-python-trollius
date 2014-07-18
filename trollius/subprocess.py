@@ -12,6 +12,7 @@ from . import streams
 from . import tasks
 from .coroutines import coroutine, From, Return
 from .py33_exceptions import ProcessLookupError
+from .log import logger
 
 
 PIPE = subprocess.PIPE
@@ -29,6 +30,16 @@ class SubprocessStreamProtocol(streams.FlowControlMixin,
         self.waiter = futures.Future(loop=loop)
         self._waiters = collections.deque()
         self._transport = None
+
+    def __repr__(self):
+        info = [self.__class__.__name__]
+        if self.stdin is not None:
+            info.append('stdin=%r' % self.stdin)
+        if self.stdout is not None:
+            info.append('stdout=%r' % self.stdout)
+        if self.stderr is not None:
+            info.append('stderr=%r' % self.stderr)
+        return '<%s>' % ' '.join(info)
 
     def connection_made(self, transport):
         self._transport = transport
@@ -95,6 +106,9 @@ class Process:
         # if the process already exited
         self.pid = self._transport.get_extra_info('subprocess').pid
 
+    def __repr__(self):
+        return '<%s %s>' % (self.__class__.__name__, self.pid)
+
     @property
     def returncode(self):
         return self._transport.get_returncode()
@@ -129,8 +143,20 @@ class Process:
 
     @coroutine
     def _feed_stdin(self, input):
+        debug = self._loop.get_debug()
         self.stdin.write(input)
-        yield From(self.stdin.drain())
+        if debug:
+            logger.debug('%r communicate: feed stdin (%s bytes)',
+                        self, len(input))
+        try:
+            yield From(self.stdin.drain())
+        except (BrokenPipeError, ConnectionResetError) as exc:
+            # communicate() ignores BrokenPipeError and ConnectionResetError
+            if debug:
+                logger.debug('%r communicate: stdin got %r', self, exc)
+
+        if debug:
+            logger.debug('%r communicate: close stdin', self)
         self.stdin.close()
 
     @coroutine
@@ -145,7 +171,13 @@ class Process:
         else:
             assert fd == 1
             stream = self.stdout
+        if self._loop.get_debug():
+            name = 'stdout' if fd == 1 else 'stderr'
+            logger.debug('%r communicate: read %s', self, name)
         output = yield From(stream.read())
+        if self._loop.get_debug():
+            name = 'stdout' if fd == 1 else 'stderr'
+            logger.debug('%r communicate: close %s', self, name)
         transport.close()
         raise Return(output)
 

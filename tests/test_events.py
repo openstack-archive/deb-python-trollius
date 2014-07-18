@@ -834,9 +834,10 @@ class EventLoopTestsMixin(object):
         # no CA loaded
         f_c = self.loop.create_connection(MyProto, host, port,
                                           ssl=sslcontext_client)
-        with self.assertRaisesRegex(ssl.SSLError,
-                                    'certificate verify failed'):
-            self.loop.run_until_complete(f_c)
+        with test_utils.disable_logger():
+            with self.assertRaisesRegex(ssl.SSLError,
+                                        'certificate verify failed '):
+                self.loop.run_until_complete(f_c)
 
         # close connection
         self.assertIsNone(proto.transport)
@@ -861,9 +862,10 @@ class EventLoopTestsMixin(object):
         f_c = self.loop.create_unix_connection(MyProto, path,
                                                ssl=sslcontext_client,
                                                server_hostname='invalid')
-        with self.assertRaisesRegex(ssl.SSLError,
-                                    'certificate verify failed'):
-            self.loop.run_until_complete(f_c)
+        with test_utils.disable_logger():
+            with self.assertRaisesRegex(ssl.SSLError,
+                                        'certificate verify failed '):
+                self.loop.run_until_complete(f_c)
 
         # close connection
         self.assertIsNone(proto.transport)
@@ -888,10 +890,11 @@ class EventLoopTestsMixin(object):
         # incorrect server_hostname
         f_c = self.loop.create_connection(MyProto, host, port,
                                           ssl=sslcontext_client)
-        with self.assertRaisesRegex(
-                ssl.CertificateError,
-                "hostname '127.0.0.1' doesn't match 'localhost'"):
-            self.loop.run_until_complete(f_c)
+        with test_utils.disable_logger():
+            with self.assertRaisesRegex(
+                    ssl.CertificateError,
+                    "hostname '127.0.0.1' doesn't match 'localhost'"):
+                self.loop.run_until_complete(f_c)
 
         # close connection
         proto.transport.close()
