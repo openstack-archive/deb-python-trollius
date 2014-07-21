@@ -836,7 +836,7 @@ class EventLoopTestsMixin(object):
                                           ssl=sslcontext_client)
         with test_utils.disable_logger():
             with self.assertRaisesRegex(ssl.SSLError,
-                                        'certificate verify failed '):
+                                        'certificate verify failed'):
                 self.loop.run_until_complete(f_c)
 
         # close connection
@@ -864,7 +864,7 @@ class EventLoopTestsMixin(object):
                                                server_hostname='invalid')
         with test_utils.disable_logger():
             with self.assertRaisesRegex(ssl.SSLError,
-                                        'certificate verify failed '):
+                                        'certificate verify failed'):
                 self.loop.run_until_complete(f_c)
 
         # close connection
