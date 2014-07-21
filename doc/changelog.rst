@@ -1,96 +1,61 @@
+++++++++++
 Change log
-==========
+++++++++++
 
 Version 0.4.1
+=============
+
+Major Changes
 -------------
 
-Changes between Trollius 0.4 and 0.4.1:
+* Event loops have a new ``create_task()`` method, which is now the recommanded
+  way to create a task object. This method can be overriden by third-party
+  event loops to use their own task class.
+* The debug mode has been improved a lot:
 
-* Fix for asyncio coroutines when passing tuple value in debug mode.
-  CoroWrapper.send() now checks if it is called from a "yield from" generator
-  to decide if the parameter should be unpacked or not.
-* Synchronize with Tulip
-* Fix runtests.py command line for patterns.
+  - much better representation of Trollius objects (ex: ``repr(task)``):
+    unified ``<Class arg1 arg2 ...>`` format, use qualified name when available
+  - show the traceback where objects were created
+  - show the current filename and line number for coroutine
+  - show the filename and line number where objects were created
+  - log most important socket events
+  - log most important subprocess events
 
-Tulip changes:
-
-* Tulip issue #183: log socket events in debug mode
-
-  - Log most important socket events: socket connected, new client, connection
-    reset or closed by peer (EOF), etc.
-  - Log time elapsed in DNS resolution (getaddrinfo)
-  - Log pause/resume reading
-  - Log time of SSL handshake
-  - Log SSL handshake errors
-  - Add a __repr__() method to many classes
-
-* Fix ProactorEventLoop() in debug mode
-* Tulip issue #180: Make Server attributes and methods private, the sockets
-  attribute remains public.
-* Tulip issue #185: Add a ``create_task()`` method to event loops. The
-  ``create_task()`` method can be overriden in custom event loop to implement
-  their own task class. For example, greenio and Pulsar projects use their own
-  task class. The ``create_task()`` method is now preferred over creating
-  directly task using the ``Task`` class.
-* Tulip issue #182: Improve logs of BaseEventLoop._run_once()
-* Improve CoroWrapper: copy also the qualified name on Python 3.4, not only on
-  Python 3.5+
-* CoroWrapper.__del__() now reuses repr(CoroWrapper) to log the "... was never
-  yielded from" warning
-* repr(Task) and repr(CoroWrapper) now also includes where these objects were
-  created.
-* Handle.cancel() now clears references to callback and args
-* Tulip issue #181: BaseEventLoop.create_datagram_endpoint() now waits until
-  protocol.connection_made() has been called. Document also why transport
-  constructors use a waiter.
-* The task factory feature was implemented in Tulip and merged back to
-  Trollius: it's the new BaseEventLoop.create_task() method.
-* Tulip issue #185: Add a create_task() method to event loops. The
-  create_task() method can be overriden in custom event loop to implement their
-  own task class. For example, greenio and Pulsar projects use their own task
-  class. The create_task() method is now preferred over creating directly task
-  using the Task class.
-* Update AbstractEventLoop: add new event loop methods; update also the unit
-  test.
-* Python issue #21447 and #21886: Fix a race condition when setting the result
-  of a Future with ``call_soon()``. Add an helper, a private method, to set
-  the result only if the future was not cancelled.
-* Add ``repr(CoroWrapper)``
-* _UnixSubprocessTransport: fix file mode of stdin: open stdin in write mode,
-  not in read mode.
-* More reliable CoroWrapper.__del__. If the constructor is interrupted by
-  KeyboardInterrupt or the coroutine objet is destroyed lately, some the
-  _source_traceback attribute doesn't exist anymore.
-* ``repr(Task)``: include also the future the task is waiting for
-* Simplify/optimize iscoroutine(). Inline inspect.isgenerator(obj): replace it
-  with isinstance(obj, types.GeneratorType).
-* Fix for asyncio coroutines when passing tuple value in debug mode.
-  CoroWrapper.send() now checks if it is called from a "yield from" generator
-  to decide if the parameter should be unpacked or not.
-* Tulip issue #137: In debug mode, save traceback where Future, Task and Handle
-  objects are created. Pass the traceback to call_exception_handler() in the
-  'source_traceback' key.
-* Tulip issue #137: In debug mode, add the traceback where the coroutine object
-  was created to the "coroutine ... was never yield from" log
-* Handle error handler: enhance formatting of the callback
-* Tulip issue #177: Rewite repr() of Future, Task, Handle and TimerHandle
-
-  - Uniformize repr() output to format "<Class ...>"
-  - On Python 3.5+, repr(Task) uses the qualified name instead of the short name
-    of the coroutine
-
-* repr(Task) now also contains the line number even if the coroutine is done:
-  use the first line number of the code object instead of the current line
-  number of the generator frame. The name of the coroutine is not enough
-  because many coroutines may have the same name. It's a common case in asyncio
-  tests for example.
+* ``Handle.cancel()`` now clears references to callback and args
 * Log an error if a Task is destroyed while it is still pending, but only on
   Python 3.4 and newer.
-* Make slow_select() unit test pass on Windows.
+* Fix for asyncio coroutines when passing tuple value in debug mode.
+  ``CoroWrapper.send()`` now checks if it is called from a "yield from"
+  generator to decide if the parameter should be unpacked or not.
+* ``Process.communicate()`` now ignores ``BrokenPipeError`` and
+  ``ConnectionResetError`` exceptions.
+* Rewrite signal handling on Python 3.3 and newer to fix a race condition: use
+  the "self-pipe" to get signal numbers.
+
+
+Other Changes
+-------------
+
+* Fix ``ProactorEventLoop()`` in debug mode
+* Fix a race condition when setting the result of a Future with
+  ``call_soon()``. Add an helper, a private method, to set the result only if
+  the future was not cancelled.
+* Fix ``asyncio.__all__``: export also ``unix_events`` and ``windows_events``
+  symbols. For example, on Windows, it was not possible to get
+  ``ProactorEventLoop`` or ``DefaultEventLoopPolicy`` using ``from asyncio
+  import *``.
+* ``Handle.cancel()`` now clears references to callback and args
+* Make Server attributes and methods private, the sockets attribute remains
+  public.
+* BaseEventLoop.create_datagram_endpoint() now waits until
+  protocol.connection_made() has been called. Document also why transport
+  constructors use a waiter.
+* _UnixSubprocessTransport: fix file mode of stdin: open stdin in write mode,
+  not in read mode.
 
 
 2014-06-23: version 0.4
------------------------
+=======================
 
 Changes between Trollius 0.3 and 0.4:
 
@@ -148,7 +113,7 @@ the function anymore.
 
 
 2014-05-26: version 0.3
------------------------
+=======================
 
 Rename the Python module ``asyncio`` to ``trollius`` to support Python 3.4. On
 Python 3.4, there is already a module called ``asyncio`` in the standard
@@ -209,7 +174,7 @@ Bugfixes of Tulip 3.4.1:
 
 
 2014-03-04: version 0.2
------------------------
+=======================
 
 Trollius now uses ``yield From(...)`` syntax which looks close to Tulip ``yield
 from ...`` and allows to port more easily Trollius code to Tulip. The usage of
@@ -239,7 +204,7 @@ Other changes:
 * tox.ini: set PYTHONASYNCIODEBUG to 1 to run tests
 
 2014-02-25: version 0.1.6
--------------------------
+=========================
 
 Trollius changes:
 
@@ -292,7 +257,7 @@ Other changes of Tulip 0.4.1:
 
 
 2014-02-10: version 0.1.5
--------------------------
+=========================
 
 - Merge with Tulip 0.3.1:
 
@@ -314,7 +279,7 @@ Other changes of Tulip 0.4.1:
 - Fix test_wait_for() unit test
 
 2014-01-22: version 0.1.4
--------------------------
+=========================
 
 - The project moved to https://bitbucket.org/enovance/trollius
 - Fix CoroWrapper (_DEBUG=True): add missing import
@@ -323,7 +288,7 @@ Other changes of Tulip 0.4.1:
 - Fix dependencies in tox.ini for the different Python versions
 
 2014-01-13: version 0.1.3
--------------------------
+=========================
 
 - Workaround bugs in the ssl module of Python older than 2.6.6. For example,
   Mac OS 10.6 (Snow Leopard) uses Python 2.6.1.
@@ -335,7 +300,7 @@ Other changes of Tulip 0.4.1:
   virtual environment to run tests with Python 2.7.
 
 2014-01-08: version 0.1.2
--------------------------
+=========================
 
 - Trollius now supports CPython 2.6-3.4, PyPy and Windows. All unit tests
   pass with CPython 2.7 on Linux.
@@ -351,7 +316,7 @@ Other changes of Tulip 0.4.1:
   asyncio module, ex: asyncio.BlockingIOError.
 
 2014-01-06: version 0.1.1
--------------------------
+=========================
 
 - Fix asyncio.time_monotonic on Mac OS X
 - Fix create_connection(ssl=True)
@@ -361,7 +326,7 @@ Other changes of Tulip 0.4.1:
   synchronous executor if the module is missing
 
 2014-01-04: version 0.1
--------------------------
+=======================
 
 - First public release
 
