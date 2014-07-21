@@ -22,7 +22,6 @@ import os
 import socket
 import subprocess
 import sys
-import time
 import traceback
 try:
     from collections import OrderedDict
