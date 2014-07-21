@@ -219,7 +219,7 @@ if asyncio is not None:
         _COROUTINE_TYPES += (asyncio.coroutines.CoroWrapper,)
     else:
         # old Tulip/Python versions
-        _COROUTINE_TYPES = (asyncio.tasks.CoroWrapper,)
+        _COROUTINE_TYPES += (asyncio.tasks.CoroWrapper,)
 
 def iscoroutine(obj):
     """Return True if obj is a coroutine object."""
