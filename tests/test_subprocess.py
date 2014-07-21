@@ -156,10 +156,15 @@ class SubprocessMixin(object):
     def test_stdin_broken_pipe(self):
         proc, large_data = self.prepare_broken_pipe_test()
 
+        @asyncio.coroutine
+        def write_stdin(proc, data):
+            proc.stdin.write(data)
+            yield From(proc.stdin.drain())
+
+        coro = write_stdin(proc, large_data)
         # drain() must raise BrokenPipeError or ConnectionResetError
-        proc.stdin.write(large_data)
         self.assertRaises((BrokenPipeError, ConnectionResetError),
-                          self.loop.run_until_complete, proc.stdin.drain())
+                          self.loop.run_until_complete, coro)
         self.loop.run_until_complete(proc.wait())
 
     def test_communicate_ignore_broken_pipe(self):
