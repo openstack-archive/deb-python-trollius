@@ -35,3 +35,48 @@ Print ``Hello World`` every two seconds, using a coroutine::
     loop = trollius.get_event_loop()
     loop.run_until_complete(greet_every_two_seconds())
 
+
+Debug mode
+==========
+
+To enable the debug mode:
+
+* Set ``TROLLIUSDEBUG`` envrironment variable to ``1``
+* Configure logging to log at level ``logging.DEBUG``,
+  ``logging.basicConfig(level=logging.DEBUG)`` for example
+
+The ``BaseEventLoop.set_debug()`` method can be used to set the debug mode on a
+specific event loop. The environment variable enables also the debug mode for
+coroutines.
+
+Effect of the debug mode:
+
+* Log coroutines defined but never "yielded"
+* BaseEventLoop.call_soon() and BaseEventLoop.call_at() methods raise an
+  exception if they are called from the wrong thread.
+* Log the execution time of the selector
+* Log callbacks taking more than 100 ms to be executed. The
+  BaseEventLoop.slow_callback_duration attribute is the minimum duration in
+  seconds of "slow" callbacks.
+* Log most important subprocess events:
+
+  - Log stdin, stdout and stderr transports and protocols
+  - Log process identifier (pid)
+  - Log connection of pipes
+  - Log process exit
+  - Log Process.communicate() tasks: feed stdin, read stdout and stderr
+
+* Log most important socket events:
+
+  - Socket connected
+  - New client (socket.accept())
+  - Connection reset or closed by peer (EOF)
+  - Log time elapsed in DNS resolution (getaddrinfo)
+  - Log pause/resume reading
+  - Log time of SSL handshake
+  - Log SSL handshake errors
+
+See `Debug mode of asyncio
+<https://docs.python.org/dev/library/asyncio-dev.html#debug-mode-of-asyncio>`_
+for more information.
+

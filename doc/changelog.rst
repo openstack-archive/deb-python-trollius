@@ -11,7 +11,9 @@ Major Changes
 * Event loops have a new ``create_task()`` method, which is now the recommanded
   way to create a task object. This method can be overriden by third-party
   event loops to use their own task class.
-* The debug mode has been improved a lot:
+* The debug mode has been improved a lot. Set ``TROLLIUSDEBUG`` envrironment
+  variable to ``1`` and configure logging to log at level ``logging.DEBUG``
+  (ex: ``logging.basicConfig(level=logging.DEBUG)``).  Changes:
 
   - much better representation of Trollius objects (ex: ``repr(task)``):
     unified ``<Class arg1 arg2 ...>`` format, use qualified name when available
