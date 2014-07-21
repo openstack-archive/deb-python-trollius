@@ -15,7 +15,7 @@ from trollius.test_support import assert_python_ok
 from trollius.test_utils import mock
 
 
-PY3 = (sys.version_info >= (3,))
+PY33 = (sys.version_info >= (3, 3))
 PY34 = (sys.version_info >= (3, 4))
 PY35 = (sys.version_info >= (3, 5))
 
@@ -156,7 +156,7 @@ class TaskTests(test_utils.TestCase):
 
         # test coroutine object
         gen = notmuch()
-        if PY35 or (coroutines._DEBUG and PY3):
+        if PY35 or (coroutines._DEBUG and PY33):
             coro_qualname = 'TaskTests.test_task_repr.<locals>.notmuch'
         else:
             coro_qualname = 'notmuch'
@@ -216,7 +216,7 @@ class TaskTests(test_utils.TestCase):
             # function, as expected, and have a qualified name (__qualname__
             # attribute).
             coro_name = 'notmuch'
-            if PY35 or (coroutines._DEBUG and PY3):
+            if PY35 or (coroutines._DEBUG and PY33):
                 coro_qualname = 'TaskTests.test_task_repr_coro_decorator.<locals>.notmuch'
             else:
                 coro_qualname = 'notmuch'
