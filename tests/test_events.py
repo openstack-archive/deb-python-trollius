@@ -1430,8 +1430,6 @@ class SubprocessTestsMixin(object):
             self.assertEqual(-signal.SIGKILL, returncode)
 
     def test_subprocess_exec(self):
-        non_local = {'proto': None, 'transp': None}
-
         prog = os.path.join(os.path.dirname(__file__), 'echo.py')
 
         connect = self.loop.subprocess_exec(
