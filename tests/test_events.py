@@ -273,9 +273,12 @@ class EventLoopTestsMixin(object):
         def cb():
             self.loop.stop()
             yield From(asyncio.sleep(0.1, loop=self.loop))
+
         task = cb()
         self.assertRaises(RuntimeError,
                           self.loop.run_until_complete, task)
+        for task in asyncio.Task.all_tasks(loop=self.loop):
+            task._log_destroy_pending = False
 
     def test_call_later(self):
         results = []
