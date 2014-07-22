@@ -25,12 +25,28 @@ except ImportError:
 
 _PY34 = sys.version_info >= (3, 4)
 
+if not compat.PY34:
+    # Backported functools.unwrap() from Python 3.4, without the stop parameter
+    # (not needed here)
+    #
+    # @trollius.coroutine decorator chains wrapper using @functools.wrap
+    # backported from Python 3.4.
+    def _unwrap(func):
+        f = func  # remember the original func for error reporting
+        memo = {id(f)} # Memoise by id to tolerate non-hashable objects
+        while hasattr(func, '__wrapped__'):
+            func = func.__wrapped__
+            id_func = id(func)
+            if id_func in memo:
+                raise ValueError('wrapper loop when unwrapping {!r}'.format(f))
+            memo.add(id_func)
+        return func
+else:
+    _unwrap = inspect.unwrap
+
 
 def _get_function_source(func):
-    if _PY34:
-        func = inspect.unwrap(func)
-    elif hasattr(func, '__wrapped__'):
-        func = func.__wrapped__
+    func = _unwrap(func)
     if inspect.isfunction(func):
         code = func.__code__
         return (code.co_filename, code.co_firstlineno)
