@@ -169,6 +169,57 @@ class CoroWrapper(object):
                 msg += tb.rstrip()
             logger.error(msg)
 
+if not compat.PY34:
+    # Backport functools.update_wrapper() from Python 3.4:
+    # - Python 2.7 fails if assigned attributes don't exist
+    # - Python 2.7 and 3.1 don't set the __wrapped__ attribute
+    # - Python 3.2 and 3.3 set __wrapped__ before updating __dict__
+    def _update_wrapper(wrapper,
+                       wrapped,
+                       assigned = functools.WRAPPER_ASSIGNMENTS,
+                       updated = functools.WRAPPER_UPDATES):
+        """Update a wrapper function to look like the wrapped function
+
+           wrapper is the function to be updated
+           wrapped is the original function
+           assigned is a tuple naming the attributes assigned directly
+           from the wrapped function to the wrapper function (defaults to
+           functools.WRAPPER_ASSIGNMENTS)
+           updated is a tuple naming the attributes of the wrapper that
+           are updated with the corresponding attribute from the wrapped
+           function (defaults to functools.WRAPPER_UPDATES)
+        """
+        for attr in assigned:
+            try:
+                value = getattr(wrapped, attr)
+            except AttributeError:
+                pass
+            else:
+                setattr(wrapper, attr, value)
+        for attr in updated:
+            getattr(wrapper, attr).update(getattr(wrapped, attr, {}))
+        # Issue #17482: set __wrapped__ last so we don't inadvertently copy it
+        # from the wrapped function when updating __dict__
+        wrapper.__wrapped__ = wrapped
+        # Return the wrapper so this can be used as a decorator via partial()
+        return wrapper
+
+    def _wraps(wrapped,
+              assigned = functools.WRAPPER_ASSIGNMENTS,
+              updated = functools.WRAPPER_UPDATES):
+        """Decorator factory to apply update_wrapper() to a wrapper function
+
+           Returns a decorator that invokes update_wrapper() with the decorated
+           function as the wrapper argument and the arguments to wraps() as the
+           remaining arguments. Default arguments are as for update_wrapper().
+           This is a convenience function to simplify applying partial() to
+           update_wrapper().
+        """
+        return functools.partial(_update_wrapper, wrapped=wrapped,
+                                 assigned=assigned, updated=updated)
+else:
+    _wraps = functools.wraps
+
 def coroutine(func):
     """Decorator to mark coroutines.
 
@@ -178,28 +229,29 @@ def coroutine(func):
     if inspect.isgeneratorfunction(func):
         coro = func
     else:
-        @functools.wraps(func)
+        @_wraps(func)
         def coro(*args, **kw):
             res = func(*args, **kw)
             if isinstance(res, futures.Future) or inspect.isgenerator(res):
                 res = yield From(res)
             raise Return(res)
-        if not compat.PY3:
-            coro.__wrapped__ = func
 
     if not _DEBUG:
         wrapper = coro
     else:
-        @functools.wraps(func)
+        @_wraps(func)
         def wrapper(*args, **kwds):
-            w = CoroWrapper(coro(*args, **kwds), func)
-            if w._source_traceback:
-                del w._source_traceback[-1]
-            w.__name__ = func.__name__
-            if hasattr(func, '__qualname__'):
-                w.__qualname__ = func.__qualname__
-            w.__doc__ = func.__doc__
-            return w
+            coro_wrapper = CoroWrapper(coro(*args, **kwds), func)
+            if coro_wrapper._source_traceback:
+                del coro_wrapper._source_traceback[-1]
+            for attr in ('__name__', '__qualname__', '__doc__'):
+                try:
+                    value = getattr(func, attr)
+                except AttributeError:
+                    pass
+                else:
+                    setattr(coro_wrapper, attr, value)
+            return coro_wrapper
         if not compat.PY3:
             wrapper.__wrapped__ = func
 

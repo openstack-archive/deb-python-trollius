@@ -1660,6 +1660,20 @@ class TaskTests(test_utils.TestCase):
         self.check_soure_traceback(task._source_traceback, -1)
         self.loop.run_until_complete(task)
 
+    def test_coroutine_class(self):
+        # Trollius issue #9
+        self.loop.set_debug(True)
+
+        class MyClass(object):
+            def __call__(self):
+                return 7
+
+        obj = MyClass()
+        coro_func = asyncio.coroutine(obj)
+        coro_obj = coro_func()
+        res = self.loop.run_until_complete(coro_obj)
+        self.assertEqual(res, 7)
+
 
 class GatherTestsBase:
 

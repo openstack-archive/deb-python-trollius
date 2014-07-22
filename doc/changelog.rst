@@ -2,6 +2,13 @@
 Change log
 ++++++++++
 
+Version 1.0.1 (development version)
+===================================
+
+* Fix Trollius issue #9: @trollius.coroutine now works on callbable objects
+  (without ``__name__`` attribute), not only on functions.
+
+
 2014-07-21: Version 1.0
 =======================
 
