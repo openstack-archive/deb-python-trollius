@@ -88,7 +88,7 @@ class _WaitHandleFuture(futures.Future):
 
     def cancel(self):
         self._unregister()
-        super(_WaitHandleFuture, self).cancel()
+        return super(_WaitHandleFuture, self).cancel()
 
 
 class PipeServer(object):
