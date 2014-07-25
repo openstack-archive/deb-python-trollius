@@ -16,10 +16,6 @@ try:
 except ImportError:
     # Python 2.6
     from .py27_weakrefset import WeakSet
-try:
-    import asyncio
-except ImportError:
-    asyncio = None
 
 from . import compat
 from . import coroutines
@@ -29,12 +25,6 @@ from . import futures
 from .locks import Lock, Condition, Semaphore, _ContextManager
 from .coroutines import coroutine, From, Return, iscoroutinefunction, iscoroutine
 
-
-if asyncio is not None:
-    # Accept also asyncio Future objects for interoperability
-    _FUTURE_CLASSES = (futures.Future, asyncio.Future)
-else:
-    _FUTURE_CLASSES = futures.Future
 
 _PY34 = (sys.version_info >= (3, 4))
 
@@ -305,7 +295,7 @@ class Task(futures.Future):
                 coro = _lock_coroutine(result)
                 result = self._loop.create_task(coro)
 
-            if isinstance(result, _FUTURE_CLASSES):
+            if isinstance(result, futures._FUTURE_CLASSES):
                 # Yielded Future must come from Future.__iter__().
                 result.add_done_callback(self._wakeup)
                 self._fut_waiter = result
@@ -361,7 +351,7 @@ def wait(fs, loop=None, timeout=None, return_when=ALL_COMPLETED):
     Note: This does not raise TimeoutError! Futures that aren't done
     when the timeout occurs are returned in the second set.
     """
-    if isinstance(fs, futures.Future) or coroutines.iscoroutine(fs):
+    if isinstance(fs, futures._FUTURE_CLASSES) or coroutines.iscoroutine(fs):
         raise TypeError("expect a list of futures, not %s" % type(fs).__name__)
     if not fs:
         raise ValueError('Set of coroutines/Futures is empty.')
@@ -483,7 +473,7 @@ def as_completed(fs, loop=None, timeout=None):
 
     Note: The futures 'f' are not necessarily members of fs.
     """
-    if isinstance(fs, futures.Future) or coroutines.iscoroutine(fs):
+    if isinstance(fs, futures._FUTURE_CLASSES) or coroutines.iscoroutine(fs):
         raise TypeError("expect a list of futures, not %s" % type(fs).__name__)
     loop = loop if loop is not None else events.get_event_loop()
     todo = set(async(f, loop=loop) for f in set(fs))
@@ -542,7 +532,7 @@ def async(coro_or_future, loop=None):
     # FIXME: only check if coroutines._DEBUG is True?
     if isinstance(coro_or_future, coroutines.FromWrapper):
         coro_or_future = coro_or_future.obj
-    if isinstance(coro_or_future, _FUTURE_CLASSES):
+    if isinstance(coro_or_future, futures._FUTURE_CLASSES):
         if loop is not None and loop is not coro_or_future._loop:
             raise ValueError('loop argument must agree with Future')
         return coro_or_future
@@ -609,7 +599,7 @@ def gather(*coros_or_futures, **kw):
 
     arg_to_fut = {}
     for arg in set(coros_or_futures):
-        if not isinstance(arg, futures.Future):
+        if not isinstance(arg, futures._FUTURE_CLASSES):
             fut = async(arg, loop=loop)
             if loop is None:
                 loop = fut._loop

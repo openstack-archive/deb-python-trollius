@@ -67,13 +67,58 @@ class AsyncioTests(test_utils.TestCase):
         res = self.loop.run_until_complete(asyncio_coroutine(coro2, 6))
         self.assertEqual(res, (4, 5, 6))
 
-    def test_async_asyncio(self):
+    def test_async(self):
         fut = asyncio.Future()
         self.assertIs(fut._loop, self.loop)
 
         fut2 = trollius.async(fut)
         self.assertIs(fut2, fut)
         self.assertIs(fut._loop, self.loop)
+
+    def test_wrap_future(self):
+        fut = asyncio.Future()
+        self.assertIs(trollius.wrap_future(fut), fut)
+
+    def test_run_until_complete(self):
+        fut = asyncio.Future()
+        fut.set_result("ok")
+        self.assertEqual(self.loop.run_until_complete(fut),
+                         "ok")
+
+    def test_coroutine_decorator(self):
+        @trollius.coroutine
+        def asyncio_future(fut):
+            return fut
+
+        fut = asyncio.Future()
+        self.loop.call_soon(fut.set_result, 'ok')
+        res = self.loop.run_until_complete(asyncio_future(fut))
+        self.assertEqual(res, "ok")
+
+    def test_as_completed(self):
+        fut = asyncio.Future()
+        fut.set_result("ok")
+
+        with self.assertRaises(TypeError):
+            for f in trollius.as_completed(fut):
+                pass
+
+        @trollius.coroutine
+        def get_results(fut):
+            results = []
+            for f in trollius.as_completed([fut]):
+                res = yield trollius.From(f)
+                results.append(res)
+            raise trollius.Return(results)
+
+        results = self.loop.run_until_complete(get_results(fut))
+        self.assertEqual(results, ["ok"])
+
+    def test_gather(self):
+        fut = asyncio.Future()
+        fut.set_result("ok")
+        results = self.loop.run_until_complete(trollius.gather(fut))
+        self.assertEqual(results, ["ok"])
 
 
 if __name__ == '__main__':
