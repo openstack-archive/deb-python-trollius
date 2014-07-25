@@ -39,15 +39,15 @@ def trollius_coroutine(coro, value):
 class AsyncioTests(test_utils.TestCase):
     def setUp(self):
         policy = trollius.get_event_loop_policy()
-        self.loop = policy.new_event_loop()
-        self.set_event_loop(self.loop)
 
-        asyncio_policy = asyncio.get_event_loop_policy()
-        self.addCleanup(asyncio.set_event_loop_policy, asyncio_policy)
         asyncio.set_event_loop_policy(policy)
+        self.addCleanup(asyncio.set_event_loop_policy, None)
+
+        self.loop = policy.new_event_loop()
+        self.addCleanup(self.loop.close)
+        policy.set_event_loop(self.loop)
 
     def test_policy(self):
-        trollius.set_event_loop(self.loop)
         self.assertIs(asyncio.get_event_loop(), self.loop)
 
     def test_asyncio(self):
@@ -66,6 +66,14 @@ class AsyncioTests(test_utils.TestCase):
         coro2 = trollius_coroutine(coro1, 5)
         res = self.loop.run_until_complete(asyncio_coroutine(coro2, 6))
         self.assertEqual(res, (4, 5, 6))
+
+    def test_async_asyncio(self):
+        fut = asyncio.Future()
+        self.assertIs(fut._loop, self.loop)
+
+        fut2 = trollius.async(fut)
+        self.assertIs(fut2, fut)
+        self.assertIs(fut._loop, self.loop)
 
 
 if __name__ == '__main__':
