@@ -257,7 +257,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         """
         self._check_closed()
 
-        new_task = not isinstance(future, futures.Future)
+        new_task = not isinstance(future, futures._FUTURE_CLASSES)
         future = tasks.async(future, loop=self)
         if new_task:
             # An exception is raised if the future didn't complete, so there

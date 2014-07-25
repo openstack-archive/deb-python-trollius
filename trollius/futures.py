@@ -8,6 +8,10 @@ __all__ = ['CancelledError', 'TimeoutError',
 import logging
 import sys
 import traceback
+try:
+    import asyncio
+except ImportError:
+    asyncio = None
 
 from . import events
 from . import executor
@@ -389,9 +393,15 @@ class Future(object):
                 result = other.result()
                 self.set_result(result)
 
+if asyncio is not None:
+    # Accept also asyncio Future objects for interoperability
+    _FUTURE_CLASSES = (Future, asyncio.Future)
+else:
+    _FUTURE_CLASSES = Future
+
 def wrap_future(fut, loop=None):
     """Wrap concurrent.futures.Future object."""
-    if isinstance(fut, Future):
+    if isinstance(fut, _FUTURE_CLASSES):
         return fut
     assert isinstance(fut, executor.Future), \
         'concurrent.futures.Future is expected, got {0!r}'.format(fut)

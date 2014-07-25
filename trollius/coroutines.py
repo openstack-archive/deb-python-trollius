@@ -232,7 +232,8 @@ def coroutine(func):
         @_wraps(func)
         def coro(*args, **kw):
             res = func(*args, **kw)
-            if isinstance(res, futures.Future) or inspect.isgenerator(res):
+            if (isinstance(res, futures._FUTURE_CLASSES)
+            or inspect.isgenerator(res)):
                 res = yield From(res)
             raise Return(res)
 
@@ -266,7 +267,7 @@ def iscoroutinefunction(func):
 
 _COROUTINE_TYPES = (types.GeneratorType, CoroWrapper)
 if asyncio is not None:
-    # Accept also asyncio Future objects for interoperability
+    # Accept also asyncio CoroWrapper for interoperability
     if hasattr(asyncio, 'coroutines'):
         _COROUTINE_TYPES += (asyncio.coroutines.CoroWrapper,)
     else:
