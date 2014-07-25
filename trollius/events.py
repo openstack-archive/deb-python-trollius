@@ -33,7 +33,7 @@ if not compat.PY34:
     # backported from Python 3.4.
     def _unwrap(func):
         f = func  # remember the original func for error reporting
-        memo = {id(f)} # Memoise by id to tolerate non-hashable objects
+        memo = set((id(f),))   # Memoise by id to tolerate non-hashable objects
         while hasattr(func, '__wrapped__'):
             func = func.__wrapped__
             id_func = id(func)
