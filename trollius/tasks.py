@@ -518,7 +518,7 @@ def as_completed(fs, loop=None, timeout=None):
     if todo and timeout is not None:
         timeout_handle = loop.call_later(timeout, _on_timeout)
     for _ in range(len(todo)):
-        yield From(_wait_for_one())
+        yield _wait_for_one()
 
 
 @coroutine
