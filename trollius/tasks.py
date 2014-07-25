@@ -542,7 +542,7 @@ def async(coro_or_future, loop=None):
     # FIXME: only check if coroutines._DEBUG is True?
     if isinstance(coro_or_future, coroutines.FromWrapper):
         coro_or_future = coro_or_future.obj
-    if isinstance(coro_or_future, futures.Future):
+    if isinstance(coro_or_future, _FUTURE_CLASSES):
         if loop is not None and loop is not coro_or_future._loop:
             raise ValueError('loop argument must agree with Future')
         return coro_or_future
