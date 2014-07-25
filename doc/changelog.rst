@@ -16,6 +16,9 @@ Bugfixes:
   if a _WaitHandleFuture is cancelled twice.
 * Fix _WaitHandleFuture.cancel(): return the result of the parent cancel()
   method (True or False).
+* Fix support of asyncio coroutines in debug mode. If the last instruction
+  of the coroutine is "yield from", it's an asyncio coroutine and it does not
+  need to use From().
 
 Other changes:
 

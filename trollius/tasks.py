@@ -278,12 +278,18 @@ class Task(futures.Future):
             raise
         else:
             if coroutines._DEBUG:
-                if not isinstance(result, coroutines.FromWrapper):
-                    self._loop.call_soon(
-                        self._step, None,
-                        RuntimeError("yield used without From"))
-                    return
-                result = result.obj
+                if not coroutines._coroutine_at_yield_from(self._coro):
+                    # trollius coroutine must "yield From(...)"
+                    if not isinstance(result, coroutines.FromWrapper):
+                        self._loop.call_soon(
+                            self._step, None,
+                            RuntimeError("yield used without From"))
+                        return
+                    result = result.obj
+                else:
+                    # asyncio coroutine using "yield from ..."
+                    if isinstance(result, coroutines.FromWrapper):
+                        result = result.obj
             else:
                 if isinstance(result, coroutines.FromWrapper):
                     result = result.obj

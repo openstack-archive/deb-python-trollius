@@ -1,6 +1,7 @@
 from trollius import test_utils
 from trollius import From, Return
 import trollius
+import trollius.coroutines
 import unittest
 
 try:
@@ -10,9 +11,6 @@ except ImportError:
     raise SkipTest('need asyncio')
 
 
-# "yield from" syntax cannot be used directly, because Python 2 should be able
-# to execute this file (to raise SkipTest)
-code = '''
 @asyncio.coroutine
 def asyncio_noop(value):
     yield from []
@@ -22,8 +20,6 @@ def asyncio_noop(value):
 def asyncio_coroutine(coro, value):
     res = yield from coro
     return res + (value,)
-'''
-exec(code)
 
 @trollius.coroutine
 def trollius_noop(value):
@@ -66,6 +62,26 @@ class AsyncioTests(test_utils.TestCase):
         coro2 = trollius_coroutine(coro1, 5)
         res = self.loop.run_until_complete(asyncio_coroutine(coro2, 6))
         self.assertEqual(res, (4, 5, 6))
+
+    def test_step_future(self):
+        old_debug = trollius.coroutines._DEBUG
+        try:
+            def step_future():
+                future = asyncio.Future()
+                self.loop.call_soon(future.set_result, "asyncio.Future")
+                return (yield from future)
+
+            # test in release mode
+            trollius.coroutines._DEBUG = False
+            result = self.loop.run_until_complete(step_future())
+            self.assertEqual(result, "asyncio.Future")
+
+            # test in debug mode
+            trollius.coroutines._DEBUG = True
+            result = self.loop.run_until_complete(step_future())
+            self.assertEqual(result, "asyncio.Future")
+        finally:
+            trollius.coroutines._DEBUG = old_debug
 
     def test_async(self):
         fut = asyncio.Future()

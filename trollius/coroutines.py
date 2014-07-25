@@ -96,6 +96,21 @@ else:
                 logger.error('Return(%r) used without raise', self.value)
 
 
+def _coroutine_at_yield_from(coro):
+    """Test if the last instruction of a coroutine is "yield from".
+
+    Return False if the coroutine completed.
+    """
+    frame = coro.gi_frame
+    if frame is None:
+        return False
+    code = coro.gi_code
+    assert frame.f_lasti >= 0
+    offset = frame.f_lasti + 1
+    instr = code.co_code[offset]
+    return (instr == _YIELD_FROM)
+
+
 class CoroWrapper(object):
     # Wrapper for coroutine object in _DEBUG mode.
 
