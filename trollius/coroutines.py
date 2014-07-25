@@ -8,10 +8,6 @@ import os
 import sys
 import traceback
 import types
-try:
-    import asyncio
-except ImportError:
-    asyncio = None
 
 from . import compat
 from . import events
@@ -281,13 +277,13 @@ def iscoroutinefunction(func):
 
 
 _COROUTINE_TYPES = (types.GeneratorType, CoroWrapper)
-if asyncio is not None:
+if events.asyncio is not None:
     # Accept also asyncio CoroWrapper for interoperability
-    if hasattr(asyncio, 'coroutines'):
-        _COROUTINE_TYPES += (asyncio.coroutines.CoroWrapper,)
+    if hasattr(events.asyncio, 'coroutines'):
+        _COROUTINE_TYPES += (events.asyncio.coroutines.CoroWrapper,)
     else:
         # old Tulip/Python versions
-        _COROUTINE_TYPES += (asyncio.tasks.CoroWrapper,)
+        _COROUTINE_TYPES += (events.asyncio.tasks.CoroWrapper,)
 
 def iscoroutine(obj):
     """Return True if obj is a coroutine object."""

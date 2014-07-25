@@ -8,10 +8,6 @@ __all__ = ['CancelledError', 'TimeoutError',
 import logging
 import sys
 import traceback
-try:
-    import asyncio
-except ImportError:
-    asyncio = None
 
 from . import events
 from . import executor
@@ -393,9 +389,9 @@ class Future(object):
                 result = other.result()
                 self.set_result(result)
 
-if asyncio is not None:
+if events.asyncio is not None:
     # Accept also asyncio Future objects for interoperability
-    _FUTURE_CLASSES = (Future, asyncio.Future)
+    _FUTURE_CLASSES = (Future, events.asyncio.Future)
 else:
     _FUTURE_CLASSES = Future
 
