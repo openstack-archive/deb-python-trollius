@@ -290,9 +290,8 @@ class Task(futures.Future):
                     # asyncio coroutine using "yield from ..."
                     if isinstance(result, coroutines.FromWrapper):
                         result = result.obj
-            else:
-                if isinstance(result, coroutines.FromWrapper):
-                    result = result.obj
+            elif isinstance(result, coroutines.FromWrapper):
+                result = result.obj
 
             if iscoroutine(result):
                 result = async(result, loop=self._loop)
