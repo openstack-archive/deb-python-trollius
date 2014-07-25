@@ -19,7 +19,9 @@ import sys
 from trollius import compat
 try:
     import asyncio
-except ImportError:
+except (ImportError, SyntaxError):
+    # ignore SyntaxError for convenience: ignore SyntaxError caused by "yield
+    # from" if asyncio module is in the Python path
     asyncio = None
 
 
