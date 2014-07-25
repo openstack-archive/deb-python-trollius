@@ -5,11 +5,28 @@ Change log
 Version 1.0.1 (development version)
 ===================================
 
+Bugfixes:
+
 * Fix Trollius issue #9: @trollius.coroutine now works on callbable objects
   (without ``__name__`` attribute), not only on functions.
 * Fix Trollius issue #13: asyncio futures are now accepted in all functions:
   as_completed(), async(), @coroutine, gather(), run_until_complete(),
   wrap_future().
+* Tulip issue #195: Fix a crash on Windows: don't call UnregisterWait() twice
+  if a _WaitHandleFuture is cancelled twice.
+* Fix _WaitHandleFuture.cancel(): return the result of the parent cancel()
+  method (True or False).
+
+Other changes:
+
+* Fix as_completed(): it's not a coroutine, don't use "yield From(...)" but
+  "yield ...".
+* Tulip issue #193: Convert StreamWriter.drain() to a classic coroutine.
+* Tulip issue #194: Don't use sys.getrefcount() in unit tests: the full test
+  suite now pass on PyPy.
+* Rewrite Windows code handling overlapped operations, especially to cancel
+  them. _OverlappedFuture.cancel() now clears its reference to the overlapped
+  object.
 
 
 2014-07-21: Version 1.0
