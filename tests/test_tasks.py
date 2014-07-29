@@ -1564,6 +1564,7 @@ class TaskTests(test_utils.TestCase):
             try:
                 cw.send(arg)
             except StopIteration as ex:
+                ex.raised = True
                 return ex.value
             else:
                 raise AssertionError('StopIteration was expected')
