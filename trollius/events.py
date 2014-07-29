@@ -45,7 +45,7 @@ if not compat.PY34:
             func = func.__wrapped__
             id_func = id(func)
             if id_func in memo:
-                raise ValueError('wrapper loop when unwrapping {!r}'.format(f))
+                raise ValueError('wrapper loop when unwrapping {0!r}'.format(f))
             memo.add(id_func)
         return func
 else:
