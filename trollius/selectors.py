@@ -452,14 +452,14 @@ if hasattr(select, 'devpoll'):
         """Solaris /dev/poll selector."""
 
         def __init__(self):
-            super().__init__()
+            super(DevpollSelector, self).__init__()
             self._devpoll = select.devpoll()
 
         def fileno(self):
             return self._devpoll.fileno()
 
         def register(self, fileobj, events, data=None):
-            key = super().register(fileobj, events, data)
+            key = super(DevpollSelector, self).register(fileobj, events, data)
             poll_events = 0
             if events & EVENT_READ:
                 poll_events |= select.POLLIN
@@ -469,7 +469,7 @@ if hasattr(select, 'devpoll'):
             return key
 
         def unregister(self, fileobj):
-            key = super().unregister(fileobj)
+            key = super(DevpollSelector, self).unregister(fileobj)
             self._devpoll.unregister(key.fd)
             return key
 
@@ -501,7 +501,7 @@ if hasattr(select, 'devpoll'):
 
         def close(self):
             self._devpoll.close()
-            super().close()
+            super(DevpollSelector, self).close()
 
 
 if hasattr(select, 'kqueue'):
