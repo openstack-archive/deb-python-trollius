@@ -78,7 +78,7 @@ class _OverlappedFuture(futures.Future):
         self._cancel_overlapped()
 
     def set_result(self, result):
-        super().set_result(result)
+        super(_OverlappedFuture, self).set_result(result)
         self._ov = None
 
 
