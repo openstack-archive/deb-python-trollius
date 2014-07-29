@@ -5,6 +5,13 @@ Change log
 Version 1.0.1 (development version)
 ===================================
 
+This release supports PyPy and has a better support of asyncio coroutines,
+especially in debug mode.
+
+Changes:
+
+* Tulip issue #198: asyncio.Condition now accepts an optional lock object.
+
 Bugfixes:
 
 * Fix Trollius issue #9: @trollius.coroutine now works on callbable objects
@@ -19,17 +26,20 @@ Bugfixes:
 * Fix support of asyncio coroutines in debug mode. If the last instruction
   of the coroutine is "yield from", it's an asyncio coroutine and it does not
   need to use From().
+* Tulip issue #196: _OverlappedFuture now clears its reference to the
+  overlapped object. ProactorIocp keeps a reference to the overlapped object
+  until it is notified of its completion. Log also an error if it gets
+  unexpected notifications in debug mode.
+* Fix runtest.py to be able to log at level DEBUG.
 
 Other changes:
 
+* BaseSelectorEventLoop._write_to_self() now logs errors in debug mode.
 * Fix as_completed(): it's not a coroutine, don't use "yield From(...)" but
   "yield ...".
 * Tulip issue #193: Convert StreamWriter.drain() to a classic coroutine.
 * Tulip issue #194: Don't use sys.getrefcount() in unit tests: the full test
   suite now pass on PyPy.
-* Rewrite Windows code handling overlapped operations, especially to cancel
-  them. _OverlappedFuture.cancel() now clears its reference to the overlapped
-  object.
 
 
 2014-07-21: Version 1.0
