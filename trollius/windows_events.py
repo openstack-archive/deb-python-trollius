@@ -77,6 +77,10 @@ class _OverlappedFuture(futures.Future):
         super(_OverlappedFuture, self).set_exception(exception)
         self._cancel_overlapped()
 
+    def set_result(self, result):
+        super().set_result(result)
+        self._ov = None
+
 
 class _WaitHandleFuture(futures.Future):
     """Subclass of Future which represents a wait handle."""
@@ -353,7 +357,10 @@ class IocpProactor(object):
             wrap_error(ov.getresult)
             return pipe
 
-        return self._register(ov, pipe, finish_accept_pipe)
+        # FIXME: Tulip issue 196: why to we neeed register=False?
+        # See also the comment in the _register() method
+        return self._register(ov, pipe, finish_accept_pipe,
+                              register=False)
 
     def connect_pipe(self, address):
         ov = _overlapped.Overlapped(NULL)
@@ -417,17 +424,13 @@ class IocpProactor(object):
             # to avoid sending notifications to completion port of ops
             # that succeed immediately.
 
-    def _register(self, ov, obj, callback, wait_for_post=False):
+    def _register(self, ov, obj, callback,
+                  wait_for_post=False, register=True):
         # Return a future which will be set with the result of the
         # operation when it completes.  The future's value is actually
         # the value returned by callback().
         f = _OverlappedFuture(ov, loop=self._loop)
-        if ov.pending or wait_for_post:
-            # Register the overlapped operation for later.  Note that
-            # we only store obj to prevent it from being garbage
-            # collected too early.
-            self._cache[ov.address] = (f, ov, obj, callback)
-        else:
+        if not ov.pending and not wait_for_post:
             # The operation has completed, so no need to postpone the
             # work.  We cannot take this short cut if we need the
             # NumberOfBytes, CompletionKey values returned by
@@ -438,6 +441,23 @@ class IocpProactor(object):
                 f.set_exception(e)
             else:
                 f.set_result(value)
+            # Even if GetOverlappedResult() was called, we have to wait for the
+            # notification of the completion in GetQueuedCompletionStatus().
+            # Register the overlapped operation to keep a reference to the
+            # OVERLAPPED object, otherwise the memory is freed and Windows may
+            # read uninitialized memory.
+            #
+            # For an unknown reason, ConnectNamedPipe() behaves differently:
+            # the completion is not notified by GetOverlappedResult() if we
+            # already called GetOverlappedResult(). For this specific case, we
+            # don't expect notification (register is set to False).
+        else:
+            register = True
+        if register:
+            # Register the overlapped operation for later.  Note that
+            # we only store obj to prevent it from being garbage
+            # collected too early.
+            self._cache[ov.address] = (f, ov, obj, callback)
         return f
 
     def _get_accept_socket(self, family):
@@ -456,23 +476,36 @@ class IocpProactor(object):
             ms = int(math.ceil(timeout * 1e3))
             if ms >= INFINITE:
                 raise ValueError("timeout too big")
+
         while True:
             status = _overlapped.GetQueuedCompletionStatus(self._iocp, ms)
             if status is None:
                 return
+            ms = 0
+
             err, transferred, key, address = status
             try:
                 f, ov, obj, callback = self._cache.pop(address)
             except KeyError:
+                if self._loop.get_debug():
+                    self._loop.call_exception_handler({
+                        'message': ('GetQueuedCompletionStatus() returned an '
+                                    'unexpected event'),
+                        'status': ('err=%s transferred=%s key=%#x address=%#x'
+                                   % (err, transferred, key, address)),
+                    })
+
                 # key is either zero, or it is used to return a pipe
                 # handle which should be closed to avoid a leak.
                 if key not in (0, _overlapped.INVALID_HANDLE_VALUE):
                     _winapi.CloseHandle(key)
-                ms = 0
                 continue
+
             if obj in self._stopped_serving:
                 f.cancel()
-            elif not f.cancelled():
+            # Don't call the callback if _register() already read the result or
+            # if the overlapped has been cancelled
+            elif not f.done():
                 try:
                     value = callback(transferred, key, ov)
                 except OSError as e:
@@ -481,7 +514,6 @@ class IocpProactor(object):
                 else:
                     f.set_result(value)
                     self._results.append(f)
-            ms = 0
 
     def _stop_serving(self, obj):
         # obj is a socket or pipe handle.  It will be closed in
@@ -496,6 +528,9 @@ class IocpProactor(object):
                 # The operation was started with connect_pipe() which
                 # queues a task to Windows' thread pool.  This cannot
                 # be cancelled, so just forget it.
+                del self._cache[address]
+            # FIXME: Tulip issue 196: remove this case, it should not happen
+            elif fut.done() and not fut.cancelled():
                 del self._cache[address]
             else:
                 try:
