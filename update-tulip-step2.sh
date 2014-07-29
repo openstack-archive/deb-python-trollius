@@ -22,13 +22,18 @@ if $(grep -q 'patch.*asyncio' tests/*.py); then
 fi
 
 # Python 2.6 compatibility
-if $(grep -q '{}.*format' */*.py); then
+if $(grep -q -E '\{[^0-9].*format' */*.py); then
     echo "Issues with Python 2.6 compatibility:"
-    grep '{}.*format' */*.py
+    grep -E '\{[^0-9].*format' */*.py
     exit 1
 fi
 if $(grep -q -E 'unittest\.skip' tests/*.py); then
     echo "Issues with Python 2.6 compatibility:"
     grep -E 'unittest\.skip' tests/*.py
+    exit 1
+fi
+if $(grep -q -F 'super()' */*.py); then
+    echo "Issues with Python 2.6 compatibility:"
+    grep -F 'super()' */*.py
     exit 1
 fi
