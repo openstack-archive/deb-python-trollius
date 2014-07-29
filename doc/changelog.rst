@@ -11,6 +11,7 @@ especially in debug mode.
 Changes:
 
 * Tulip issue #198: asyncio.Condition now accepts an optional lock object.
+* Enhance representation of Future and Future subclasses: add "created at".
 
 Bugfixes:
 
@@ -19,24 +20,29 @@ Bugfixes:
 * Fix Trollius issue #13: asyncio futures are now accepted in all functions:
   as_completed(), async(), @coroutine, gather(), run_until_complete(),
   wrap_future().
-* Tulip issue #195: Fix a crash on Windows: don't call UnregisterWait() twice
-  if a _WaitHandleFuture is cancelled twice.
-* Fix _WaitHandleFuture.cancel(): return the result of the parent cancel()
-  method (True or False).
 * Fix support of asyncio coroutines in debug mode. If the last instruction
   of the coroutine is "yield from", it's an asyncio coroutine and it does not
   need to use From().
+* Fix and enhance _WaitHandleFuture.cancel():
+
+  - Tulip issue #195: Fix a crash on Windows: don't call UnregisterWait() twice
+    if a _WaitHandleFuture is cancelled twice.
+  - Fix _WaitHandleFuture.cancel(): return the result of the parent cancel()
+    method (True or False).
+  - _WaitHandleFuture.cancel() now notify IocpProactor through the overlapped
+    object that the wait was cancelled.
+
 * Tulip issue #196: _OverlappedFuture now clears its reference to the
-  overlapped object. ProactorIocp keeps a reference to the overlapped object
-  until it is notified of its completion. Log also an error if it gets
-  unexpected notifications in debug mode.
+  overlapped object. IocpProactor keeps a reference to the overlapped object
+  until it is notified of its completion. Log also an error in debug mode if it
+  gets unexpected notifications.
 * Fix runtest.py to be able to log at level DEBUG.
 
 Other changes:
 
 * BaseSelectorEventLoop._write_to_self() now logs errors in debug mode.
-* Fix as_completed(): it's not a coroutine, don't use "yield From(...)" but
-  "yield ...".
+* Fix as_completed(): it's not a coroutine, don't use ``yield From(...)`` but
+  ``yield ...``
 * Tulip issue #193: Convert StreamWriter.drain() to a classic coroutine.
 * Tulip issue #194: Don't use sys.getrefcount() in unit tests: the full test
   suite now pass on PyPy.
