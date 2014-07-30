@@ -2,8 +2,8 @@
 Change log
 ++++++++++
 
-Version 1.0.1 (development version)
-===================================
+2014-07-30: Version 1.0.1
+=========================
 
 This release supports PyPy and has a better support of asyncio coroutines,
 especially in debug mode.
