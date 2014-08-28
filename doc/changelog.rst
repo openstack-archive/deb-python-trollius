@@ -2,6 +2,46 @@
 Change log
 ++++++++++
 
+Version 1.0.2 (development version)
+===================================
+
+This release fixes bugs. It also provides more information in debug mode on
+error.
+
+Major changes:
+
+* Tulip issue #203: Add _FlowControlMixin.get_write_buffer_limits() method.
+* Python issue #22063: socket operations (socket,recv, sock_sendall,
+  sock_connect, sock_accept) of SelectorEventLoop now raise an exception in
+  debug mode if sockets are in blocking mode.
+
+Major bugfixes:
+
+* Tulip issue #201: Fix a race condition in wait_for(). Don't raise a
+  TimeoutError if we reached the timeout and the future completed in the same
+  iteration of the event loop. A side effect of the bug is that Queue.get()
+  looses items.
+* PipeServer.close() now cancels the "accept pipe" future which cancels the
+  overlapped operation.
+
+Other changes:
+
+* runtests.py: display a message to mention if tests are run in debug or
+  release mode
+* Tulip issue #200: Log errors in debug mode instead of simply ignoring them.
+* Tulip issue #200: _WaitHandleFuture._unregister_wait() now catchs and logs
+  exceptions.
+* _fatal_error() method of _UnixReadPipeTransport and _UnixWritePipeTransport
+  now log all exceptions in debug mode
+* Fix debug log in BaseEventLoop.create_connection(): get the socket object
+  from the transport because SSL transport closes the old socket and creates a
+  new SSL socket object.
+* Remove the _SelectorSslTransport._rawsock attribute: it contained the closed
+  socket (not very useful) and it was not used.
+* Fix _SelectorTransport.__repr__() if the transport was closed
+* Use the new os.set_blocking() function of Python 3.5 if available
+
+
 2014-07-30: Version 1.0.1
 =========================
 
