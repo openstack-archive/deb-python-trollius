@@ -583,6 +583,9 @@ class BaseEventLoop(events.AbstractEventLoop):
         transport, protocol = yield From(self._create_connection_transport(
             sock, protocol_factory, ssl, server_hostname))
         if self._debug:
+            # Get the socket from the transport because SSL transport closes
+            # the old socket and creates a new SSL socket
+            sock = transport.get_extra_info('socket')
             logger.debug("%r connected to %s:%r: (%r, %r)",
                          sock, host, port, transport, protocol)
         raise Return(transport, protocol)
@@ -729,6 +732,10 @@ class BaseEventLoop(events.AbstractEventLoop):
                         sock = socket.socket(af, socktype, proto)
                     except socket.error:
                         # Assume it's a bad family/type/protocol combination.
+                        if self._debug:
+                            logger.warning('create_server() failed to create '
+                                           'socket.socket(%r, %r, %r)',
+                                           af, socktype, proto, exc_info=True)
                         continue
                     sockets.append(sock)
                     if reuse_address:

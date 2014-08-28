@@ -278,6 +278,8 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
         This method is a coroutine.
         """
+        if self.get_debug() and sock.gettimeout() != 0:
+            raise ValueError("the socket must be non-blocking")
         fut = futures.Future(loop=self)
         self._sock_recv(fut, False, sock, n)
         return fut
@@ -314,6 +316,8 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
         This method is a coroutine.
         """
+        if self.get_debug() and sock.gettimeout() != 0:
+            raise ValueError("the socket must be non-blocking")
         fut = futures.Future(loop=self)
         if data:
             self._sock_sendall(fut, False, sock, data)
@@ -355,6 +359,8 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
         This method is a coroutine.
         """
+        if self.get_debug() and sock.gettimeout() != 0:
+            raise ValueError("the socket must be non-blocking")
         fut = futures.Future(loop=self)
         try:
             base_events._check_resolved_address(sock, address)
@@ -393,6 +399,8 @@ class BaseSelectorEventLoop(base_events.BaseEventLoop):
 
         This method is a coroutine.
         """
+        if self.get_debug() and sock.gettimeout() != 0:
+            raise ValueError("the socket must be non-blocking")
         fut = futures.Future(loop=self)
         self._sock_accept(fut, False, sock)
         return fut
@@ -461,22 +469,24 @@ class _SelectorTransport(transports._FlowControlMixin,
 
     def __repr__(self):
         info = [self.__class__.__name__, 'fd=%s' % self._sock_fd]
-        polling = _test_selector_event(self._loop._selector,
-                                       self._sock_fd, selectors.EVENT_READ)
-        if polling:
-            info.append('read=polling')
-        else:
-            info.append('read=idle')
+        # test if the transport was closed
+        if self._loop is not None:
+            polling = _test_selector_event(self._loop._selector,
+                                           self._sock_fd, selectors.EVENT_READ)
+            if polling:
+                info.append('read=polling')
+            else:
+                info.append('read=idle')
 
-        polling = _test_selector_event(self._loop._selector,
-                                       self._sock_fd, selectors.EVENT_WRITE)
-        if polling:
-            state = 'polling'
-        else:
-            state = 'idle'
+            polling = _test_selector_event(self._loop._selector,
+                                           self._sock_fd, selectors.EVENT_WRITE)
+            if polling:
+                state = 'polling'
+            else:
+                state = 'idle'
 
-        bufsize = self.get_write_buffer_size()
-        info.append('write=<%s, bufsize=%s>' % (state, bufsize))
+            bufsize = self.get_write_buffer_size()
+            info.append('write=<%s, bufsize=%s>' % (state, bufsize))
         return '<%s>' % ' '.join(info)
 
     def abort(self):
@@ -700,7 +710,6 @@ class _SelectorSslTransport(_SelectorTransport):
 
         self._server_hostname = server_hostname
         self._waiter = waiter
-        self._rawsock = rawsock
         self._sslcontext = sslcontext
         self._paused = False
 

@@ -793,6 +793,9 @@ class BaseEventLoopWithSelectorTests(test_utils.TestCase):
         class _SelectorTransportMock:
             _sock = None
 
+            def get_extra_info(self, key):
+                return mock.Mock()
+
             def close(self):
                 self._sock.close()
 

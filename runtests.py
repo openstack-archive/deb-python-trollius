@@ -281,6 +281,11 @@ def runtests():
     finder = TestsFinder(args.testsdir, includes, excludes)
     if catchbreak:
         installHandler()
+    import trollius.coroutines
+    if trollius.coroutines._DEBUG:
+        print("Run tests in debug mode")
+    else:
+        print("Run tests in release mode")
     try:
         if args.forever:
             while True:

@@ -33,6 +33,7 @@ from trollius import Return, From
 from trollius import futures
 
 import trollius as asyncio
+from trollius import proactor_events
 from trollius import selector_events
 from trollius import test_utils
 from trollius.py33_exceptions import (wrap_error,
@@ -399,6 +400,25 @@ class EventLoopTestsMixin(object):
         self.assertEqual(read, data)
 
     def _basetest_sock_client_ops(self, httpd, sock):
+        if not isinstance(self.loop, proactor_events.BaseProactorEventLoop):
+            # in debug mode, socket operations must fail
+            # if the socket is not in blocking mode
+            self.loop.set_debug(True)
+            sock.setblocking(True)
+            with self.assertRaises(ValueError):
+                self.loop.run_until_complete(
+                    self.loop.sock_connect(sock, httpd.address))
+            with self.assertRaises(ValueError):
+                self.loop.run_until_complete(
+                    self.loop.sock_sendall(sock, b'GET / HTTP/1.0\r\n\r\n'))
+            with self.assertRaises(ValueError):
+                self.loop.run_until_complete(
+                    self.loop.sock_recv(sock, 1024))
+            with self.assertRaises(ValueError):
+                self.loop.run_until_complete(
+                    self.loop.sock_accept(sock))
+
+        # test in non-blocking mode
         sock.setblocking(False)
         self.loop.run_until_complete(
             self.loop.sock_connect(sock, httpd.address))
@@ -1233,6 +1253,7 @@ class EventLoopTestsMixin(object):
                          "Don't support pipes for Windows")
     def test_write_pipe_disconnect_on_close(self):
         rsock, wsock = test_utils.socketpair()
+        rsock.setblocking(False)
         if hasattr(wsock, 'detach'):
             wsock_fd = wsock.detach()
         else:
@@ -1376,6 +1397,7 @@ class EventLoopTestsMixin(object):
             for sock_type in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
                 sock = socket.socket(family, sock_type)
                 with contextlib.closing(sock):
+                    sock.setblocking(False)
                     connect = self.loop.sock_connect(sock, address)
                     with self.assertRaises(ValueError) as cm:
                         self.loop.run_until_complete(connect)

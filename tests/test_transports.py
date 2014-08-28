@@ -86,9 +86,11 @@ class TransportTests(test_utils.TestCase):
 
         transport.set_write_buffer_limits(high=1024, low=128)
         self.assertFalse(transport._protocol_paused)
+        self.assertEqual(transport.get_write_buffer_limits(), (128, 1024))
 
         transport.set_write_buffer_limits(high=256, low=128)
         self.assertTrue(transport._protocol_paused)
+        self.assertEqual(transport.get_write_buffer_limits(), (128, 256))
 
 
 if __name__ == '__main__':
