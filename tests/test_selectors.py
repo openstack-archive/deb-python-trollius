@@ -2,9 +2,9 @@
 
 import unittest
 
-from asyncio import selectors
-from asyncio import test_utils
-from asyncio.test_utils import mock
+from trollius import selectors
+from trollius import test_utils
+from trollius.test_utils import mock
 
 
 class FakeSelector(selectors._BaseSelectorImpl):

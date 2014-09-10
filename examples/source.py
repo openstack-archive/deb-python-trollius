@@ -4,8 +4,8 @@ from __future__ import print_function
 import argparse
 import sys
 
-from asyncio import *
-from asyncio import test_utils
+from trollius import *
+from trollius import test_utils
 
 
 ARGS = argparse.ArgumentParser(description="TCP data sink example.")
@@ -75,18 +75,18 @@ def start(loop, host, port):
     sslctx = None
     if args.tls:
         sslctx = test_utils.dummy_ssl_context()
-    tr, pr = yield loop.create_connection(Client, host, port,
-                                          ssl=sslctx)
+    tr, pr = yield From(loop.create_connection(Client, host, port,
+                                               ssl=sslctx))
     dprint('tr =', tr)
     dprint('pr =', pr)
-    yield pr.waiter
+    yield From(pr.waiter)
 
 
 def main():
     global args
     args = ARGS.parse_args()
     if args.iocp:
-        from asyncio.windows_events import ProactorEventLoop
+        from trollius.windows_events import ProactorEventLoop
         loop = ProactorEventLoop()
         set_event_loop(loop)
     else:

@@ -1,10 +1,11 @@
 """Example writing to and reading from a subprocess at the same time using
 tasks."""
 
-import asyncio
+import trollius as asyncio
 import os
-from asyncio.subprocess import PIPE
-from asyncio.py33_exceptions import BrokenPipeError, ConnectionResetError
+from trollius import From
+from trollius.subprocess import PIPE
+from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
 
 
 @asyncio.coroutine
@@ -16,7 +17,7 @@ def send_input(writer, input):
             d = writer.drain()
             if d:
                 print('pause writing')
-                yield d
+                yield From(d)
                 print('resume writing')
         writer.close()
     except BrokenPipeError:
@@ -27,7 +28,7 @@ def send_input(writer, input):
 @asyncio.coroutine
 def log_errors(reader):
     while True:
-        line = yield reader.readline()
+        line = yield From(reader.readline())
         if not line:
             break
         print('ERROR', repr(line))
@@ -35,7 +36,7 @@ def log_errors(reader):
 @asyncio.coroutine
 def read_stdout(stdout):
     while True:
-        line = yield stdout.readline()
+        line = yield From(stdout.readline())
         print('received', repr(line))
         if not line:
             break
@@ -48,7 +49,7 @@ def start(cmd, input=None, **kwds):
         kwds['stdin'] = None
     else:
         kwds['stdin'] = PIPE
-    proc = yield asyncio.create_subprocess_shell(cmd, **kwds)
+    proc = yield From(asyncio.create_subprocess_shell(cmd, **kwds))
 
     tasks = []
     if input is not None:
@@ -67,9 +68,9 @@ def start(cmd, input=None, **kwds):
     if tasks:
         # feed stdin while consuming stdout to avoid hang
         # when stdin pipe is full
-        yield asyncio.wait(tasks)
+        yield From(asyncio.wait(tasks))
 
-    exitcode = yield proc.wait()
+    exitcode = yield From(proc.wait())
     print("exit code: %s" % exitcode)
 
 
@@ -79,7 +80,9 @@ def main():
         asyncio.set_event_loop(loop)
     else:
         loop = asyncio.get_event_loop()
-    loop.run_until_complete(start('sleep 2; wc', input=[b'foo bar baz\n'*300 for i in range(100)]))
+    loop.run_until_complete(start(
+        'sleep 2; wc', input=[b'foo bar baz\n'*300 for i in range(100)]))
+    loop.close()
 
 
 if __name__ == '__main__':

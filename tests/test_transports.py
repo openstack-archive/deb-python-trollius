@@ -2,9 +2,10 @@
 
 import unittest
 
-import asyncio
-from asyncio import test_utils
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import test_utils
+from trollius import transports
+from trollius.test_utils import mock
 
 try:
     memoryview
@@ -66,6 +67,28 @@ class TransportTests(test_utils.TestCase):
         self.assertRaises(NotImplementedError, transport.send_signal, 1)
         self.assertRaises(NotImplementedError, transport.terminate)
         self.assertRaises(NotImplementedError, transport.kill)
+
+    def test_flowcontrol_mixin_set_write_limits(self):
+
+        class MyTransport(transports._FlowControlMixin,
+                          transports.Transport):
+
+            def get_write_buffer_size(self):
+                return 512
+
+        transport = MyTransport()
+        transport._protocol = mock.Mock()
+
+        self.assertFalse(transport._protocol_paused)
+
+        with self.assertRaisesRegex(ValueError, 'high.*must be >= low'):
+            transport.set_write_buffer_limits(high=0, low=1)
+
+        transport.set_write_buffer_limits(high=1024, low=128)
+        self.assertFalse(transport._protocol_paused)
+
+        transport.set_write_buffer_limits(high=256, low=128)
+        self.assertTrue(transport._protocol_paused)
 
 
 if __name__ == '__main__':

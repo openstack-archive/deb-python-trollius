@@ -1,4 +1,4 @@
-from asyncio import test_utils
+from trollius import test_utils
 import os
 import sys
 import unittest
@@ -6,13 +6,12 @@ import unittest
 if sys.platform != 'win32':
     raise test_utils.SkipTest('Windows only')
 
-import asyncio
-
-from asyncio import Return
-from asyncio import _overlapped
-from asyncio import py33_winapi as _winapi
-from asyncio import windows_events
-from asyncio.py33_exceptions import PermissionError, FileNotFoundError
+import trollius as asyncio
+from trollius import Return, From
+from trollius import _overlapped
+from trollius import py33_winapi as _winapi
+from trollius import windows_events
+from trollius.py33_exceptions import PermissionError, FileNotFoundError
 
 
 class UpperProto(asyncio.Protocol):
@@ -29,15 +28,11 @@ class UpperProto(asyncio.Protocol):
             self.trans.close()
 
 
-class ProactorTests(unittest.TestCase):
+class ProactorTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = asyncio.ProactorEventLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
-        self.loop = None
+        self.set_event_loop(self.loop)
 
     def test_close(self):
         a, b = self.loop._socketpair()
@@ -52,7 +47,7 @@ class ProactorTests(unittest.TestCase):
         ADDRESS = r'\\.\pipe\test_double_bind-%s' % os.getpid()
         server1 = windows_events.PipeServer(ADDRESS)
         with self.assertRaises(PermissionError):
-            server2 = windows_events.PipeServer(ADDRESS)
+            windows_events.PipeServer(ADDRESS)
         server1.close()
 
     def test_pipe(self):
@@ -63,19 +58,19 @@ class ProactorTests(unittest.TestCase):
         ADDRESS = r'\\.\pipe\_test_pipe-%s' % os.getpid()
 
         with self.assertRaises(FileNotFoundError):
-            yield self.loop.create_pipe_connection(
-                asyncio.Protocol, ADDRESS)
+            yield From(self.loop.create_pipe_connection(
+                asyncio.Protocol, ADDRESS))
 
-        [server] = yield self.loop.start_serving_pipe(
-            UpperProto, ADDRESS)
+        [server] = yield From(self.loop.start_serving_pipe(
+            UpperProto, ADDRESS))
         self.assertIsInstance(server, windows_events.PipeServer)
 
         clients = []
         for i in range(5):
             stream_reader = asyncio.StreamReader(loop=self.loop)
             protocol = asyncio.StreamReaderProtocol(stream_reader)
-            trans, proto = yield self.loop.create_pipe_connection(
-                lambda: protocol, ADDRESS)
+            trans, proto = yield From(self.loop.create_pipe_connection(
+                lambda: protocol, ADDRESS))
             self.assertIsInstance(trans, asyncio.Transport)
             self.assertEqual(protocol, proto)
             clients.append((stream_reader, trans))
@@ -84,15 +79,15 @@ class ProactorTests(unittest.TestCase):
             w.write('lower-{0}\n'.format(i).encode())
 
         for i, (r, w) in enumerate(clients):
-            response = yield r.readline()
+            response = yield From(r.readline())
             self.assertEqual(response, 'LOWER-{0}\n'.format(i).encode())
             w.close()
 
         server.close()
 
         with self.assertRaises(FileNotFoundError):
-            yield self.loop.create_pipe_connection(
-                asyncio.Protocol, ADDRESS)
+            yield From(self.loop.create_pipe_connection(
+                asyncio.Protocol, ADDRESS))
 
         raise Return('done')
 
@@ -100,37 +95,47 @@ class ProactorTests(unittest.TestCase):
         event = _overlapped.CreateEvent(None, True, False, None)
         self.addCleanup(_winapi.CloseHandle, event)
 
-        # Wait for unset event with 0.2s timeout;
+        # Wait for unset event with 0.5s timeout;
         # result should be False at timeout
-        f = self.loop._proactor.wait_for_handle(event, 0.2)
+        fut = self.loop._proactor.wait_for_handle(event, 0.5)
         start = self.loop.time()
-        self.loop.run_until_complete(f)
+        self.loop.run_until_complete(fut)
         elapsed = self.loop.time() - start
-        self.assertFalse(f.result())
-        self.assertTrue(0.18 < elapsed < 0.9, elapsed)
+        self.assertFalse(fut.result())
+        self.assertTrue(0.48 < elapsed < 0.9, elapsed)
 
         _overlapped.SetEvent(event)
 
         # Wait for for set event;
         # result should be True immediately
-        f = self.loop._proactor.wait_for_handle(event, 10)
+        fut = self.loop._proactor.wait_for_handle(event, 10)
         start = self.loop.time()
-        self.loop.run_until_complete(f)
+        self.loop.run_until_complete(fut)
         elapsed = self.loop.time() - start
-        self.assertTrue(f.result())
-        self.assertTrue(0 <= elapsed < 0.1, elapsed)
+        self.assertTrue(fut.result())
+        self.assertTrue(0 <= elapsed < 0.3, elapsed)
 
-        _overlapped.ResetEvent(event)
+        # Tulip issue #195: cancelling a done _WaitHandleFuture must not crash
+        fut.cancel()
+
+    def test_wait_for_handle_cancel(self):
+        event = _overlapped.CreateEvent(None, True, False, None)
+        self.addCleanup(_winapi.CloseHandle, event)
 
         # Wait for unset event with a cancelled future;
         # CancelledError should be raised immediately
-        f = self.loop._proactor.wait_for_handle(event, 10)
-        f.cancel()
+        fut = self.loop._proactor.wait_for_handle(event, 10)
+        fut.cancel()
         start = self.loop.time()
         with self.assertRaises(asyncio.CancelledError):
-            self.loop.run_until_complete(f)
+            self.loop.run_until_complete(fut)
         elapsed = self.loop.time() - start
         self.assertTrue(0 <= elapsed < 0.1, elapsed)
+
+        # Tulip issue #195: cancelling a _WaitHandleFuture twice must not crash
+        fut = self.loop._proactor.wait_for_handle(event)
+        fut.cancel()
+        fut.cancel()
 
 
 if __name__ == '__main__':

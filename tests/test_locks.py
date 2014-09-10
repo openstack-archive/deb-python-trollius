@@ -3,10 +3,10 @@
 import unittest
 import re
 
-import asyncio
-from asyncio import Return
-from asyncio import test_utils
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import From, Return
+from trollius import test_utils
+from trollius.test_utils import mock
 
 
 STR_RGX_REPR = (
@@ -21,11 +21,7 @@ RGX_REPR = re.compile(STR_RGX_REPR)
 class LockTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.loop = self.new_test_loop()
 
     def test_ctor_loop(self):
         loop = mock.Mock()
@@ -36,12 +32,9 @@ class LockTests(test_utils.TestCase):
         self.assertIs(lock._loop, self.loop)
 
     def test_ctor_noloop(self):
-        try:
-            asyncio.set_event_loop(self.loop)
-            lock = asyncio.Lock()
-            self.assertIs(lock._loop, self.loop)
-        finally:
-            asyncio.set_event_loop(None)
+        asyncio.set_event_loop(self.loop)
+        lock = asyncio.Lock()
+        self.assertIs(lock._loop, self.loop)
 
     def test_repr(self):
         lock = asyncio.Lock(loop=self.loop)
@@ -50,7 +43,7 @@ class LockTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_lock():
-            yield lock.acquire()
+            yield From(lock.acquire())
 
         self.loop.run_until_complete(acquire_lock())
         self.assertTrue(repr(lock).endswith('[locked]>'))
@@ -61,7 +54,7 @@ class LockTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_lock():
-            yield lock.acquire()
+            yield From(lock.acquire())
             raise Return(lock)
 
         res = self.loop.run_until_complete(acquire_lock())
@@ -80,19 +73,19 @@ class LockTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            if (yield lock.acquire()):
+            if (yield From(lock.acquire())):
                 result.append(1)
             raise Return(True)
 
         @asyncio.coroutine
         def c2(result):
-            if (yield lock.acquire()):
+            if (yield From(lock.acquire())):
                 result.append(2)
             raise Return(True)
 
         @asyncio.coroutine
         def c3(result):
-            if (yield lock.acquire()):
+            if (yield From(lock.acquire())):
                 result.append(3)
             raise Return(True)
 
@@ -156,10 +149,10 @@ class LockTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def lockit(name, blocker):
-            yield lock.acquire()
+            yield From(lock.acquire())
             try:
                 if blocker is not None:
-                    yield blocker
+                    yield From(blocker)
             finally:
                 lock.release()
 
@@ -203,7 +196,7 @@ class LockTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_lock():
-            raise Return((yield lock))
+            raise Return((yield From(lock)))
 
         with self.loop.run_until_complete(acquire_lock()):
             self.assertTrue(lock.locked())
@@ -215,9 +208,9 @@ class LockTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_lock():
-            raise Return((yield lock))
+            raise Return((yield From(lock)))
 
-        # This spells "yield lock" outside a generator.
+        # This spells "yield From(lock)" outside a generator.
         cm = self.loop.run_until_complete(acquire_lock())
         with cm:
             self.assertTrue(lock.locked())
@@ -237,7 +230,9 @@ class LockTests(test_utils.TestCase):
         except RuntimeError as err:
             self.assertEqual(
                 str(err),
-                '"yield from" should be used as context manager expression')
+                '"yield" should be used as context manager expression')
+
+        self.assertFalse(lock.locked())
 
         self.assertFalse(lock.locked())
 
@@ -245,11 +240,7 @@ class LockTests(test_utils.TestCase):
 class EventTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.loop = self.new_test_loop()
 
     def test_ctor_loop(self):
         loop = mock.Mock()
@@ -260,12 +251,9 @@ class EventTests(test_utils.TestCase):
         self.assertIs(ev._loop, self.loop)
 
     def test_ctor_noloop(self):
-        try:
-            asyncio.set_event_loop(self.loop)
-            ev = asyncio.Event()
-            self.assertIs(ev._loop, self.loop)
-        finally:
-            asyncio.set_event_loop(None)
+        asyncio.set_event_loop(self.loop)
+        ev = asyncio.Event()
+        self.assertIs(ev._loop, self.loop)
 
     def test_repr(self):
         ev = asyncio.Event(loop=self.loop)
@@ -289,17 +277,17 @@ class EventTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            if (yield ev.wait()):
+            if (yield From(ev.wait())):
                 result.append(1)
 
         @asyncio.coroutine
         def c2(result):
-            if (yield ev.wait()):
+            if (yield From(ev.wait())):
                 result.append(2)
 
         @asyncio.coroutine
         def c3(result):
-            if (yield ev.wait()):
+            if (yield From(ev.wait())):
                 result.append(3)
 
         t1 = asyncio.Task(c1(result), loop=self.loop)
@@ -354,7 +342,7 @@ class EventTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            if (yield ev.wait()):
+            if (yield From(ev.wait())):
                 result.append(1)
             raise Return(True)
 
@@ -381,11 +369,7 @@ class EventTests(test_utils.TestCase):
 class ConditionTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.loop = self.new_test_loop()
 
     def test_ctor_loop(self):
         loop = mock.Mock()
@@ -396,12 +380,9 @@ class ConditionTests(test_utils.TestCase):
         self.assertIs(cond._loop, self.loop)
 
     def test_ctor_noloop(self):
-        try:
-            asyncio.set_event_loop(self.loop)
-            cond = asyncio.Condition()
-            self.assertIs(cond._loop, self.loop)
-        finally:
-            asyncio.set_event_loop(None)
+        asyncio.set_event_loop(self.loop)
+        cond = asyncio.Condition()
+        self.assertIs(cond._loop, self.loop)
 
     def test_wait(self):
         cond = asyncio.Condition(loop=self.loop)
@@ -409,22 +390,22 @@ class ConditionTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(1)
             raise Return(True)
 
         @asyncio.coroutine
         def c2(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(2)
             raise Return(True)
 
         @asyncio.coroutine
         def c3(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(3)
             raise Return(True)
 
@@ -498,8 +479,8 @@ class ConditionTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            yield cond.acquire()
-            if (yield cond.wait_for(predicate)):
+            yield From(cond.acquire())
+            if (yield From(cond.wait_for(predicate))):
                 result.append(1)
                 cond.release()
             raise Return(True)
@@ -543,24 +524,24 @@ class ConditionTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(1)
                 cond.release()
             raise Return(True)
 
         @asyncio.coroutine
         def c2(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(2)
                 cond.release()
             raise Return(True)
 
         @asyncio.coroutine
         def c3(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(3)
                 cond.release()
             raise Return(True)
@@ -601,16 +582,16 @@ class ConditionTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(1)
                 cond.release()
             raise Return(True)
 
         @asyncio.coroutine
         def c2(result):
-            yield cond.acquire()
-            if (yield cond.wait()):
+            yield From(cond.acquire())
+            if (yield From(cond.wait())):
                 result.append(2)
                 cond.release()
             raise Return(True)
@@ -662,7 +643,7 @@ class ConditionTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_cond():
-            raise Return((yield cond))
+            raise Return((yield From(cond)))
 
         with self.loop.run_until_complete(acquire_cond()):
             self.assertTrue(cond.locked())
@@ -678,7 +659,24 @@ class ConditionTests(test_utils.TestCase):
         except RuntimeError as err:
             self.assertEqual(
                 str(err),
-                '"yield from" should be used as context manager expression')
+                '"yield From" should be used as context manager expression')
+
+        self.assertFalse(cond.locked())
+
+    def test_explicit_lock(self):
+        lock = asyncio.Lock(loop=self.loop)
+        cond = asyncio.Condition(lock, loop=self.loop)
+
+        self.assertIs(cond._lock, lock)
+        self.assertIs(cond._loop, lock._loop)
+
+    def test_ambiguous_loops(self):
+        loop = self.new_test_loop()
+        self.addCleanup(loop.close)
+
+        lock = asyncio.Lock(loop=self.loop)
+        with self.assertRaises(ValueError):
+            asyncio.Condition(lock, loop=loop)
 
         self.assertFalse(cond.locked())
 
@@ -686,11 +684,7 @@ class ConditionTests(test_utils.TestCase):
 class SemaphoreTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.loop = self.new_test_loop()
 
     def test_ctor_loop(self):
         loop = mock.Mock()
@@ -701,12 +695,9 @@ class SemaphoreTests(test_utils.TestCase):
         self.assertIs(sem._loop, self.loop)
 
     def test_ctor_noloop(self):
-        try:
-            asyncio.set_event_loop(self.loop)
-            sem = asyncio.Semaphore()
-            self.assertIs(sem._loop, self.loop)
-        finally:
-            asyncio.set_event_loop(None)
+        asyncio.set_event_loop(self.loop)
+        sem = asyncio.Semaphore()
+        self.assertIs(sem._loop, self.loop)
 
     def test_initial_value_zero(self):
         sem = asyncio.Semaphore(0, loop=self.loop)
@@ -736,7 +727,7 @@ class SemaphoreTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_lock():
-            yield sem.acquire()
+            yield From(sem.acquire())
             raise Return(sem)
 
         res = self.loop.run_until_complete(acquire_lock())
@@ -762,25 +753,25 @@ class SemaphoreTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def c1(result):
-            yield sem.acquire()
+            yield From(sem.acquire())
             result.append(1)
             raise Return(True)
 
         @asyncio.coroutine
         def c2(result):
-            yield sem.acquire()
+            yield From(sem.acquire())
             result.append(2)
             raise Return(True)
 
         @asyncio.coroutine
         def c3(result):
-            yield sem.acquire()
+            yield From(sem.acquire())
             result.append(3)
             raise Return(True)
 
         @asyncio.coroutine
         def c4(result):
-            yield sem.acquire()
+            yield From(sem.acquire())
             result.append(4)
             raise Return(True)
 
@@ -818,6 +809,7 @@ class SemaphoreTests(test_utils.TestCase):
 
         # cleanup locked semaphore
         sem.release()
+        self.loop.run_until_complete(t4)
 
     def test_acquire_cancel(self):
         sem = asyncio.Semaphore(loop=self.loop)
@@ -848,7 +840,7 @@ class SemaphoreTests(test_utils.TestCase):
 
         @asyncio.coroutine
         def acquire_lock():
-            raise Return((yield sem))
+            raise Return((yield From(sem)))
 
         with self.loop.run_until_complete(acquire_lock()):
             self.assertFalse(sem.locked())
@@ -868,7 +860,7 @@ class SemaphoreTests(test_utils.TestCase):
         except RuntimeError as err:
             self.assertEqual(
                 str(err),
-                '"yield from" should be used as context manager expression')
+                '"yield" should be used as context manager expression')
 
         self.assertEqual(2, sem._value)
 

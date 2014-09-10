@@ -1,36 +1,66 @@
 """Tests for window_utils"""
 
-from asyncio.test_utils import mock, SkipTest
-import asyncio.test_support as support
+import socket
 import sys
 import unittest
 
 if sys.platform != 'win32':
+    from trollius.test_utils import SkipTest
     raise SkipTest('Windows only')
 
-from asyncio import _overlapped
-from asyncio import py33_winapi as _winapi
-from asyncio import windows_utils
+from trollius import _overlapped
+from trollius import py33_winapi as _winapi
+from trollius import test_utils
+from trollius import windows_utils
+from trollius.test_support import IPV6_ENABLED
+from trollius.test_utils import mock
+import trollius.test_support as support
 
 
 class WinsocketpairTests(unittest.TestCase):
 
-    def test_winsocketpair(self):
-        ssock, csock = windows_utils.socketpair()
-
+    def check_winsocketpair(self, ssock, csock):
         csock.send(b'xxx')
         self.assertEqual(b'xxx', ssock.recv(1024))
-
         csock.close()
         ssock.close()
 
-    @mock.patch('asyncio.windows_utils.socket')
+    def test_winsocketpair(self):
+        ssock, csock = windows_utils.socketpair()
+        self.check_winsocketpair(ssock, csock)
+
+    @test_utils.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
+    def test_winsocketpair_ipv6(self):
+        ssock, csock = windows_utils.socketpair(family=socket.AF_INET6)
+        self.check_winsocketpair(ssock, csock)
+
+    @mock.patch('trollius.windows_utils.socket')
     def test_winsocketpair_exc(self, m_socket):
+        m_socket.AF_INET = socket.AF_INET
+        m_socket.SOCK_STREAM = socket.SOCK_STREAM
         m_socket.socket.return_value.getsockname.return_value = ('', 12345)
         m_socket.socket.return_value.accept.return_value = object(), object()
         m_socket.socket.return_value.connect.side_effect = OSError()
 
         self.assertRaises(OSError, windows_utils.socketpair)
+
+    def test_winsocketpair_invalid_args(self):
+        self.assertRaises(ValueError,
+                          windows_utils.socketpair, family=socket.AF_UNSPEC)
+        self.assertRaises(ValueError,
+                          windows_utils.socketpair, type=socket.SOCK_DGRAM)
+        self.assertRaises(ValueError,
+                          windows_utils.socketpair, proto=1)
+
+    @mock.patch('trollius.windows_utils.socket')
+    def test_winsocketpair_close(self, m_socket):
+        m_socket.AF_INET = socket.AF_INET
+        m_socket.SOCK_STREAM = socket.SOCK_STREAM
+        sock = mock.Mock()
+        m_socket.socket.return_value = sock
+        sock.bind.side_effect = OSError
+        self.assertRaises(OSError, windows_utils.socketpair)
+        self.assertTrue(sock.close.called)
 
 
 class PipeTests(unittest.TestCase):
@@ -134,6 +164,8 @@ class PopenTests(unittest.TestCase):
         # allow for partial reads...
         self.assertTrue(msg.upper().rstrip().startswith(out))
         self.assertTrue(b"stderr".startswith(err))
+
+        p.wait()
 
 
 if __name__ == '__main__':

@@ -1,17 +1,17 @@
 # Release procedure:
+#  - fill Tulip changelog
 #  - run maybe update_tulip.sh
 #  - run unit tests with concurrent.futures
 #  - run unit tests without concurrent.futures
 #  - run unit tests without ssl: set sys.modules['ssl']=None at startup
 #  - test examples
-#  - update version in setup.py
-#  - set _DEBUG to False in asyncio/coroutine.py
-#  - set release date in the change log (README file)
+#  - update version in setup.py (version) and doc/conf.py (version, release)
+#  - set release date in doc/changelog.rst
 #  - hg ci
 #  - hg tag trollius-VERSION
 #  - hg push
 #  - python setup.py register sdist bdist_wheel upload
-#  - increment version in setup.py
+#  - increment version in setup.py (version) and doc/conf.py (version, release)
 #  - hg ci && hg push
 
 import os
@@ -31,7 +31,7 @@ with open("README") as fp:
 extensions = []
 if os.name == 'nt':
     ext = Extension(
-        'asyncio._overlapped', ['overlapped.c'], libraries=['ws2_32'],
+        'trollius._overlapped', ['overlapped.c'], libraries=['ws2_32'],
     )
     extensions.append(ext)
 
@@ -43,21 +43,23 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "0.1.4",
+    "version": "1.0.1",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',
 
-    "description": "Port of the Tulip project (asyncio module, PEP 3156) on Python 2.7",
+    "description": "Port of the Tulip project (asyncio module, PEP 3156) on Python 2",
     "long_description": long_description,
     "url": "https://bitbucket.org/enovance/trollius/",
 
     "classifiers": [
         "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
     ],
 
-    "packages": ["asyncio"],
+    "packages": ["trollius"],
+    "test_suite": "runtests.runtests",
 
     "ext_modules": extensions,
 }

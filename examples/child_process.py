@@ -10,18 +10,16 @@ import os
 import sys
 
 try:
-    import asyncio
+    import trollius as asyncio
 except ImportError:
     # asyncio is not installed
     sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-    import asyncio
-
-from asyncio import streams
-from asyncio import protocols
+    import trollius as asyncio
+from trollius import From, Return
 
 if sys.platform == 'win32':
-    from asyncio.windows_utils import Popen, PIPE
-    from asyncio.windows_events import ProactorEventLoop
+    from trollius.windows_utils import Popen, PIPE
+    from trollius.windows_events import ProactorEventLoop
 else:
     from subprocess import Popen, PIPE
 
@@ -32,9 +30,8 @@ else:
 @asyncio.coroutine
 def connect_write_pipe(file):
     loop = asyncio.get_event_loop()
-    protocol = protocols.Protocol()
-    transport, _ =  yield loop.connect_write_pipe(asyncio.Protocol, file)
-    raise asyncio.Return(transport)
+    transport, _ =  yield From(loop.connect_write_pipe(asyncio.Protocol, file))
+    raise Return(transport)
 
 #
 # Wrap a readable pipe in a stream
@@ -43,11 +40,11 @@ def connect_write_pipe(file):
 @asyncio.coroutine
 def connect_read_pipe(file):
     loop = asyncio.get_event_loop()
-    stream_reader = streams.StreamReader(loop=loop)
+    stream_reader = asyncio.StreamReader(loop=loop)
     def factory():
-        return streams.StreamReaderProtocol(stream_reader)
-    transport, _ = yield loop.connect_read_pipe(factory, file)
-    raise asyncio.Return(stream_reader, transport)
+        return asyncio.StreamReaderProtocol(stream_reader)
+    transport, _ = yield From(loop.connect_read_pipe(factory, file))
+    raise Return(stream_reader, transport)
 
 
 #
@@ -84,9 +81,9 @@ def main(loop):
     p = Popen([sys.executable, '-c', code],
               stdin=PIPE, stdout=PIPE, stderr=PIPE)
 
-    stdin = yield connect_write_pipe(p.stdin)
-    stdout, stdout_transport = yield connect_read_pipe(p.stdout)
-    stderr, stderr_transport = yield connect_read_pipe(p.stderr)
+    stdin = yield From(connect_write_pipe(p.stdin))
+    stdout, stdout_transport = yield From(connect_read_pipe(p.stdout))
+    stderr, stderr_transport = yield From(connect_read_pipe(p.stderr))
 
     # interact with subprocess
     name = {stdout:'OUT', stderr:'ERR'}
@@ -104,9 +101,9 @@ def main(loop):
         # get and print lines from stdout, stderr
         timeout = None
         while registered:
-            done, pending = yield asyncio.wait(
+            done, pending = yield From(asyncio.wait(
                 registered, timeout=timeout,
-                return_when=asyncio.FIRST_COMPLETED)
+                return_when=asyncio.FIRST_COMPLETED))
             if not done:
                 break
             for f in done:

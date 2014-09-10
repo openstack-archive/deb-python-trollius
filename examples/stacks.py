@@ -1,7 +1,7 @@
 """Crude demo for print_stack()."""
 
 
-from asyncio import *
+from trollius import *
 
 
 @coroutine
@@ -10,7 +10,7 @@ def helper(r):
     for t in Task.all_tasks():
         t.print_stack()
     print('--- end helper ---')
-    line = yield r.readline()
+    line = yield From(r.readline())
     1/0
     raise Return(line)
 
@@ -33,6 +33,7 @@ def doit():
     finally:
         for t in Task.all_tasks():
             t.print_stack()
+    l.close()
 
 
 def main():

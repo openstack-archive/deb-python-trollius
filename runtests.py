@@ -25,10 +25,11 @@ import optparse
 import gc
 import logging
 import os
+import random
 import re
 import sys
 import textwrap
-from asyncio.compat import PY33
+from trollius.compat import PY33
 if PY33:
     import importlib.machinery
 else:
@@ -37,6 +38,8 @@ try:
     import coverage
 except ImportError:
     coverage = None
+if sys.version_info < (3,):
+    sys.exc_clear()
 
 try:
     import unittest
@@ -45,7 +48,7 @@ except ImportError:
     import unittest2 as unittest
     from unittest2.signals import installHandler
 
-ARGS = optparse.OptionParser(description="Run all unittests.", usage="%prog")
+ARGS = optparse.OptionParser(description="Run all unittests.", usage="%prog [options] [pattern] [pattern2 ...]")
 ARGS.add_option(
     '-v', '--verbose', action="store_true", dest='verbose',
     default=0, help='verbose')
@@ -64,6 +67,12 @@ ARGS.add_option(
     '--findleaks', action='store_true', dest='findleaks',
     help='detect tests that leak memory')
 ARGS.add_option(
+    '-r', '--randomize', action='store_true',
+    help='randomize test execution order.')
+ARGS.add_option(
+    '--seed', type=int,
+    help='random seed to reproduce a previous random run')
+ARGS.add_option(
     '-q', action="store_true", dest='quiet', help='quiet')
 ARGS.add_option(
     '--tests', action="store", dest='testsdir', default='tests',
@@ -71,9 +80,6 @@ ARGS.add_option(
 ARGS.add_option(
     '--coverage', action="store_true", dest='coverage',
     help='enable html coverage report')
-ARGS.add_option(
-    '--pattern', action="append",
-    help='optional regex patterns to match test ids (default all tests)')
 
 
 if PY33:
@@ -109,10 +115,13 @@ def load_modules(basedir, suffix='.py'):
 
         return files
 
-
     mods = []
     for modname, sourcefile in list_dir('', basedir):
         if modname == 'runtests':
+            continue
+        if modname == 'test_asyncio' and sys.version_info <= (3, 3):
+            print("Skipping '{0}': need at least Python 3.3".format(modname),
+                  file=sys.stderr)
             continue
         try:
             mod = load_module(modname, sourcefile)
@@ -123,6 +132,14 @@ def load_modules(basedir, suffix='.py'):
             print("Skipping '{0}': {1}".format(modname, err), file=sys.stderr)
 
     return mods
+
+
+def randomize_tests(tests, seed):
+    if seed is None:
+        seed = random.randrange(10000000)
+    random.seed(seed)
+    print("Using random seed", seed)
+    random.shuffle(tests._tests)
 
 
 class TestsFinder:
@@ -206,7 +223,7 @@ class TestRunner(unittest.TextTestRunner):
 
 
 def runtests():
-    args, commands = ARGS.parse_args()
+    args, pattern = ARGS.parse_args()
 
     if args.coverage and coverage is None:
         URL = "bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py"
@@ -232,9 +249,9 @@ def runtests():
 
     excludes = includes = []
     if args.exclude:
-        excludes = args.pattern
+        excludes = pattern
     else:
-        includes = args.pattern
+        includes = pattern
 
     v = 0 if args.quiet else args.verbose + 1
     failfast = args.failfast
@@ -248,30 +265,36 @@ def runtests():
                                 )
         cov.start()
 
-    finder = TestsFinder(args.testsdir, includes, excludes)
     logger = logging.getLogger()
     if v == 0:
-        logger.setLevel(logging.CRITICAL)
+        level = logging.CRITICAL
     elif v == 1:
-        logger.setLevel(logging.ERROR)
+        level = logging.ERROR
     elif v == 2:
-        logger.setLevel(logging.WARNING)
+        level = logging.WARNING
     elif v == 3:
-        logger.setLevel(logging.INFO)
+        level = logging.INFO
     elif v >= 4:
-        logger.setLevel(logging.DEBUG)
+        level = logging.DEBUG
+    logging.basicConfig(level=level)
+
+    finder = TestsFinder(args.testsdir, includes, excludes)
     if catchbreak:
         installHandler()
     try:
         if args.forever:
             while True:
                 tests = finder.load_tests()
+                if args.randomize:
+                    randomize_tests(tests, args.seed)
                 result = runner_factory(verbosity=v,
                                         failfast=failfast).run(tests)
                 if not result.wasSuccessful():
                     sys.exit(1)
         else:
             tests = finder.load_tests()
+            if args.randomize:
+                randomize_tests(tests, args.seed)
             result = runner_factory(verbosity=v,
                                     failfast=failfast).run(tests)
             sys.exit(not result.wasSuccessful())

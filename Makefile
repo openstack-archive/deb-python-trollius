@@ -1,6 +1,6 @@
 # Some simple testing tasks (sorry, UNIX only).
 
-PYTHON=python3
+PYTHON=python
 VERBOSE=$(V)
 V=	0
 FLAGS=
@@ -38,11 +38,25 @@ clean:
 	rm -f .coverage
 	rm -rf htmlcov
 	rm -rf build
+	rm -rf asyncio.egg-info
 	rm -f MANIFEST
 	rm -rf trollius.egg-info
 	rm -rf .tox
 
 
-# Make distributions for Python 3.3
+# For distribution builders only!
+# Push a source distribution for Python 3.3 to PyPI.
+# You must update the version in setup.py first.
+# A PyPI user configuration in ~/.pypirc is required;
+# you can create a suitable confifuration using
+#   python setup.py register
 pypi: clean
 	python3.3 setup.py sdist upload
+
+# The corresponding action on Windows is pypi.bat.  For that to work,
+# you need to install wheel and setuptools.  The easiest way is to get
+# pip using the get-pip.py script found here:
+# https://pip.pypa.io/en/latest/installing.html#install-pip 
+# That will install setuptools and pip; then you can just do
+#   \Python33\python.exe -m pip install wheel 
+# after which the pypi.bat script should work.

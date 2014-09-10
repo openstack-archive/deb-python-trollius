@@ -4,29 +4,34 @@ try:
     import concurrent.futures
 except ImportError:
     concurrent = None
+import re
+import sys
 import threading
 import unittest
 
-import asyncio
-from asyncio import test_utils
-from asyncio.test_utils import mock
+import trollius as asyncio
+from trollius import test_utils
+from trollius import test_support as support   # gc_collect
+from trollius.test_utils import mock
 
+
+def get_thread_ident():
+    return threading.current_thread().ident
 
 def _fakefunc(f):
     return f
 
-def get_thread_ident():
-    return threading.current_thread().ident
+def first_cb():
+    pass
+
+def last_cb():
+    pass
 
 
 class FutureTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.loop = self.new_test_loop()
 
     def test_initial_state(self):
         f = asyncio.Future(loop=self.loop)
@@ -36,12 +41,9 @@ class FutureTests(test_utils.TestCase):
         self.assertTrue(f.cancelled())
 
     def test_init_constructor_default_loop(self):
-        try:
-            asyncio.set_event_loop(self.loop)
-            f = asyncio.Future()
-            self.assertIs(f._loop, self.loop)
-        finally:
-            asyncio.set_event_loop(None)
+        asyncio.set_event_loop(self.loop)
+        f = asyncio.Future()
+        self.assertIs(f._loop, self.loop)
 
     def test_cancel(self):
         f = asyncio.Future(loop=self.loop)
@@ -86,39 +88,70 @@ class FutureTests(test_utils.TestCase):
         f.set_exception(RuntimeError)
         self.assertIsInstance(f.exception(), RuntimeError)
 
-    def test_repr(self):
+    def test_future_repr(self):
+        self.loop.set_debug(True)
+        f_pending_debug = asyncio.Future(loop=self.loop)
+        frame = f_pending_debug._source_traceback[-1]
+        self.assertEqual(repr(f_pending_debug),
+                         '<Future pending created at %s:%s>'
+                         % (frame[0], frame[1]))
+        f_pending_debug.cancel()
+
+        self.loop.set_debug(False)
         f_pending = asyncio.Future(loop=self.loop)
-        self.assertEqual(repr(f_pending), 'Future<PENDING>')
+        self.assertEqual(repr(f_pending), '<Future pending>')
         f_pending.cancel()
 
         f_cancelled = asyncio.Future(loop=self.loop)
         f_cancelled.cancel()
-        self.assertEqual(repr(f_cancelled), 'Future<CANCELLED>')
+        self.assertEqual(repr(f_cancelled), '<Future cancelled>')
 
         f_result = asyncio.Future(loop=self.loop)
         f_result.set_result(4)
-        self.assertEqual(repr(f_result), 'Future<result=4>')
+        self.assertEqual(repr(f_result), '<Future finished result=4>')
         self.assertEqual(f_result.result(), 4)
 
         exc = RuntimeError()
         f_exception = asyncio.Future(loop=self.loop)
         f_exception.set_exception(exc)
-        self.assertEqual(repr(f_exception), 'Future<exception=RuntimeError()>')
+        self.assertEqual(repr(f_exception), '<Future finished exception=RuntimeError()>')
         self.assertIs(f_exception.exception(), exc)
 
-        f_few_callbacks = asyncio.Future(loop=self.loop)
-        f_few_callbacks.add_done_callback(_fakefunc)
-        self.assertIn('Future<PENDING, [<function _fakefunc',
-                      repr(f_few_callbacks))
-        f_few_callbacks.cancel()
+        def func_repr(func):
+            filename, lineno = test_utils.get_function_source(func)
+            func_name = getattr(func, '__qualname__', func.__name__)
+            text = '%s() at %s:%s' % (func_name, filename, lineno)
+            return re.escape(text)
+
+        f_one_callbacks = asyncio.Future(loop=self.loop)
+        f_one_callbacks.add_done_callback(_fakefunc)
+        fake_repr = func_repr(_fakefunc)
+        self.assertRegex(repr(f_one_callbacks),
+                         r'<Future pending cb=\[%s\]>' % fake_repr)
+        f_one_callbacks.cancel()
+        self.assertEqual(repr(f_one_callbacks),
+                         '<Future cancelled>')
+
+        f_two_callbacks = asyncio.Future(loop=self.loop)
+        f_two_callbacks.add_done_callback(first_cb)
+        f_two_callbacks.add_done_callback(last_cb)
+        first_repr = func_repr(first_cb)
+        last_repr = func_repr(last_cb)
+        self.assertRegex(repr(f_two_callbacks),
+                         r'<Future pending cb=\[%s, %s\]>'
+                         % (first_repr, last_repr))
 
         f_many_callbacks = asyncio.Future(loop=self.loop)
-        for i in range(20):
+        f_many_callbacks.add_done_callback(first_cb)
+        for i in range(8):
             f_many_callbacks.add_done_callback(_fakefunc)
-        r = repr(f_many_callbacks)
-        self.assertIn('Future<PENDING, [<function _fakefunc', r)
-        self.assertIn('<18 more>', r)
+        f_many_callbacks.add_done_callback(last_cb)
+        cb_regex = r'%s, <8 more>, %s' % (first_repr, last_repr)
+        self.assertRegex(repr(f_many_callbacks),
+                         r'<Future pending cb=\[%s\]>' % cb_regex)
         f_many_callbacks.cancel()
+        self.assertEqual(repr(f_many_callbacks),
+                         '<Future cancelled>')
 
     def test_copy_state(self):
         # Test the internal _copy_state method since it's being directly
@@ -146,20 +179,20 @@ class FutureTests(test_utils.TestCase):
         newf_cancelled._copy_state(f_cancelled)
         self.assertTrue(newf_cancelled.cancelled())
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_tb_logger_abandoned(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_tb_logger_result_unretrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(42)
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_tb_logger_result_retrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_result(42)
@@ -167,15 +200,18 @@ class FutureTests(test_utils.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_tb_logger_exception_unretrieved(self, m_log):
+        self.loop.set_debug(True)
+        asyncio.set_event_loop(self.loop)
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
         del fut
         test_utils.run_briefly(self.loop)
+        support.gc_collect()
         self.assertTrue(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_tb_logger_exception_retrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -183,7 +219,7 @@ class FutureTests(test_utils.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @mock.patch('asyncio.futures.logger')
+    @mock.patch('trollius.base_events.logger')
     def test_tb_logger_exception_result_retrieved(self, m_log):
         fut = asyncio.Future(loop=self.loop)
         fut.set_exception(RuntimeError('boom'))
@@ -210,7 +246,7 @@ class FutureTests(test_utils.TestCase):
         self.assertIs(f1, f2)
 
     @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
-    @mock.patch('asyncio.futures.events')
+    @mock.patch('trollius.futures.events')
     def test_wrap_future_use_global_loop(self, m_events):
         def run(arg):
             return (arg, get_thread_ident())
@@ -239,15 +275,69 @@ class FutureTests(test_utils.TestCase):
         self.assertEqual(f1.result(), 42)
         self.assertTrue(f2.cancelled())
 
+    def test_future_source_traceback(self):
+        self.loop.set_debug(True)
+
+        future = asyncio.Future(loop=self.loop)
+        self.check_soure_traceback(future._source_traceback, -1)
+
+    @mock.patch('trollius.base_events.logger')
+    def test_future_exception_never_retrieved(self, m_log):
+        self.loop.set_debug(True)
+
+        def memory_error():
+            try:
+                raise MemoryError()
+            except BaseException as exc:
+                return exc
+        exc = memory_error()
+
+        future = asyncio.Future(loop=self.loop)
+        source_traceback = future._source_traceback
+        future.set_exception(exc)
+        future = None
+        test_utils.run_briefly(self.loop)
+        support.gc_collect()
+
+        if sys.version_info >= (3, 4):
+            frame = source_traceback[-1]
+            regex = (r'^Future exception was never retrieved\n'
+                     r'future: <Future finished exception=MemoryError\(\) created at {filename}:{lineno}>\n'
+                     r'source_traceback: Object created at \(most recent call last\):\n'
+                     r'  File'
+                     r'.*\n'
+                     r'  File "{filename}", line {lineno}, in test_future_exception_never_retrieved\n'
+                     r'    future = asyncio\.Future\(loop=self\.loop\)$'
+                     ).format(filename=re.escape(frame[0]), lineno=frame[1])
+            exc_info = (type(exc), exc, exc.__traceback__)
+            m_log.error.assert_called_once_with(mock.ANY, exc_info=exc_info)
+        else:
+            frame = source_traceback[-1]
+            regex = (r'^Future/Task exception was never retrieved\n'
+                     r'Future/Task created at \(most recent call last\):\n'
+                     r'  File'
+                     r'.*\n'
+                     r'  File "{filename}", line {lineno}, in test_future_exception_never_retrieved\n'
+                     r'    future = asyncio\.Future\(loop=self\.loop\)\n'
+                     r'Traceback \(most recent call last\):\n'
+                     r'.*\n'
+                     r'MemoryError$'
+                     ).format(filename=re.escape(frame[0]), lineno=frame[1])
+            m_log.error.assert_called_once_with(mock.ANY, exc_info=False)
+        message = m_log.error.call_args[0][0]
+        self.assertRegex(message, re.compile(regex, re.DOTALL))
+
+    def test_set_result_unless_cancelled(self):
+        fut = asyncio.Future(loop=self.loop)
+        fut.cancel()
+        fut._set_result_unless_cancelled(2)
+        self.assertTrue(fut.cancelled())
+
 
 class FutureDoneCallbackTests(test_utils.TestCase):
 
     def setUp(self):
-        self.loop = test_utils.TestLoop()
-        asyncio.set_event_loop(None)
-
-    def tearDown(self):
-        self.loop.close()
+        self.loop = self.new_test_loop()
 
     def run_briefly(self):
         test_utils.run_briefly(self.loop)
