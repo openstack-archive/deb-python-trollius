@@ -1,3 +1,10 @@
+python-trollius (1.0.1-1) unstable; urgency=medium
+
+  * New upstream release:
+    - New API rework (Closes: #756362).
+
+ -- Thomas Goirand <zigo@debian.org>  Wed, 10 Sep 2014 17:23:18 +0800
+
 python-trollius (0.1.4+20140210+git+6f1f9233b1-2) unstable; urgency=medium
 
   * Adds missing python3-mock and python3-nose build-depends (Closes: #743077).
