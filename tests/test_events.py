@@ -1300,53 +1300,6 @@ class EventLoopTestsMixin(object):
         self.loop.run_until_complete(proto.done)
         self.assertEqual('CLOSED', proto.state)
 
-    @test_utils.skipUnless(sys.platform != 'win32',
-                           "Don't support pipes for Windows")
-    # select, poll and kqueue don't support character devices (PTY) on Mac OS X
-    # older than 10.6 (Snow Leopard)
-    @support.requires_mac_ver(10, 6)
-    def test_write_pty(self):
-        non_local = {'proto': None, 'transport': None}
-
-        def factory():
-            non_local['proto'] = MyWritePipeProto(loop=self.loop)
-            return non_local['proto']
-
-        master, slave = os.openpty()
-        slave_write_obj = io.open(slave, 'wb', 0)
-
-        @asyncio.coroutine
-        def connect():
-            t, p = yield self.loop.connect_write_pipe(factory,
-                                                      slave_write_obj)
-            self.assertIs(p, non_local['proto'])
-            self.assertIs(t, non_local['proto'].transport)
-            self.assertEqual('CONNECTED', non_local['proto'].state)
-            non_local['transport'] = t
-
-        self.loop.run_until_complete(connect())
-
-        non_local['transport'].write(b'1')
-        test_utils.run_briefly(self.loop)
-        data = os.read(master, 1024)
-        self.assertEqual(b'1', data)
-
-        non_local['transport'].write(b'2345')
-        test_utils.run_briefly(self.loop)
-        data = os.read(master, 1024)
-        self.assertEqual(b'2345', data)
-        self.assertEqual('CONNECTED', non_local['proto'].state)
-
-        os.close(master)
-
-        # extra info is available
-        self.assertIsNotNone(non_local['proto'].transport.get_extra_info('pipe'))
-
-        # close connection
-        non_local['proto'].transport.close()
-        self.loop.run_until_complete(non_local['proto'].done)
-        self.assertEqual('CLOSED', non_local['proto'].state)
-
     def test_prompt_cancellation(self):
         r, w = test_utils.socketpair()
         r.setblocking(False)
@@ -1714,38 +1667,6 @@ class SubprocessTestsMixin(object):
             yield From(self.loop.subprocess_shell(
                 asyncio.SubprocessProtocol,
                 cmd, **kwds))
-
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(['ls', '-l']))
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(universal_newlines=True))
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(bufsize=4096))
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(shell=False))
-
-    def test_subprocess_exec_invalid_args(self):
-        @asyncio.coroutine
-        def connect(**kwds):
-            yield self.loop.subprocess_exec(
-                asyncio.SubprocessProtocol,
-                'pwd', **kwds)
-
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(universal_newlines=True))
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(bufsize=4096))
-        with self.assertRaises(ValueError):
-            self.loop.run_until_complete(connect(shell=True))
-
-    def test_subprocess_shell_invalid_args(self):
-        @asyncio.coroutine
-        def connect(cmd=None, **kwds):
-            if not cmd:
-                cmd = 'pwd'
-            yield self.loop.subprocess_shell(
-                asyncio.SubprocessProtocol,
-                cmd, **kwds)
 
         with self.assertRaises(ValueError):
             self.loop.run_until_complete(connect(['ls', '-l']))

@@ -292,15 +292,6 @@ def _set_nonblocking(fd):
     flags = flags | os.O_NONBLOCK
     fcntl.fcntl(fd, fcntl.F_SETFL, flags)
 
-def _set_cloexec_flag(fd, cloexec):
-    cloexec_flag = getattr(fcntl, 'FD_CLOEXEC', 1)
-
-    old = fcntl.fcntl(fd, fcntl.F_GETFD)
-    if cloexec:
-        fcntl.fcntl(fd, fcntl.F_SETFD, old | cloexec_flag)
-    else:
-        fcntl.fcntl(fd, fcntl.F_SETFD, old & ~cloexec_flag)
-
 
 class _UnixReadPipeTransport(transports.ReadTransport):
 
@@ -443,9 +434,6 @@ class _UnixWritePipeTransport(transports._FlowControlMixin,
         else:
             info.append('closed')
         return '<%s>' % ' '.join(info)
-
-    def get_write_buffer_size(self):
-        return sum(len(data) for data in self._buffer)
 
     def get_write_buffer_size(self):
         return sum(len(data) for data in self._buffer)

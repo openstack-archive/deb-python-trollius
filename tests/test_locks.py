@@ -234,8 +234,6 @@ class LockTests(test_utils.TestCase):
 
         self.assertFalse(lock.locked())
 
-        self.assertFalse(lock.locked())
-
 
 class EventTests(test_utils.TestCase):
 
@@ -677,8 +675,6 @@ class ConditionTests(test_utils.TestCase):
         lock = asyncio.Lock(loop=self.loop)
         with self.assertRaises(ValueError):
             asyncio.Condition(lock, loop=loop)
-
-        self.assertFalse(cond.locked())
 
 
 class SemaphoreTests(test_utils.TestCase):

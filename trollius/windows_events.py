@@ -1,6 +1,5 @@
 """Selector and proactor event loops for Windows."""
 
-import _winapi
 import errno
 import math
 import socket
@@ -269,7 +268,6 @@ class IocpProactor(object):
         self._cache = {}
         self._registered = weakref.WeakSet()
         self._stopped_serving = weakref.WeakSet()
-        self.resolution = 1e-3
 
     def __repr__(self):
         return ('<%s overlapped#=%s result#=%s>'

@@ -1892,15 +1892,6 @@ class CoroutineGatherTests(GatherTestsBase, test_utils.TestCase):
         self._run_loop(self.one_loop)
         self.assertEqual(fut.result(), ['abc', 'abc', 'def', 'abc'])
 
-    def test_duplicate_coroutines(self):
-        @asyncio.coroutine
-        def coro(s):
-            return s
-        c = coro('abc')
-        fut = asyncio.gather(c, c, coro('def'), c, loop=self.one_loop)
-        self._run_loop(self.one_loop)
-        self.assertEqual(fut.result(), ['abc', 'abc', 'def', 'abc'])
-
     def test_cancellation_broadcast(self):
         # Cancelling outer() cancels all children.
         non_local = {'proof': 0}

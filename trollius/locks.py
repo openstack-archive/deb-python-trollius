@@ -39,36 +39,6 @@ class _ContextManager:
             self._lock = None  # Crudely prevent reuse.
 
 
-class _ContextManager:
-    """Context manager.
-
-    This enables the following idiom for acquiring and releasing a
-    lock around a block:
-
-        with (yield from lock):
-            <block>
-
-    while failing loudly when accidentally using:
-
-        with lock:
-            <block>
-    """
-
-    def __init__(self, lock):
-        self._lock = lock
-
-    def __enter__(self):
-        # We have no use for the "as ..."  clause in the with
-        # statement for locks.
-        return None
-
-    def __exit__(self, *args):
-        try:
-            self._lock.release()
-        finally:
-            self._lock = None  # Crudely prevent reuse.
-
-
 class Lock(object):
     """Primitive lock objects.
 
@@ -151,14 +121,14 @@ class Lock(object):
         """
         if not self._waiters and not self._locked:
             self._locked = True
-            raise Return(_ContextManager(self))
+            raise Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
         try:
             yield From(fut)
             self._locked = True
-            raise Return(_ContextManager(self))
+            raise Return(True)
         finally:
             self._waiters.remove(fut)
 
@@ -248,7 +218,7 @@ class Event(object):
         set() to set the flag to true, then return True.
         """
         if self._value:
-            raise Return(_ContextManager(self))
+            raise Return(True)
 
         fut = futures.Future(loop=self._loop)
         self._waiters.append(fut)
