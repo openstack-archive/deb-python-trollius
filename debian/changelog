@@ -2,6 +2,8 @@ python-trollius (1.0.1-1) unstable; urgency=medium
 
   * New upstream release:
     - New API rework (Closes: #756362).
+  * Temporarily allow unit tests to fail in Python 2, because the unit test
+    suite is using "yield from []" which is Python 3 specific.
 
  -- Thomas Goirand <zigo@debian.org>  Wed, 10 Sep 2014 17:23:18 +0800
 
