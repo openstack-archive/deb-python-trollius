@@ -2,8 +2,8 @@
 Change log
 ++++++++++
 
-Version 1.0.2 (development version)
-===================================
+2014-10-02: Version 1.0.2
+=========================
 
 This release fixes bugs. It also provides more information in debug mode on
 error.
@@ -30,10 +30,10 @@ Other changes:
 * Python issue #22448: Improve cancelled timer callback handles cleanup. Patch
   by Joshua Moore-Oliva.
 * Python issue #22369: Change "context manager protocol" to "context management
-  protocol". Patch written by Serhiy Storchaka <storchaka@gmail.com>.
+  protocol". Patch written by Serhiy Storchaka.
 * Tulip issue #206: In debug mode, keep the callback in the representation of
   Handle and TimerHandle after cancel().
-* Tulip issue #207: test_tasks: Fix test_env_var_debug() to use correct asyncio
+* Tulip issue #207: Fix test_tasks.test_env_var_debug() to use correct asyncio
   module.
 * runtests.py: display a message to mention if tests are run in debug or
   release mode
