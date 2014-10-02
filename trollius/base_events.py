@@ -1013,7 +1013,7 @@ class BaseEventLoop(events.AbstractEventLoop):
         # Remove delayed calls that were cancelled if their number is too high
         sched_count = len(self._scheduled)
         if (sched_count > _MIN_SCHEDULED_TIMER_HANDLES and
-            self._timer_cancelled_count / sched_count >
+            float(self._timer_cancelled_count) / sched_count >
                 _MIN_CANCELLED_TIMER_HANDLES_FRACTION):
             for handle in self._scheduled:
                 if handle._cancelled:
