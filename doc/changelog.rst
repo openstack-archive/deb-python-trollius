@@ -17,6 +17,7 @@ Major changes:
 
 Major bugfixes:
 
+* Tulip issue #205: Fix a race condition in BaseSelectorEventLoop.sock_connect().
 * Tulip issue #201: Fix a race condition in wait_for(). Don't raise a
   TimeoutError if we reached the timeout and the future completed in the same
   iteration of the event loop. A side effect of the bug is that Queue.get()
@@ -26,6 +27,14 @@ Major bugfixes:
 
 Other changes:
 
+* Python issue #22448: Improve cancelled timer callback handles cleanup. Patch
+  by Joshua Moore-Oliva.
+* Python issue #22369: Change "context manager protocol" to "context management
+  protocol". Patch written by Serhiy Storchaka <storchaka@gmail.com>.
+* Tulip issue #206: In debug mode, keep the callback in the representation of
+  Handle and TimerHandle after cancel().
+* Tulip issue #207: test_tasks: Fix test_env_var_debug() to use correct asyncio
+  module.
 * runtests.py: display a message to mention if tests are run in debug or
   release mode
 * Tulip issue #200: Log errors in debug mode instead of simply ignoring them.
