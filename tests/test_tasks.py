@@ -1,5 +1,6 @@
 """Tests for tasks.py."""
 
+import os
 import re
 import sys
 import types
@@ -1768,16 +1769,20 @@ class GatherTestsBase:
         self.assertEqual(fut.result(), [3, 1, exc, exc2])
 
     def test_env_var_debug(self):
+        aio_path = os.path.dirname(os.path.dirname(asyncio.__file__))
+
         code = '\n'.join((
             'import trollius.coroutines',
             'print(trollius.coroutines._DEBUG)'))
 
         sts, stdout, stderr = assert_python_ok('-c', code,
-                                               TROLLIUSDEBUG='')
+                                               TROLLIUSDEBUG='',
+                                               PYTHONPATH=aio_path)
         self.assertEqual(stdout.rstrip(), b'False')
 
         sts, stdout, stderr = assert_python_ok('-c', code,
-                                               TROLLIUSDEBUG='1')
+                                               TROLLIUSDEBUG='1',
+                                               PYTHONPATH=aio_path)
         self.assertEqual(stdout.rstrip(), b'True')
 
 

@@ -63,7 +63,7 @@ class Lock(object):
 
     acquire() is a coroutine and should be called with 'yield From'.
 
-    Locks also support the context manager protocol.  '(yield From(lock))'
+    Locks also support the context management protocol.  '(yield From(lock))'
     should be used as context manager expression.
 
     Usage:
@@ -355,7 +355,7 @@ class Semaphore(object):
     can never go below zero; when acquire() finds that it is zero, it blocks,
     waiting until some other thread calls release().
 
-    Semaphores also support the context manager protocol.
+    Semaphores also support the context management protocol.
 
     The optional argument gives the initial value for the internal
     counter; it defaults to 1. If the value given is less than 0,

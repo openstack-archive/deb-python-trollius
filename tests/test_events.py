@@ -1919,9 +1919,17 @@ class HandleTests(test_utils.TestCase):
 
         # cancelled handle
         h.cancel()
-        self.assertEqual(repr(h),
-                        '<Handle cancelled created at %s:%s>'
-                        % (create_filename, create_lineno))
+        self.assertEqual(
+            repr(h),
+            '<Handle cancelled noop(1, 2) at %s:%s created at %s:%s>'
+            % (filename, lineno, create_filename, create_lineno))
+
+        # double cancellation won't overwrite _repr
+        h.cancel()
+        self.assertEqual(
+            repr(h),
+            '<Handle cancelled noop(1, 2) at %s:%s created at %s:%s>'
+            % (filename, lineno, create_filename, create_lineno))
 
     def test_handle_source_traceback(self):
         loop = asyncio.get_event_loop_policy().new_event_loop()
@@ -2008,8 +2016,9 @@ class TimerTests(test_utils.TestCase):
         # cancelled handle
         h.cancel()
         self.assertEqual(repr(h),
-                        '<TimerHandle cancelled when=123 created at %s:%s>'
-                        % (create_filename, create_lineno))
+                        '<TimerHandle cancelled when=123 noop() '
+                        'at %s:%s created at %s:%s>'
+                        % (filename, lineno, create_filename, create_lineno))
 
 
     def test_timer_comparison(self):

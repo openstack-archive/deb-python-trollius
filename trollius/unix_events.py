@@ -2,7 +2,6 @@
 from __future__ import absolute_import
 
 import errno
-import fcntl
 import os
 import signal
 import socket
@@ -291,6 +290,8 @@ if hasattr(os, 'set_blocking'):
     def _set_nonblocking(fd):
         os.set_blocking(fd, False)
 else:
+    import fcntl
+
     def _set_nonblocking(fd):
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         flags = flags | os.O_NONBLOCK

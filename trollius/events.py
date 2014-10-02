@@ -104,7 +104,7 @@ class Handle(object):
     """Object returned by callback registration methods."""
 
     __slots__ = ('_callback', '_args', '_cancelled', '_loop',
-                 '_source_traceback', '__weakref__')
+                 '_source_traceback', '_repr', '__weakref__')
 
     def __init__(self, callback, args, loop):
         assert not isinstance(callback, Handle), 'A Handle is not a callback'
@@ -112,12 +112,13 @@ class Handle(object):
         self._callback = callback
         self._args = args
         self._cancelled = False
+        self._repr = None
         if self._loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
         else:
             self._source_traceback = None
 
-    def __repr__(self):
+    def _repr_info(self):
         info = [self.__class__.__name__]
         if self._cancelled:
             info.append('cancelled')
@@ -126,12 +127,24 @@ class Handle(object):
         if self._source_traceback:
             frame = self._source_traceback[-1]
             info.append('created at %s:%s' % (frame[0], frame[1]))
+        return info
+
+    def __repr__(self):
+        if self._repr is not None:
+            return self._repr
+        info = self._repr_info()
         return '<%s>' % ' '.join(info)
 
     def cancel(self):
-        self._cancelled = True
-        self._callback = None
-        self._args = None
+        if not self._cancelled:
+            self._cancelled = True
+            if self._loop.get_debug():
+                # Keep a representation in debug mode to keep callback and
+                # parameters. For example, to log the warning
+                # "Executing <Handle...> took 2.5 second"
+                self._repr = repr(self)
+            self._callback = None
+            self._args = None
 
     def _run(self):
         try:
@@ -153,7 +166,7 @@ class Handle(object):
 class TimerHandle(Handle):
     """Object returned by timed callback registration methods."""
 
-    __slots__ = ['_when']
+    __slots__ = ['_scheduled', '_when']
 
     def __init__(self, when, callback, args, loop):
         assert when is not None
@@ -161,18 +174,13 @@ class TimerHandle(Handle):
         if self._source_traceback:
             del self._source_traceback[-1]
         self._when = when
+        self._scheduled = False
 
-    def __repr__(self):
-        info = []
-        if self._cancelled:
-            info.append('cancelled')
-        info.append('when=%s' % self._when)
-        if self._callback is not None:
-            info.append(_format_callback(self._callback, self._args))
-        if self._source_traceback:
-            frame = self._source_traceback[-1]
-            info.append('created at %s:%s' % (frame[0], frame[1]))
-        return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
+    def _repr_info(self):
+        info = super(TimerHandle, self)._repr_info()
+        pos = 2 if self._cancelled else 1
+        info.insert(pos, 'when=%s' % self._when)
+        return info
 
     def __hash__(self):
         return hash(self._when)
@@ -204,6 +212,11 @@ class TimerHandle(Handle):
     def __ne__(self, other):
         equal = self.__eq__(other)
         return NotImplemented if equal is NotImplemented else not equal
+
+    def cancel(self):
+        if not self._cancelled:
+            self._loop._timer_handle_cancelled(self)
+        super(TimerHandle, self).cancel()
 
 
 class AbstractServer(object):
@@ -269,6 +282,10 @@ else:
             raise NotImplementedError
 
         # Methods scheduling callbacks.  All these return Handles.
+
+        def _timer_handle_cancelled(self, handle):
+            """Notification that a TimerHandle has been cancelled."""
+            raise NotImplementedError
 
         def call_soon(self, callback, *args):
             return self.call_later(0, callback, *args)
