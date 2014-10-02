@@ -9,6 +9,8 @@ import stat
 import subprocess
 import sys
 import threading
+if not hasattr(os, 'set_blocking') or not hasattr(os, 'set_inheritable'):
+    import fcntl
 
 
 from . import base_events
@@ -287,11 +289,10 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
 
 
 if hasattr(os, 'set_blocking'):
+    # Python 3.5 and newer
     def _set_nonblocking(fd):
         os.set_blocking(fd, False)
 else:
-    import fcntl
-
     def _set_nonblocking(fd):
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         flags = flags | os.O_NONBLOCK
@@ -569,14 +570,18 @@ class _UnixWritePipeTransport(transports._FlowControlMixin,
             self._loop = None
 
 
-def _set_cloexec_flag(fd, cloexec):
-    cloexec_flag = getattr(fcntl, 'FD_CLOEXEC', 1)
+if hasattr(os, 'set_inheritable'):
+    # Python 3.4 and newer
+    _set_inheritable = os.set_inheritable
+else:
+    def _set_inheritable(fd, inheritable):
+        cloexec_flag = getattr(fcntl, 'FD_CLOEXEC', 1)
 
-    old = fcntl.fcntl(fd, fcntl.F_GETFD)
-    if cloexec:
-        fcntl.fcntl(fd, fcntl.F_SETFD, old | cloexec_flag)
-    else:
-        fcntl.fcntl(fd, fcntl.F_SETFD, old & ~cloexec_flag)
+        old = fcntl.fcntl(fd, fcntl.F_GETFD)
+        if not inheritable:
+            fcntl.fcntl(fd, fcntl.F_SETFD, old | cloexec_flag)
+        else:
+            fcntl.fcntl(fd, fcntl.F_SETFD, old & ~cloexec_flag)
 
 
 class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
@@ -590,7 +595,9 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             # other end).  Notably this is needed on AIX, and works
             # just fine on other platforms.
             stdin, stdin_w = self._loop._socketpair()
-            _set_cloexec_flag(stdin_w.fileno(), True)
+
+            # Mark the write end of the stdin pipe as non-inheritable
+            _set_inheritable(stdin_w.fileno(), False)
         self._proc = subprocess.Popen(
             args, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr,
             universal_newlines=False, bufsize=bufsize, **kwargs)
