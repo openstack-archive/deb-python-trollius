@@ -27,6 +27,7 @@ Major bugfixes:
 
 Other changes:
 
+* Return destructor logs the source traceback in debug mode
 * Python issue #22448: Improve cancelled timer callback handles cleanup. Patch
   by Joshua Moore-Oliva.
 * Python issue #22369: Change "context manager protocol" to "context management

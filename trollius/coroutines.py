@@ -86,10 +86,24 @@ else:
             else:
                 self.value = args
             self.raised = False
+            if _DEBUG:
+                frame = sys._getframe(1)
+                self._source_traceback = traceback.extract_stack(frame)
+                # explicitly clear the reference to avoid reference cycles
+                frame = None
+            else:
+                self._source_traceback = None
 
         def __del__(self):
-            if not self.raised:
-                logger.error('Return(%r) used without raise', self.value)
+            if self.raised:
+                return
+
+            fmt = 'Return(%r) used without raise'
+            if self._source_traceback:
+                fmt += '\nReturn created at (most recent call last):\n'
+                tb = ''.join(traceback.format_list(self._source_traceback))
+                fmt += tb.rstrip()
+            logger.error(fmt, self.value)
 
 
 def _coroutine_at_yield_from(coro):
