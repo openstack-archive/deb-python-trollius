@@ -27,6 +27,8 @@ Major bugfixes:
 
 Other changes:
 
+* On Python 2, Task waiting on a future now keeps the exception traceback of
+  the future, instead of showing where the exception was re-raised
 * Return destructor logs the source traceback in debug mode
 * Python issue #22448: Improve cancelled timer callback handles cleanup. Patch
   by Joshua Moore-Oliva.

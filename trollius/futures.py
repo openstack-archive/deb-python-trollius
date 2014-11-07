@@ -340,7 +340,21 @@ class Future(object):
         self._state = _FINISHED
         self._schedule_callbacks()
 
+    def _get_exception_tb(self):
+        """Helper method to call _set_exception_with_tb().
+
+        Use it to get the traceback of a future to copy it to a new future."""
+        if _PY34:
+            return None
+        if self._tb_logger is None or not self._tb_logger.tb:
+            return None
+        # Ignore first and last line
+        return self._tb_logger.tb[1:-1]
+
     def set_exception(self, exception):
+        self._set_exception_with_tb(exception, None)
+
+    def _set_exception_with_tb(self, exception, exc_tb):
         """Mark the future done and set an exception.
 
         If the future is already done when this method is called, raises
@@ -367,7 +381,10 @@ class Future(object):
                 if self._loop.get_debug():
                     frame = sys._getframe(1)
                     tb = ['Traceback (most recent call last):\n']
-                    tb += traceback.format_stack(frame)
+                    if exc_tb:
+                        tb += exc_tb
+                    else:
+                        tb += traceback.format_tb(sys.exc_info()[2])
                     tb += traceback.format_exception_only(type(exception), exception)
                     self._tb_logger.tb = tb
                 else:
