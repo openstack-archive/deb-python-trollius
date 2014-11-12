@@ -51,11 +51,3 @@ def flatten_bytes(data):
         return data.tobytes()
     else:
         return data
-
-if PY3:
-    def reraise(tp, value, tb=None):
-        if value.__traceback__ is not tb:
-            raise value.with_traceback(tb)
-        raise value
-else:
-    exec("""def reraise(tp, value, tb=None):  raise tp, value, tb""")

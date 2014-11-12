@@ -13,7 +13,6 @@ try:
 except ImportError:
     import repr as reprlib   # Python 2
 
-from . import compat
 from . import events
 from . import executor
 
@@ -137,10 +136,6 @@ class Future(object):
     _result = None
     _exception = None
     _loop = None
-
-    # Used by Python 2 to raise the exception with the original traceback
-    # in the exception() method
-    _exception_tb = None
 
     _log_traceback = False   # Used for Python >= 3.4
     _tb_logger = None        # Used for Python <= 3.3
@@ -278,13 +273,8 @@ class Future(object):
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
-        tb = self._exception_tb
-        self._exception_tb = None
         if self._exception is not None:
-            if tb is not None:
-                compat.reraise(type(self._exception), self._exception, tb)
-            else:
-                raise self._exception
+            raise self._exception
         return self._result
 
     def exception(self):
@@ -303,7 +293,6 @@ class Future(object):
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
-        self._exception_tb = None
         return self._exception
 
     def add_done_callback(self, fn):
@@ -351,16 +340,7 @@ class Future(object):
         self._state = _FINISHED
         self._schedule_callbacks()
 
-    def _get_exception_tb(self):
-        """Helper method to call _set_exception_with_tb().
-
-        Use it to get the traceback of a future to copy it to a new future."""
-        return self._exception_tb
-
     def set_exception(self, exception):
-        self._set_exception_with_tb(exception, None)
-
-    def _set_exception_with_tb(self, exception, exc_tb):
         """Mark the future done and set an exception.
 
         If the future is already done when this method is called, raises
@@ -371,17 +351,13 @@ class Future(object):
         if isinstance(exception, type):
             exception = exception()
         self._exception = exception
-        if exc_tb is not None:
-            self._exception_tb = exc_tb
-        elif not compat.PY3:
-            self._exception_tb = sys.exc_info()[2]
         self._state = _FINISHED
         self._schedule_callbacks()
         if _PY34:
             self._log_traceback = True
         else:
             self._tb_logger = _TracebackLogger(self, exception)
-            if compat.PY3:
+            if hasattr(exception, '__traceback__'):
                 # Python 3: exception contains a link to the traceback
 
                 # Arrange for the logger to be activated after all callbacks
@@ -391,7 +367,7 @@ class Future(object):
                 if self._loop.get_debug():
                     frame = sys._getframe(1)
                     tb = ['Traceback (most recent call last):\n']
-                    tb += traceback.format_tb(self._exception_tb)
+                    tb += traceback.format_stack(frame)
                     tb += traceback.format_exception_only(type(exception), exception)
                     self._tb_logger.tb = tb
                 else:
