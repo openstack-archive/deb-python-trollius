@@ -466,7 +466,7 @@ class _SelectorTransport(transports._FlowControlMixin,
     _buffer_factory = bytearray  # Constructs initial value for self._buffer.
 
     def __init__(self, loop, sock, protocol, extra, server=None):
-        super(_SelectorTransport, self).__init__(extra)
+        super(_SelectorTransport, self).__init__(extra, loop)
         self._extra['socket'] = sock
         self._extra['sockname'] = sock.getsockname()
         if 'peername' not in self._extra:
@@ -474,7 +474,6 @@ class _SelectorTransport(transports._FlowControlMixin,
                 self._extra['peername'] = sock.getpeername()
             except socket.error:
                 self._extra['peername'] = None
-        self._loop = loop
         self._sock = sock
         self._sock_fd = sock.fileno()
         self._protocol = protocol
@@ -486,7 +485,12 @@ class _SelectorTransport(transports._FlowControlMixin,
             self._server._attach()
 
     def __repr__(self):
-        info = [self.__class__.__name__, 'fd=%s' % self._sock_fd]
+        info = [self.__class__.__name__]
+        if self._sock is None:
+            info.append('closed')
+        elif self._closing:
+            info.append('closing')
+        info.append('fd=%s' % self._sock_fd)
         # test if the transport was closed
         if self._loop is not None:
             polling = _test_selector_event(self._loop._selector,
@@ -702,17 +706,18 @@ class _SelectorSslTransport(_SelectorTransport):
             if not sslcontext:
                 # Client side may pass ssl=True to use a default
                 # context; in that case the sslcontext passed is None.
-                # The default is the same as used by urllib with
-                # cadefault=True.
-                if hasattr(ssl, '_create_stdlib_context'):
-                    sslcontext = ssl._create_stdlib_context(
-                        cert_reqs=ssl.CERT_REQUIRED,
-                        check_hostname=bool(server_hostname))
+                # The default is secure for client connections.
+                if hasattr(ssl, 'create_default_context'):
+                    # Python 3.4+: use up-to-date strong settings.
+                    sslcontext = ssl.create_default_context()
+                    if not server_hostname:
+                        sslcontext.check_hostname = False
                 else:
-                    # Python older than 3.4
+                    # Fallback for Python 3.3.
                     sslcontext = SSLContext(ssl.PROTOCOL_SSLv23)
                     if not BACKPORT_SSL_CONTEXT:
                         sslcontext.options |= ssl.OP_NO_SSLv2
+                        sslcontext.options |= ssl.OP_NO_SSLv3
                         sslcontext.set_default_verify_paths()
                         sslcontext.verify_mode = ssl.CERT_REQUIRED
 

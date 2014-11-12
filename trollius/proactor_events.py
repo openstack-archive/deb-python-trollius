@@ -24,9 +24,8 @@ class _ProactorBasePipeTransport(transports._FlowControlMixin,
 
     def __init__(self, loop, sock, protocol, waiter=None,
                  extra=None, server=None):
-        super(_ProactorBasePipeTransport, self).__init__(extra)
+        super(_ProactorBasePipeTransport, self).__init__(extra, loop)
         self._set_extra(sock)
-        self._loop = loop
         self._sock = sock
         self._protocol = protocol
         self._server = server
@@ -45,7 +44,13 @@ class _ProactorBasePipeTransport(transports._FlowControlMixin,
             self._loop.call_soon(waiter._set_result_unless_cancelled, None)
 
     def __repr__(self):
-        info = [self.__class__.__name__, 'fd=%s' % self._sock.fileno()]
+        info = [self.__class__.__name__]
+        fd = self._sock.fileno()
+        if fd < 0:
+            info.append('closed')
+        elif self._closing:
+            info.append('closing')
+        info.append('fd=%s' % fd)
         if self._read_fut is not None:
             info.append('read=%s' % self._read_fut)
         if self._write_fut is not None:

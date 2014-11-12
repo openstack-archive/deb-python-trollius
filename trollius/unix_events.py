@@ -398,9 +398,8 @@ class _UnixWritePipeTransport(transports._FlowControlMixin,
                               transports.WriteTransport):
 
     def __init__(self, loop, pipe, protocol, waiter=None, extra=None):
-        super(_UnixWritePipeTransport, self).__init__(extra)
+        super(_UnixWritePipeTransport, self).__init__(extra, loop)
         self._extra['pipe'] = pipe
-        self._loop = loop
         self._pipe = pipe
         self._fileno = pipe.fileno()
         mode = os.fstat(self._fileno).st_mode

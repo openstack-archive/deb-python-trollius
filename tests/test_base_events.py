@@ -372,7 +372,7 @@ class BaseEventLoopTests(test_utils.TestCase):
             self.loop.run_until_complete, self.loop.subprocess_exec,
             asyncio.SubprocessProtocol)
 
-        # exepected multiple arguments, not a list
+        # expected multiple arguments, not a list
         self.assertRaises(TypeError,
             self.loop.run_until_complete, self.loop.subprocess_exec,
             asyncio.SubprocessProtocol, args)
@@ -612,6 +612,26 @@ class BaseEventLoopTests(test_utils.TestCase):
         # make warnings quiet
         task._log_destroy_pending = False
         coro.close()
+
+    def test_run_forever_keyboard_interrupt(self):
+        # Python issue #22601: ensure that the temporary task created by
+        # run_forever() consumes the KeyboardInterrupt and so don't log
+        # a warning
+        @asyncio.coroutine
+        def raise_keyboard_interrupt():
+            raise KeyboardInterrupt
+
+        self.loop._process_events = mock.Mock()
+        self.loop.call_exception_handler = mock.Mock()
+
+        try:
+            self.loop.run_until_complete(raise_keyboard_interrupt())
+        except KeyboardInterrupt:
+            pass
+        self.loop.close()
+        support.gc_collect()
+
+        self.assertFalse(self.loop.call_exception_handler.called)
 
 
 class MyProto(asyncio.Protocol):

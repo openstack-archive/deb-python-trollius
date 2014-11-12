@@ -235,8 +235,10 @@ class _FlowControlMixin(Transport):
     resume_writing() may be called.
     """
 
-    def __init__(self, extra=None):
+    def __init__(self, extra=None, loop=None):
         super(_FlowControlMixin, self).__init__(extra)
+        assert loop is not None
+        self._loop = loop
         self._protocol_paused = False
         self._set_write_buffer_limits()
 

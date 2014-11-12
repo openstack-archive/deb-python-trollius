@@ -34,6 +34,8 @@ class WinsocketpairTests(unittest.TestCase):
         ssock, csock = windows_utils.socketpair(family=socket.AF_INET6)
         self.check_winsocketpair(ssock, csock)
 
+    @test_utils.skipIf(hasattr(socket, 'socketpair'),
+                       'socket.socketpair is available')
     @mock.patch('trollius.windows_utils.socket')
     def test_winsocketpair_exc(self, m_socket):
         m_socket.AF_INET = socket.AF_INET
@@ -52,6 +54,8 @@ class WinsocketpairTests(unittest.TestCase):
         self.assertRaises(ValueError,
                           windows_utils.socketpair, proto=1)
 
+    @test_utils.skipIf(hasattr(socket, 'socketpair'),
+                       'socket.socketpair is available')
     @mock.patch('trollius.windows_utils.socket')
     def test_winsocketpair_close(self, m_socket):
         m_socket.AF_INET = socket.AF_INET

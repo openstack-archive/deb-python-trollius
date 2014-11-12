@@ -190,7 +190,14 @@ class SilentWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 
-class SilentWSGIServer(WSGIServer):
+class SilentWSGIServer(WSGIServer, object):
+
+    request_timeout = 2
+
+    def get_request(self):
+        request, client_addr = super(SilentWSGIServer, self).get_request()
+        request.settimeout(self.request_timeout)
+        return request, client_addr
 
     def handle_error(self, request, client_address):
         pass
@@ -239,7 +246,8 @@ def _run_test_server(address, use_ssl, server_cls, server_ssl_cls):
     httpd = server_class(address, SilentWSGIRequestHandler)
     httpd.set_app(app)
     httpd.address = httpd.server_address
-    server_thread = threading.Thread(target=httpd.serve_forever)
+    server_thread = threading.Thread(
+        target=lambda: httpd.serve_forever(poll_interval=0.05))
     server_thread.start()
     try:
         yield httpd
@@ -259,7 +267,9 @@ if hasattr(socket, 'AF_UNIX'):
             self.server_port = 80
 
 
-    class UnixWSGIServer(UnixHTTPServer, WSGIServer):
+    class UnixWSGIServer(UnixHTTPServer, WSGIServer, object):
+
+        request_timeout = 2
 
         def server_bind(self):
             UnixHTTPServer.server_bind(self)
@@ -267,6 +277,7 @@ if hasattr(socket, 'AF_UNIX'):
 
         def get_request(self):
             request, client_addr = super(UnixWSGIServer, self).get_request()
+            request.settimeout(self.request_timeout)
             # Code in the stdlib expects that get_request
             # will return a socket and a tuple (host, port).
             # However, this isn't true for UNIX sockets,
