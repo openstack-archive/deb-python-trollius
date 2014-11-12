@@ -2,6 +2,22 @@
 Change log
 ++++++++++
 
+Version 1.0.3
+=============
+
+Changes:
+
+* On Python 3.5, windows_utils.socketpair is now an alias to socket.socketpair.
+* Enhance protocol representation: add "closed" or "closing" info.
+* Reuse socket.socketpair() on Windows if available
+* run_forever() now consumes BaseException of the temporary task. If the
+  coroutine raised a BaseException, consume the exception to not log a warning.
+  The caller doesn't have access to the local task.
+* Python issue 22448: cleanup _run_once(), only iterate once to remove delayed
+  calls that were cancelled.
+* Return destructor logs the source traceback in debug mode
+
+
 2014-10-02: Version 1.0.2
 =========================
 
@@ -27,15 +43,6 @@ Major bugfixes:
 
 Other changes:
 
-* On Python 3.5, windows_utils.socketpair is now an alias to socket.socketpair.
-* Enhance protocol representation: add "closed" or "closing" info.
-* Reuse socket.socketpair() on Windows if available
-* run_forever() now consumes BaseException of the temporary task. If the
-  coroutine raised a BaseException, consume the exception to not log a warning.
-  The caller doesn't have access to the local task.
-* Python issue 22448: cleanup _run_once(), only iterate once to remove delayed
-  calls that were cancelled.
-* Return destructor logs the source traceback in debug mode
 * Python issue #22448: Improve cancelled timer callback handles cleanup. Patch
   by Joshua Moore-Oliva.
 * Python issue #22369: Change "context manager protocol" to "context management
