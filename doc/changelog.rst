@@ -7,7 +7,9 @@ Version 1.0.3
 
 Changes:
 
-* On Python 3.5, windows_utils.socketpair is now an alias to socket.socketpair.
+* On Python 3.5 and newer, reuse socket.socketpair() in the windows_utils
+  submodule.
+* On Python 3.4 and newer, use os.set_inheritable().
 * Enhance protocol representation: add "closed" or "closing" info.
 * Reuse socket.socketpair() on Windows if available
 * run_forever() now consumes BaseException of the temporary task. If the
