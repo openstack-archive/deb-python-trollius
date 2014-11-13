@@ -92,6 +92,8 @@ else:
 
 
 def load_modules(basedir, suffix='.py'):
+    import trollius.test_utils
+
     def list_dir(prefix, dir):
         files = []
 
@@ -128,7 +130,7 @@ def load_modules(basedir, suffix='.py'):
             mods.append((mod, sourcefile))
         except SyntaxError:
             raise
-        except Exception as err:
+        except trollius.test_utils.SkipTest as err:
             print("Skipping '{0}': {1}".format(modname, err), file=sys.stderr)
 
     return mods
