@@ -33,6 +33,7 @@ from trollius import Return, From
 from trollius import futures
 
 import trollius as asyncio
+from trollius import compat
 from trollius import proactor_events
 from trollius import selector_events
 from trollius import test_utils
@@ -619,34 +620,36 @@ class EventLoopTestsMixin(object):
         self.assertGreater(pr.nbytes, 0)
         tr.close()
 
-    def _dummy_ssl_create_context(self, purpose=ssl.Purpose.SERVER_AUTH,
-                                  cafile=None, capath=None, cadata=None):
-        """
-        A ssl.create_default_context() replacement that doesn't enable
-        cert validation.
-        """
-        self.assertEqual(purpose, ssl.Purpose.SERVER_AUTH)
-        return test_utils.dummy_ssl_context()
-
     def _test_create_ssl_connection(self, httpd, create_connection,
                                     check_sockname=True):
         conn_fut = create_connection(ssl=test_utils.dummy_ssl_context())
         self._basetest_create_ssl_connection(conn_fut, check_sockname)
 
-        # With ssl=True, ssl.create_default_context() should be called
-        with mock.patch('ssl.create_default_context',
-                        side_effect=self._dummy_ssl_create_context) as m:
-            conn_fut = create_connection(ssl=True)
-            self._basetest_create_ssl_connection(conn_fut, check_sockname)
-            self.assertEqual(m.call_count, 1)
+        if not asyncio.BACKPORT_SSL_CONTEXT:
+            def create_context(purpose=ssl.Purpose.SERVER_AUTH,
+                               cafile=None, capath=None, cadata=None):
+                """
+                A ssl.create_default_context() replacement that doesn't enable
+                cert validation.
+                """
+                self.assertEqual(purpose, ssl.Purpose.SERVER_AUTH)
+                return test_utils.dummy_ssl_context()
 
-        # With the real ssl.create_default_context(), certificate
-        # validation will fail
-        with self.assertRaises(ssl.SSLError) as cm:
-            conn_fut = create_connection(ssl=True)
-            self._basetest_create_ssl_connection(conn_fut, check_sockname)
 
-        self.assertEqual(cm.exception.reason, 'CERTIFICATE_VERIFY_FAILED')
+            # With ssl=True, ssl.create_default_context() should be called
+            with mock.patch('ssl.create_default_context',
+                            side_effect=create_context) as m:
+                conn_fut = create_connection(ssl=True)
+                self._basetest_create_ssl_connection(conn_fut, check_sockname)
+                self.assertEqual(m.call_count, 1)
+
+            # With the real ssl.create_default_context(), certificate
+            # validation will fail
+            with self.assertRaises(ssl.SSLError) as cm:
+                conn_fut = create_connection(ssl=True)
+                self._basetest_create_ssl_connection(conn_fut, check_sockname)
+
+            self.assertEqual(cm.exception.reason, 'CERTIFICATE_VERIFY_FAILED')
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
     def test_create_ssl_connection(self):
@@ -938,13 +941,19 @@ class EventLoopTestsMixin(object):
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
 
+        if compat.PY3:
+            err_msg = "hostname '127.0.0.1' doesn't match 'localhost'"
+        else:
+            # http://bugs.python.org/issue22861
+            err_msg = "hostname '127.0.0.1' doesn't match u'localhost'"
+
         # incorrect server_hostname
         f_c = self.loop.create_connection(MyProto, host, port,
                                           ssl=sslcontext_client)
         with test_utils.disable_logger():
             with self.assertRaisesRegex(
                     ssl.CertificateError,
-                    "hostname '127.0.0.1' doesn't match 'localhost'"):
+                    err_msg):
                 self.loop.run_until_complete(f_c)
 
         # close connection
