@@ -284,7 +284,9 @@ class Task(futures.Future):
                 result = result.obj
 
             if iscoroutine(result):
-                result = async(result, loop=self._loop)
+                # "yield coroutine" creates a task, the current task
+                # will wait until the new task is done
+                result = self._loop.create_task(result)
             # FIXME: faster check. common base class? hasattr?
             elif isinstance(result, (Lock, Condition, Semaphore)):
                 coro = _lock_coroutine(result)
