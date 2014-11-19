@@ -229,7 +229,7 @@ class Task(futures.Future):
         self._must_cancel = True
         return True
 
-    def _step(self, value=None, exc=None):
+    def _step(self, value=None, exc=None, exc_tb=None):
         assert not self.done(), \
             '_step(): already done: {0!r}, {1!r}, {2!r}'.format(self, value, exc)
         if self._must_cancel:
@@ -239,6 +239,10 @@ class Task(futures.Future):
         coro = self._coro
         self._fut_waiter = None
 
+        if exc_tb is not None:
+            init_exc = exc
+        else:
+            init_exc = None
         self.__class__._current_tasks[self._loop] = self
         # Call either coro.throw(exc) or coro.send(value).
         try:
@@ -261,11 +265,16 @@ class Task(futures.Future):
             self.set_result(result)
         except futures.CancelledError as exc:
             super(Task, self).cancel()  # I.e., Future.cancel(self).
-        except Exception as exc:
-            self.set_exception(exc)
         except BaseException as exc:
-            self.set_exception(exc)
-            raise
+            if exc is init_exc:
+                self._set_exception_with_tb(exc, exc_tb)
+                exc_tb = None
+            else:
+                self.set_exception(exc)
+
+            if not isinstance(exc, Exception):
+                # reraise BaseException
+                raise
         else:
             if coroutines._DEBUG:
                 if not coroutines._coroutine_at_yield_from(self._coro):
@@ -313,13 +322,22 @@ class Task(futures.Future):
             self = None  # Needed to break cycles when an exception occurs.
 
     def _wakeup(self, future):
-        try:
-            value = future.result()
-        except Exception as exc:
-            # This may also be a cancellation.
-            self._step(None, exc)
+        if (future._state == futures._FINISHED
+        and future._exception is not None):
+            # Get the traceback before calling exception(), because calling
+            # the exception() method clears the traceback
+            exc_tb = future._get_exception_tb()
+            exc = future.exception()
+            self._step(None, exc, exc_tb)
+            exc_tb = None
         else:
-            self._step(value, None)
+            try:
+                value = future.result()
+            except Exception as exc:
+                # This may also be a cancellation.
+                self._step(None, exc)
+            else:
+                self._step(value, None)
         self = None  # Needed to break cycles when an exception occurs.
 
 

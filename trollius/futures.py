@@ -13,6 +13,7 @@ try:
 except ImportError:
     import repr as reprlib   # Python 2
 
+from . import compat
 from . import events
 from . import executor
 
@@ -136,6 +137,10 @@ class Future(object):
     _result = None
     _exception = None
     _loop = None
+
+    # Used by Python 2 to raise the exception with the original traceback
+    # in the exception() method
+    _exception_tb = None
 
     _log_traceback = False   # Used for Python >= 3.4
     _tb_logger = None        # Used for Python <= 3.3
@@ -273,8 +278,13 @@ class Future(object):
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
+        exc_tb = self._exception_tb
+        self._exception_tb = None
         if self._exception is not None:
-            raise self._exception
+            if exc_tb is not None:
+                compat.reraise(type(self._exception), self._exception, exc_tb)
+            else:
+                raise self._exception
         return self._result
 
     def exception(self):
@@ -293,6 +303,7 @@ class Future(object):
         if self._tb_logger is not None:
             self._tb_logger.clear()
             self._tb_logger = None
+        self._exception_tb = None
         return self._exception
 
     def add_done_callback(self, fn):
@@ -340,7 +351,13 @@ class Future(object):
         self._state = _FINISHED
         self._schedule_callbacks()
 
+    def _get_exception_tb(self):
+        return self._exception_tb
+
     def set_exception(self, exception):
+        self._set_exception_with_tb(exception, None)
+
+    def _set_exception_with_tb(self, exception, exc_tb):
         """Mark the future done and set an exception.
 
         If the future is already done when this method is called, raises
@@ -351,6 +368,11 @@ class Future(object):
         if isinstance(exception, type):
             exception = exception()
         self._exception = exception
+        if exc_tb is not None:
+            self._exception_tb = exc_tb
+            exc_tb = None
+        elif self._loop.get_debug() and not compat.PY3:
+            self._exception_tb = sys.exc_info()[2]
         self._state = _FINISHED
         self._schedule_callbacks()
         if _PY34:

@@ -7,6 +7,11 @@ Version 1.0.3
 
 Changes:
 
+* On Python 2 in debug mode, Future.set_exception() now stores the traceback
+  object of the exception in addition to the exception object. When a task
+  waiting for another task and the other task raises an exception, the
+  traceback object is now copied with the exception. Be careful, storing the
+  traceback object may create reference leaks.
 * On Python 3.5 and newer, reuse socket.socketpair() in the windows_utils
   submodule.
 * On Python 3.4 and newer, use os.set_inheritable().
