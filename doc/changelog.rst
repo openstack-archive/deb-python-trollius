@@ -16,13 +16,13 @@ Changes:
   submodule.
 * On Python 3.4 and newer, use os.set_inheritable().
 * Enhance protocol representation: add "closed" or "closing" info.
-* Reuse socket.socketpair() on Windows if available
 * run_forever() now consumes BaseException of the temporary task. If the
   coroutine raised a BaseException, consume the exception to not log a warning.
   The caller doesn't have access to the local task.
 * Python issue 22448: cleanup _run_once(), only iterate once to remove delayed
   calls that were cancelled.
-* Return destructor logs the source traceback in debug mode
+* The destructor of the Return class now shows where the Return object was
+  created.
 
 
 2014-10-02: Version 1.0.2
