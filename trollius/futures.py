@@ -389,7 +389,10 @@ class Future(object):
                 if self._loop.get_debug():
                     frame = sys._getframe(1)
                     tb = ['Traceback (most recent call last):\n']
-                    tb += traceback.format_stack(frame)
+                    if self._exception_tb is not None:
+                        tb += traceback.format_tb(self._exception_tb)
+                    else:
+                        tb += traceback.format_stack(frame)
                     tb += traceback.format_exception_only(type(exception), exception)
                     self._tb_logger.tb = tb
                 else:
