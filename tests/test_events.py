@@ -34,6 +34,7 @@ from trollius import futures
 
 import trollius as asyncio
 from trollius import compat
+from trollius import events
 from trollius import proactor_events
 from trollius import selector_events
 from trollius import test_utils
@@ -2115,12 +2116,15 @@ class AbstractEventLoopTests(test_utils.TestCase):
             NotImplementedError, loop.stop)
         self.assertRaises(
             NotImplementedError, loop.is_running)
-        self.assertRaises(
-            NotImplementedError, loop.is_closed)
+        # skip some tests if the AbstractEventLoop class comes from asyncio
+        # and the asyncio version (python version in fact) is older than 3.4.2
+        if events.asyncio is None or sys.version_info >= (3, 4, 2):
+            self.assertRaises(
+                NotImplementedError, loop.is_closed)
+            self.assertRaises(
+                NotImplementedError, loop.create_task, None)
         self.assertRaises(
             NotImplementedError, loop.close)
-        self.assertRaises(
-            NotImplementedError, loop.create_task, None)
         self.assertRaises(
             NotImplementedError, loop.call_later, None, None)
         self.assertRaises(
