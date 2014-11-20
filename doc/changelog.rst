@@ -2,6 +2,16 @@
 Change log
 ++++++++++
 
+Version 1.0.4 (development version)
+===================================
+
+Changes:
+
+* BaseSelectorEventLoop.close() now closes the self-pipe before calling the
+  parent close() method. If the event loop is already closed, the self-pipe is
+  not unregistered from the selector.
+
+
 2014-10-20: Version 1.0.3
 =========================
 
@@ -31,6 +41,9 @@ Changes:
   module: module backported from Python 3.5.
 * BaseEventLoop.add_signal_handler() now raises an exception if the parameter
   is a coroutine function.
+* Coroutine functions and objects are now rejected with a TypeError by the
+  following functions: add_signal_handler(), call_at(), call_later(),
+  call_soon(), call_soon_threadsafe(), run_in_executor().
 
 
 2014-10-02: Version 1.0.2
