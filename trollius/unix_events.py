@@ -17,6 +17,7 @@ from . import base_events
 from . import base_subprocess
 from . import compat
 from . import constants
+from . import coroutines
 from . import events
 from . import selector_events
 from . import selectors
@@ -80,6 +81,8 @@ class _UnixSelectorEventLoop(selector_events.BaseSelectorEventLoop):
         Raise ValueError if the signal number is invalid or uncatchable.
         Raise RuntimeError if there is a problem setting up the handler.
         """
+        if coroutines.iscoroutinefunction(callback):
+            raise TypeError("coroutines cannot be used with call_soon()")
         self._check_signal(sig)
         try:
             # set_wakeup_fd() raises ValueError if this is not the
