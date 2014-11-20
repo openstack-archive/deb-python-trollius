@@ -12,6 +12,8 @@ Changes:
   waiting for another task and the other task raises an exception, the
   traceback object is now copied with the exception. Be careful, storing the
   traceback object may create reference leaks.
+* Use ssl.create_default_context() if available to create the default SSL
+  context: Python 2.7.9 and newer, or Python 3.4 and newer.
 * On Python 3.5 and newer, reuse socket.socketpair() in the windows_utils
   submodule.
 * On Python 3.4 and newer, use os.set_inheritable().
@@ -23,6 +25,12 @@ Changes:
   calls that were cancelled.
 * The destructor of the Return class now shows where the Return object was
   created.
+* run_tests.py doesn't catch any exceptions anymore when loading tests, only
+  catch SkipTest.
+* Fix (SSL) tests for the future Python 2.7.9 which includes a "new" ssl
+  module: module backported from Python 3.5.
+* BaseEventLoop.add_signal_handler() now raises an exception if the parameter
+  is a coroutine function.
 
 
 2014-10-02: Version 1.0.2

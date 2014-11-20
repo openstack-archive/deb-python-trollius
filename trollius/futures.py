@@ -140,7 +140,7 @@ class Future(object):
     _loop = None
 
     # Used by Python 2 to raise the exception with the original traceback
-    # in the exception() method
+    # in the exception() method in debug mode
     _exception_tb = None
 
     _log_traceback = False   # Used for Python >= 3.4
