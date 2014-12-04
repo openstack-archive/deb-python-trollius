@@ -1430,7 +1430,7 @@ class SelectorSslTransportTests(test_utils.TestCase):
         self.assertEqual(tr._conn_lost, 1)
         self.assertEqual(1, self.loop.remove_reader_count[1])
 
-    @test_utils.skipIf(ssl is None or not HAS_SNI, 'No SNI support')
+    @test_utils.skipIf(ssl is None, 'No SSL support')
     def test_server_hostname(self):
         _SelectorSslTransport(
             self.loop, self.sock, self.protocol, self.sslcontext,

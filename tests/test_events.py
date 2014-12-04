@@ -20,9 +20,6 @@ try:
     import ssl
 except ImportError:
     ssl = None
-    HAS_SNI = False
-else:
-    HAS_SNI = getattr(ssl, 'HAS_SNI', False)
 
 try:
     import concurrent
@@ -243,7 +240,8 @@ class EventLoopTestsMixin(object):
 
     def tearDown(self):
         # just in case if we have transport close callbacks
-        test_utils.run_briefly(self.loop)
+        if not self.loop.is_closed():
+            test_utils.run_briefly(self.loop)
 
         self.loop.close()
         gc.collect()
@@ -876,15 +874,14 @@ class EventLoopTestsMixin(object):
         server.close()
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
-    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
+    @test_utils.skipIf(asyncio.BACKPORT_SSL_CONTEXT, 'need ssl.SSLContext')
     def test_create_server_ssl_verify_failed(self):
         proto = MyProto(loop=self.loop)
         server, host, port = self._make_ssl_server(
             lambda: proto, SIGNED_CERTFILE)
 
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-        if not asyncio.BACKPORT_SSL_CONTEXT:
-            sslcontext_client.options |= ssl.OP_NO_SSLv2
+        sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
@@ -902,16 +899,15 @@ class EventLoopTestsMixin(object):
         server.close()
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
-    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     @test_utils.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
+    @test_utils.skipIf(asyncio.BACKPORT_SSL_CONTEXT, 'need ssl.SSLContext')
     def test_create_unix_server_ssl_verify_failed(self):
         proto = MyProto(loop=self.loop)
         server, path = self._make_ssl_unix_server(
             lambda: proto, SIGNED_CERTFILE)
 
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
-        if not asyncio.BACKPORT_SSL_CONTEXT:
-            sslcontext_client.options |= ssl.OP_NO_SSLv2
+        sslcontext_client.options |= ssl.OP_NO_SSLv2
         sslcontext_client.verify_mode = ssl.CERT_REQUIRED
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
@@ -930,7 +926,6 @@ class EventLoopTestsMixin(object):
         server.close()
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
-    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     def test_create_server_ssl_match_failed(self):
         proto = MyProto(loop=self.loop)
         server, host, port = self._make_ssl_server(
@@ -939,9 +934,9 @@ class EventLoopTestsMixin(object):
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext_client.options |= ssl.OP_NO_SSLv2
-        sslcontext_client.verify_mode = ssl.CERT_REQUIRED
-        sslcontext_client.load_verify_locations(
-            cafile=SIGNING_CA)
+            sslcontext_client.verify_mode = ssl.CERT_REQUIRED
+            sslcontext_client.load_verify_locations(
+                cafile=SIGNING_CA)
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
 
@@ -952,20 +947,21 @@ class EventLoopTestsMixin(object):
             err_msg = "hostname '127.0.0.1' doesn't match u'localhost'"
 
         # incorrect server_hostname
-        f_c = self.loop.create_connection(MyProto, host, port,
-                                          ssl=sslcontext_client)
-        with test_utils.disable_logger():
-            with self.assertRaisesRegex(
-                    ssl.CertificateError,
-                    err_msg):
-                self.loop.run_until_complete(f_c)
+        if not asyncio.BACKPORT_SSL_CONTEXT:
+            f_c = self.loop.create_connection(MyProto, host, port,
+                                              ssl=sslcontext_client)
+            with test_utils.disable_logger():
+                with self.assertRaisesRegex(
+                        ssl.CertificateError,
+                        err_msg):
+                    self.loop.run_until_complete(f_c)
 
-        # close connection
-        proto.transport.close()
+            # close connection
+            proto.transport.close()
+
         server.close()
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
-    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     @test_utils.skipUnless(hasattr(socket, 'AF_UNIX'), 'No UNIX Sockets')
     def test_create_unix_server_ssl_verified(self):
         proto = MyProto(loop=self.loop)
@@ -975,8 +971,8 @@ class EventLoopTestsMixin(object):
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext_client.options |= ssl.OP_NO_SSLv2
-        sslcontext_client.verify_mode = ssl.CERT_REQUIRED
-        sslcontext_client.load_verify_locations(cafile=SIGNING_CA)
+            sslcontext_client.verify_mode = ssl.CERT_REQUIRED
+            sslcontext_client.load_verify_locations(cafile=SIGNING_CA)
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
 
@@ -992,7 +988,6 @@ class EventLoopTestsMixin(object):
         server.close()
 
     @test_utils.skipIf(ssl is None, 'No ssl module')
-    @test_utils.skipUnless(HAS_SNI, 'No SNI support in ssl module')
     def test_create_server_ssl_verified(self):
         proto = MyProto(loop=self.loop)
         server, host, port = self._make_ssl_server(
@@ -1001,20 +996,22 @@ class EventLoopTestsMixin(object):
         sslcontext_client = asyncio.SSLContext(ssl.PROTOCOL_SSLv23)
         if not asyncio.BACKPORT_SSL_CONTEXT:
             sslcontext_client.options |= ssl.OP_NO_SSLv2
-        sslcontext_client.verify_mode = ssl.CERT_REQUIRED
-        sslcontext_client.load_verify_locations(cafile=SIGNING_CA)
+            sslcontext_client.verify_mode = ssl.CERT_REQUIRED
+            sslcontext_client.load_verify_locations(cafile=SIGNING_CA)
         if hasattr(sslcontext_client, 'check_hostname'):
             sslcontext_client.check_hostname = True
 
-        # Connection succeeds with correct CA and server hostname.
-        f_c = self.loop.create_connection(MyProto, host, port,
-                                          ssl=sslcontext_client,
-                                          server_hostname='localhost')
-        client, pr = self.loop.run_until_complete(f_c)
+        if not asyncio.BACKPORT_SSL_CONTEXT:
+            # Connection succeeds with correct CA and server hostname.
+            f_c = self.loop.create_connection(MyProto, host, port,
+                                              ssl=sslcontext_client,
+                                              server_hostname='localhost')
+            client, pr = self.loop.run_until_complete(f_c)
 
-        # close connection
-        proto.transport.close()
-        client.close()
+            # close connection
+            proto.transport.close()
+            client.close()
+
         server.close()
 
     def test_create_server_sock(self):
@@ -1477,6 +1474,38 @@ class EventLoopTestsMixin(object):
         coro = close_loop(self.loop)
         with self.assertRaises(RuntimeError):
             self.loop.run_until_complete(coro)
+
+    def test_close(self):
+        self.loop.close()
+
+        @asyncio.coroutine
+        def test():
+            pass
+
+        func = lambda: False
+        coro = test()
+        self.addCleanup(coro.close)
+
+        # operation blocked when the loop is closed
+        with self.assertRaises(RuntimeError):
+            self.loop.run_forever()
+        with self.assertRaises(RuntimeError):
+            fut = asyncio.Future(loop=self.loop)
+            self.loop.run_until_complete(fut)
+        with self.assertRaises(RuntimeError):
+            self.loop.call_soon(func)
+        with self.assertRaises(RuntimeError):
+            self.loop.call_soon_threadsafe(func)
+        with self.assertRaises(RuntimeError):
+            self.loop.call_later(1.0, func)
+        with self.assertRaises(RuntimeError):
+            self.loop.call_at(self.loop.time() + .0, func)
+        with self.assertRaises(RuntimeError):
+            self.loop.run_in_executor(None, func)
+        with self.assertRaises(RuntimeError):
+            self.loop.create_task(coro)
+        with self.assertRaises(RuntimeError):
+            self.loop.add_signal_handler(signal.SIGTERM, func)
 
 
 class SubprocessTestsMixin(object):

@@ -727,7 +727,7 @@ class _SelectorSslTransport(_SelectorTransport):
             'server_side': server_side,
             'do_handshake_on_connect': False,
         }
-        if server_hostname and not server_side and getattr(ssl, 'HAS_SNI', False):
+        if server_hostname and not server_side:
             wrap_kwargs['server_hostname'] = server_hostname
         sslsock = sslcontext.wrap_socket(rawsock, **wrap_kwargs)
 

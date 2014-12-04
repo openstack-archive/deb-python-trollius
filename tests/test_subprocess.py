@@ -7,6 +7,7 @@ import sys
 import unittest
 from trollius import From, Return
 from trollius import test_support as support
+from trollius.test_utils import mock
 if sys.platform != 'win32':
     from trollius import unix_events
 from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
@@ -175,6 +176,42 @@ class SubprocessMixin(object):
         with test_utils.disable_logger():
             self.loop.run_until_complete(proc.communicate(large_data))
         self.loop.run_until_complete(proc.wait())
+
+    def test_pause_reading(self):
+        limit = 10
+        size = (limit * 2 + 1)
+
+        @asyncio.coroutine
+        def test_pause_reading():
+            code = '\n'.join((
+                'import sys',
+                'sys.stdout.write("x" * %s)' % size,
+                'sys.stdout.flush()',
+            ))
+            proc = yield From(asyncio.create_subprocess_exec(
+                                         sys.executable, '-c', code,
+                                         stdin=asyncio.subprocess.PIPE,
+                                         stdout=asyncio.subprocess.PIPE,
+                                         limit=limit,
+                                         loop=self.loop))
+            stdout_transport = proc._transport.get_pipe_transport(1)
+            stdout_transport.pause_reading = mock.Mock()
+            stdout_transport.resume_reading = mock.Mock()
+
+            stdout, stderr = yield From(proc.communicate())
+
+            # The child process produced more than limit bytes of output,
+            # the stream reader transport should pause the protocol to not
+            # allocate too much memory.
+            raise Return(stdout, stdout_transport)
+
+        # Issue #22685: Ensure that the stream reader pauses the protocol
+        # when the child process produces too much data
+        stdout, transport = self.loop.run_until_complete(test_pause_reading())
+
+        self.assertEqual(stdout, b'x' * size)
+        self.assertTrue(transport.pause_reading.called)
+        self.assertTrue(transport.resume_reading.called)
 
 
 if sys.platform != 'win32':
