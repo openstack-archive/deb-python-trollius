@@ -7,6 +7,16 @@ Version 1.0.4 (development version)
 
 Changes:
 
+* Python issue #22922: create_task(), call_at(), call_soon(),
+  call_soon_threadsafe() and run_in_executor() now raise an error if the event
+  loop is closed. Initial patch written by Torsten Landschoff.
+* Initialize more Future and Task attributes in the class definition to avoid
+  attribute errors in destructors.
+* Python issue #22921: Don't require OpenSSL SNI to pass hostname to ssl
+  functions. Patch by Donald Stufft.
+* Python issue #22685: Set the transport of stdout and stderr StreamReader
+  objects in the SubprocessStreamProtocol. It allows to pause the transport to
+  not buffer too much stdout or stderr data.
 * BaseSelectorEventLoop.close() now closes the self-pipe before calling the
   parent close() method. If the event loop is already closed, the self-pipe is
   not unregistered from the selector.
