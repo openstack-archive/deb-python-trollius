@@ -78,7 +78,8 @@ On Python 3.3 and newer, these symbols are just aliases to exceptions of the
 
 ``trollius.BACKPORT_SSL_ERRORS`` constant:
 
-* ``True`` if ``ssl.SSLError`` are wrapped to Trollius exceptions,
+* ``True`` if ``ssl.SSLError`` are wrapped to Trollius exceptions (Python 2
+  older than 2.7.9, or Python 3 older than 3.3),
 * ``False`` is trollius SSL exceptions are just aliases.
 
 
@@ -111,7 +112,8 @@ On Python 3.2 and older, the trollius SSL transport does not have the
 
 ``trollius.BACKPORT_SSL_CONTEXT`` constant:
 
-* ``True`` if ``trollius.SSLContext`` is the backported class,
+* ``True`` if ``trollius.SSLContext`` is the backported class (Python 2 older
+  than 2.7.9, or Python 3 older than 3.3),
 * ``False`` if ``trollius.SSLContext`` is just an alias to ``ssl.SSLContext``.
 
 
