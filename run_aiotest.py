@@ -1,4 +1,5 @@
 import aiotest.run
+import sys
 import trollius
 if sys.platform == 'win32':
     from trollius.windows_utils import socketpair
