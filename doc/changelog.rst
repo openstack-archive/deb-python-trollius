@@ -10,10 +10,20 @@ Changes:
 * Python issue #22922: create_task(), call_at(), call_soon(),
   call_soon_threadsafe() and run_in_executor() now raise an error if the event
   loop is closed. Initial patch written by Torsten Landschoff.
-* Initialize more Future and Task attributes in the class definition to avoid
-  attribute errors in destructors.
 * Python issue #22921: Don't require OpenSSL SNI to pass hostname to ssl
   functions. Patch by Donald Stufft.
+
+Bugfixes:
+
+* Python issue #23009: selectors, make sure EpollSelecrtor.select() works when
+  no file descriptor is registered.
+* Python issue #22922: Fix ProactorEventLoop.close(). Call
+  _stop_accept_futures() before sestting the _closed attribute, otherwise
+  call_soon() raises an error.
+* Python issue #22429: Fix EventLoop.run_until_complete(), don't stop the event
+  loop if a BaseException is raised, because the event loop is already stopped.
+* Initialize more Future and Task attributes in the class definition to avoid
+  attribute errors in destructors.
 * Python issue #22685: Set the transport of stdout and stderr StreamReader
   objects in the SubprocessStreamProtocol. It allows to pause the transport to
   not buffer too much stdout or stderr data.
