@@ -213,6 +213,27 @@ class SubprocessMixin(object):
         self.assertTrue(transport.pause_reading.called)
         self.assertTrue(transport.resume_reading.called)
 
+    def test_stdin_not_inheritable(self):
+        # Tulip issue #209: stdin must not be inheritable, otherwise
+        # the Process.communicate() hangs
+        @asyncio.coroutine
+        def len_message(message):
+            code = 'import sys; data = sys.stdin.read(); print(len(data))'
+            proc = yield From(asyncio.create_subprocess_exec(
+                                          sys.executable, '-c', code,
+                                          stdin=asyncio.subprocess.PIPE,
+                                          stdout=asyncio.subprocess.PIPE,
+                                          stderr=asyncio.subprocess.PIPE,
+                                          close_fds=False,
+                                          loop=self.loop))
+            stdout, stderr = yield From(proc.communicate(message))
+            exitcode = yield From(proc.wait())
+            raise Return(stdout, exitcode)
+
+        output, exitcode = self.loop.run_until_complete(len_message(b'abc'))
+        self.assertEqual(output.rstrip(), b'3')
+        self.assertEqual(exitcode, 0)
+
 
 if sys.platform != 'win32':
     # Unix

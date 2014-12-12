@@ -232,10 +232,6 @@ class _ProactorBaseWritePipeTransport(_ProactorBasePipeTransport,
             assert self._buffer is None
             # Pass a copy, except if it's already immutable.
             self._loop_writing(data=bytes(data))
-            # XXX Should we pause the protocol at this point
-            # if len(data) > self._high_water?  (That would
-            # require keeping track of the number of bytes passed
-            # to a send() that hasn't finished yet.)
         elif not self._buffer:  # WRITING -> BACKED UP
             # Make a mutable copy which we can extend.
             self._buffer = bytearray(data)
@@ -389,11 +385,13 @@ class BaseProactorEventLoop(base_events.BaseEventLoop):
                                            sock, protocol, waiter, extra)
 
     def close(self):
+        if self._running:
+            raise RuntimeError("Cannot close a running event loop")
         if self.is_closed():
             return
-        super(BaseProactorEventLoop, self).close()
         self._stop_accept_futures()
         self._close_self_pipe()
+        super(BaseProactorEventLoop, self).close()
         self._proactor.close()
         self._proactor = None
         self._selector = None

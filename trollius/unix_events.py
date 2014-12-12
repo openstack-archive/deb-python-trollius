@@ -9,8 +9,6 @@ import stat
 import subprocess
 import sys
 import threading
-if not hasattr(os, 'set_blocking') or not hasattr(os, 'set_inheritable'):
-    import fcntl
 
 
 from . import base_events
@@ -298,6 +296,8 @@ if hasattr(os, 'set_blocking'):
     def _set_nonblocking(fd):
         os.set_blocking(fd, False)
 else:
+    import fcntl
+
     def _set_nonblocking(fd):
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
         flags = flags | os.O_NONBLOCK
@@ -578,6 +578,8 @@ if hasattr(os, 'set_inheritable'):
     # Python 3.4 and newer
     _set_inheritable = os.set_inheritable
 else:
+    import fcntl
+
     def _set_inheritable(fd, inheritable):
         cloexec_flag = getattr(fcntl, 'FD_CLOEXEC', 1)
 
@@ -600,7 +602,10 @@ class _UnixSubprocessTransport(base_subprocess.BaseSubprocessTransport):
             # just fine on other platforms.
             stdin, stdin_w = self._loop._socketpair()
 
-            # Mark the write end of the stdin pipe as non-inheritable
+            # Mark the write end of the stdin pipe as non-inheritable,
+            # needed by close_fds=False on Python 3.3 and older
+            # (Python 3.4 implements the PEP 446, socketpair returns
+            # non-inheritable sockets)
             _set_inheritable(stdin_w.fileno(), False)
         self._proc = subprocess.Popen(
             args, shell=shell, stdin=stdin, stdout=stdout, stderr=stderr,
