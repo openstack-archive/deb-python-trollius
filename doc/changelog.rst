@@ -12,7 +12,7 @@ Changes:
   loop is closed. Initial patch written by Torsten Landschoff.
 * Python issue #22921: Don't require OpenSSL SNI to pass hostname to ssl
   functions. Patch by Donald Stufft.
-* Add run_aiotest.py
+* Add run_aiotest.py: run the aiotest test suite.
 * tox now also run the aiotest test suite
 
 Bugfixes:

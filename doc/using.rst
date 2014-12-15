@@ -51,6 +51,9 @@ coroutines.
 
 Effect of the debug mode:
 
+* On Python 2, :meth:`Future.set_exception` stores the traceback, so
+  ``loop.run_until_complete()`` raises the exception with the original
+  traceback.
 * Log coroutines defined but never "yielded"
 * BaseEventLoop.call_soon() and BaseEventLoop.call_at() methods raise an
   exception if they are called from the wrong thread.
