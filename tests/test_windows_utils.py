@@ -14,7 +14,10 @@ from trollius import test_utils
 from trollius import windows_utils
 from trollius.test_support import IPV6_ENABLED
 from trollius.test_utils import mock
-import trollius.test_support as support
+try:
+    from test import support  # gc_collect, IPV6_ENABLED
+except ImportError:
+    from trollius import test_support as support
 
 
 class WinsocketpairTests(unittest.TestCase):
@@ -29,7 +32,8 @@ class WinsocketpairTests(unittest.TestCase):
         ssock, csock = windows_utils.socketpair()
         self.check_winsocketpair(ssock, csock)
 
-    @test_utils.skipUnless(IPV6_ENABLED, 'IPv6 not supported or enabled')
+    @test_utils.skipUnless(support.IPV6_ENABLED,
+                           'IPv6 not supported or enabled')
     def test_winsocketpair_ipv6(self):
         ssock, csock = windows_utils.socketpair(family=socket.AF_INET6)
         self.check_winsocketpair(ssock, csock)

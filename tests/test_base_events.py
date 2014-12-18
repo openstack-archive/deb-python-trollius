@@ -15,9 +15,14 @@ from trollius import constants
 from trollius import test_utils
 from trollius.py33_exceptions import BlockingIOError
 from trollius.test_utils import mock
-from trollius import test_support as support   # IPV6_ENABLED, gc_collect
 from trollius.time_monotonic import time_monotonic
 from trollius.test_support import assert_python_ok
+try:
+    from test.script_helper import assert_python_ok
+    from test import support
+except ImportError:
+    from trollius import test_support as support
+    from trollius.test_support import assert_python_ok
 
 
 MOCK_ANY = mock.ANY

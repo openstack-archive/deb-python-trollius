@@ -1,19 +1,118 @@
+# Subset of test.support from CPython 3.5, just what we need to run asyncio
+# test suite. The cde is copied from CPython 3.5 to not depend on the test
+# module because it is rarely installed.
+
+# Ignore symbol TEST_HOME_DIR: test_events works without it
+
 from __future__ import absolute_import
 import functools
 import gc
-import os.path
+import os
 import platform
 import re
 import socket
 import subprocess
 import sys
 import time
+
 from trollius import test_utils
 
-# TEST_HOME_DIR refers to the top level directory of the "test" package
-# that contains Python's regression test suite
-TEST_SUPPORT_DIR = os.path.dirname(os.path.abspath(__file__))
-TEST_HOME_DIR = os.path.dirname(TEST_SUPPORT_DIR)
+# A constant likely larger than the underlying OS pipe buffer size, to
+# make writes blocking.
+# Windows limit seems to be around 512 B, and many Unix kernels have a
+# 64 KiB pipe buffer size or 16 * PAGE_SIZE: take a few megs to be sure.
+# (see issue #17835 for a discussion of this number).
+PIPE_MAX_SIZE = 4 * 1024 * 1024 + 1
+
+def strip_python_stderr(stderr):
+    """Strip the stderr of a Python process from potential debug output
+    emitted by the interpreter.
+
+    This will typically be run on the result of the communicate() method
+    of a subprocess.Popen object.
+    """
+    stderr = re.sub(br"\[\d+ refs, \d+ blocks\]\r?\n?", b"", stderr).strip()
+    return stderr
+
+
+# Executing the interpreter in a subprocess
+def _assert_python(expected_success, *args, **env_vars):
+    if '__isolated' in env_vars:
+        isolated = env_vars.pop('__isolated')
+    else:
+        isolated = not env_vars
+    cmd_line = [sys.executable]
+    if sys.version_info >= (3, 3):
+        cmd_line.extend(('-X', 'faulthandler'))
+    if isolated and sys.version_info >= (3, 4):
+        # isolated mode: ignore Python environment variables, ignore user
+        # site-packages, and don't add the current directory to sys.path
+        cmd_line.append('-I')
+    elif not env_vars:
+        # ignore Python environment variables
+        cmd_line.append('-E')
+    # Need to preserve the original environment, for in-place testing of
+    # shared library builds.
+    env = os.environ.copy()
+    # But a special flag that can be set to override -- in this case, the
+    # caller is responsible to pass the full environment.
+    if env_vars.pop('__cleanenv', None):
+        env = {}
+    env.update(env_vars)
+    cmd_line.extend(args)
+    p = subprocess.Popen(cmd_line, stdin=subprocess.PIPE,
+                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                         env=env)
+    try:
+        out, err = p.communicate()
+    finally:
+        subprocess._cleanup()
+        p.stdout.close()
+        p.stderr.close()
+    rc = p.returncode
+    err = strip_python_stderr(err)
+    if (rc and expected_success) or (not rc and not expected_success):
+        raise AssertionError(
+            "Process return code is %d, "
+            "stderr follows:\n%s" % (rc, err.decode('ascii', 'ignore')))
+    return rc, out, err
+
+
+def assert_python_ok(*args, **env_vars):
+    """
+    Assert that running the interpreter with `args` and optional environment
+    variables `env_vars` succeeds (rc == 0) and return a (return code, stdout,
+    stderr) tuple.
+
+    If the __cleanenv keyword is set, env_vars is used a fresh environment.
+
+    Python is started in isolated mode (command line option -I),
+    except if the __isolated keyword is set to False.
+    """
+    return _assert_python(True, *args, **env_vars)
+
+
+is_jython = sys.platform.startswith('java')
+
+def gc_collect():
+    """Force as many objects as possible to be collected.
+
+    In non-CPython implementations of Python, this is needed because timely
+    deallocation is not guaranteed by the garbage collector.  (Even in CPython
+    this can be the case in case of reference cycles.)  This means that __del__
+    methods may be called later than expected and weakrefs may remain alive for
+    longer than expected.  This function tries its best to force all garbage
+    objects to disappear.
+    """
+    gc.collect()
+    if is_jython:
+        time.sleep(0.1)
+    gc.collect()
+    gc.collect()
+
+
+HOST = "127.0.0.1"
+HOSTv6 = "::1"
 
 
 def _is_ipv6_enabled():
@@ -22,7 +121,7 @@ def _is_ipv6_enabled():
         sock = None
         try:
             sock = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-            sock.bind(("::1", 0))
+            sock.bind((HOSTv6, 0))
             return True
         except OSError:
             pass
@@ -32,56 +131,6 @@ def _is_ipv6_enabled():
     return False
 
 IPV6_ENABLED = _is_ipv6_enabled()
-
-
-# A constant likely larger than the underlying OS pipe buffer size, to
-# make writes blocking.
-# Windows limit seems to be around 512 B, and many Unix kernels have a
-# 64 KiB pipe buffer size or 16 * PAGE_SIZE: take a few megs to be sure.
-# (see issue #17835 for a discussion of this number).
-PIPE_MAX_SIZE = 4 * 1024 * 1024 + 1
-
-
-class TestFailed(Exception):
-    """Test failed."""
-
-
-def bind_port(sock, host="127.0.0.1"):
-    """Bind the socket to a free port and return the port number.  Relies on
-    ephemeral ports in order to ensure we are using an unbound port.  This is
-    important as many tests may be running simultaneously, especially in a
-    buildbot environment.  This method raises an exception if the sock.family
-    is AF_INET and sock.type is SOCK_STREAM, *and* the socket has SO_REUSEADDR
-    or SO_REUSEPORT set on it.  Tests should *never* set these socket options
-    for TCP/IP sockets.  The only case for setting these options is testing
-    multicasting via multiple UDP sockets.
-
-    Additionally, if the SO_EXCLUSIVEADDRUSE socket option is available (i.e.
-    on Windows), it will be set on the socket.  This will prevent anyone else
-    from bind()'ing to our host/port for the duration of the test.
-    """
-
-    if sock.family == socket.AF_INET and sock.type == socket.SOCK_STREAM:
-        if hasattr(socket, 'SO_REUSEADDR'):
-            if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) == 1:
-                raise TestFailed("tests should never set the SO_REUSEADDR "   \
-                                 "socket option on TCP/IP sockets!")
-        if hasattr(socket, 'SO_REUSEPORT'):
-            try:
-                if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 1:
-                    raise TestFailed("tests should never set the SO_REUSEPORT "   \
-                                     "socket option on TCP/IP sockets!")
-            except EnvironmentError:
-                # Python's socket module was compiled using modern headers
-                # thus defining SO_REUSEPORT but this process is running
-                # under an older kernel that does not support SO_REUSEPORT.
-                pass
-        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
-
-    sock.bind((host, 0))
-    port = sock.getsockname()[1]
-    return port
 
 
 def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
@@ -146,25 +195,69 @@ def find_unused_port(family=socket.AF_INET, socktype=socket.SOCK_STREAM):
     del tempsock
     return port
 
+def bind_port(sock, host=HOST):
+    """Bind the socket to a free port and return the port number.  Relies on
+    ephemeral ports in order to ensure we are using an unbound port.  This is
+    important as many tests may be running simultaneously, especially in a
+    buildbot environment.  This method raises an exception if the sock.family
+    is AF_INET and sock.type is SOCK_STREAM, *and* the socket has SO_REUSEADDR
+    or SO_REUSEPORT set on it.  Tests should *never* set these socket options
+    for TCP/IP sockets.  The only case for setting these options is testing
+    multicasting via multiple UDP sockets.
 
-is_jython = sys.platform.startswith('java')
-
-
-def gc_collect():
-    """Force as many objects as possible to be collected.
-
-    In non-CPython implementations of Python, this is needed because timely
-    deallocation is not guaranteed by the garbage collector.  (Even in CPython
-    this can be the case in case of reference cycles.)  This means that __del__
-    methods may be called later than expected and weakrefs may remain alive for
-    longer than expected.  This function tries its best to force all garbage
-    objects to disappear.
+    Additionally, if the SO_EXCLUSIVEADDRUSE socket option is available (i.e.
+    on Windows), it will be set on the socket.  This will prevent anyone else
+    from bind()'ing to our host/port for the duration of the test.
     """
-    gc.collect()
-    if is_jython:
-        time.sleep(0.1)
-    gc.collect()
-    gc.collect()
+
+    if sock.family == socket.AF_INET and sock.type == socket.SOCK_STREAM:
+        if hasattr(socket, 'SO_REUSEADDR'):
+            if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR) == 1:
+                raise TestFailed("tests should never set the SO_REUSEADDR "   \
+                                 "socket option on TCP/IP sockets!")
+        if hasattr(socket, 'SO_REUSEPORT'):
+            try:
+                if sock.getsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT) == 1:
+                    raise TestFailed("tests should never set the SO_REUSEPORT "   \
+                                     "socket option on TCP/IP sockets!")
+            except OSError:
+                # Python's socket module was compiled using modern headers
+                # thus defining SO_REUSEPORT but this process is running
+                # under an older kernel that does not support SO_REUSEPORT.
+                pass
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+
+    sock.bind((host, 0))
+    port = sock.getsockname()[1]
+    return port
+
+def requires_mac_ver(*min_version):
+    """Decorator raising SkipTest if the OS is Mac OS X and the OS X
+    version if less than min_version.
+
+    For example, @requires_mac_ver(10, 5) raises SkipTest if the OS X version
+    is lesser than 10.5.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kw):
+            if sys.platform == 'darwin':
+                version_txt = platform.mac_ver()[0]
+                try:
+                    version = tuple(map(int, version_txt.split('.')))
+                except ValueError:
+                    pass
+                else:
+                    if version < min_version:
+                        min_version_txt = '.'.join(map(str, min_version))
+                        raise test_utils.SkipTest(
+                            "Mac OS X %s or higher required, not %s"
+                            % (min_version_txt, version_txt))
+            return func(*args, **kw)
+        wrapper.min_version = min_version
+        return wrapper
+    return decorator
 
 def _requires_unix_version(sysname, min_version):
     """Decorator raising SkipTest if the OS is `sysname` and the version is less
@@ -201,86 +294,3 @@ def requires_freebsd_version(*min_version):
     version is less than 7.2.
     """
     return _requires_unix_version('FreeBSD', min_version)
-
-def requires_mac_ver(*min_version):
-    """Decorator raising SkipTest if the OS is Mac OS X and the OS X
-    version if less than min_version.
-
-    For example, @requires_mac_ver(10, 5) raises SkipTest if the OS X version
-    is lesser than 10.5.
-    """
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kw):
-            if sys.platform == 'darwin':
-                version_txt = platform.mac_ver()[0]
-                try:
-                    version = tuple(map(int, version_txt.split('.')))
-                except ValueError:
-                    pass
-                else:
-                    if version < min_version:
-                        min_version_txt = '.'.join(map(str, min_version))
-                        raise test_utils.SkipTest(
-                            "Mac OS X %s or higher required, not %s"
-                            % (min_version_txt, version_txt))
-            return func(*args, **kw)
-        wrapper.min_version = min_version
-        return wrapper
-    return decorator
-
-
-def strip_python_stderr(stderr):
-    """Strip the stderr of a Python process from potential debug output
-    emitted by the interpreter.
-
-    This will typically be run on the result of the communicate() method
-    of a subprocess.Popen object.
-    """
-    stderr = re.sub(br"\[\d+ refs, \d+ blocks\]\r?\n?", b"", stderr).strip()
-    return stderr
-
-# Executing the interpreter in a subprocess
-def _assert_python(expected_success, *args, **env_vars):
-    cmd_line = [sys.executable]
-    if not env_vars:
-        # ignore Python environment variables
-        cmd_line.append('-E')
-    # Need to preserve the original environment, for in-place testing of
-    # shared library builds.
-    env = os.environ.copy()
-    # But a special flag that can be set to override -- in this case, the
-    # caller is responsible to pass the full environment.
-    if env_vars.pop('__cleanenv', None):
-        env = {}
-    env.update(env_vars)
-    cmd_line.extend(args)
-    p = subprocess.Popen(cmd_line, stdin=subprocess.PIPE,
-                         stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                         env=env)
-    try:
-        out, err = p.communicate()
-    finally:
-        subprocess._cleanup()
-        p.stdout.close()
-        p.stderr.close()
-    rc = p.returncode
-    err = strip_python_stderr(err)
-    if (rc and expected_success) or (not rc and not expected_success):
-        raise AssertionError(
-            "Process return code is %d, "
-            "stderr follows:\n%s" % (rc, err.decode('ascii', 'ignore')))
-    return rc, out, err
-
-def assert_python_ok(*args, **env_vars):
-    """
-    Assert that running the interpreter with `args` and optional environment
-    variables `env_vars` succeeds (rc == 0) and return a (return code, stdout,
-    stderr) tuple.
-
-    If the __cleanenv keyword is set, env_vars is used a fresh environment.
-
-    Python is started in isolated mode (command line option -I),
-    except if the __isolated keyword is set to False.
-    """
-    return _assert_python(True, *args, **env_vars)

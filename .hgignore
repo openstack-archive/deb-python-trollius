@@ -14,4 +14,4 @@ dist$
 .*\.egg-info$
 
 # Directory created by the "tox" command (ex: tox -e py27)
-.tox
+\.tox$

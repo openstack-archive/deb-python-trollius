@@ -40,7 +40,10 @@ from trollius.py33_exceptions import (wrap_error,
     FileNotFoundError)
 from trollius.test_utils import mock
 from trollius.time_monotonic import time_monotonic
-from trollius import test_support as support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
+try:
+    from test import support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
+except ImportError:
+    from trollius import test_support as support
 
 
 def data_file(filename):
@@ -2288,14 +2291,14 @@ class PolicyTests(test_utils.TestCase):
     def test_get_event_loop_after_set_none(self):
         policy = asyncio.DefaultEventLoopPolicy()
         policy.set_event_loop(None)
-        self.assertRaises(AssertionError, policy.get_event_loop)
+        self.assertRaises(RuntimeError, policy.get_event_loop)
 
     @mock.patch('trollius.events.threading.current_thread')
     def test_get_event_loop_thread(self, m_current_thread):
 
         def f():
             policy = asyncio.DefaultEventLoopPolicy()
-            self.assertRaises(AssertionError, policy.get_event_loop)
+            self.assertRaises(RuntimeError, policy.get_event_loop)
 
         th = threading.Thread(target=f)
         th.start()

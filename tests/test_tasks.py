@@ -14,6 +14,12 @@ from trollius import test_support as support
 from trollius import test_utils
 from trollius.test_support import assert_python_ok
 from trollius.test_utils import mock
+try:
+    from test import support   # gc_collect
+    from test.script_helper import assert_python_ok
+except ImportError:
+    from trollius import test_support as support
+    from trollius.test_support import assert_python_ok
 
 
 PY33 = (sys.version_info >= (3, 3))

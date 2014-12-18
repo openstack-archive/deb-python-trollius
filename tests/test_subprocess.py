@@ -6,11 +6,17 @@ import signal
 import sys
 import unittest
 from trollius import From, Return
-from trollius import test_support as support
 from trollius.test_utils import mock
+from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
+
 if sys.platform != 'win32':
     from trollius import unix_events
-from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
+
+try:
+    from test import support   # PIPE_MAX_SIZE
+except ImportError:
+    from trollius import test_support as support
+
 
 # Program blocking
 PROGRAM_BLOCKED = [sys.executable, '-c', 'import time; time.sleep(3600)']

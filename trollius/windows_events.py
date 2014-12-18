@@ -390,7 +390,7 @@ class IocpProactor(object):
             wrap_error(ov.getresult)
             return pipe
 
-        # FIXME: Tulip issue 196: why to we neeed register=False?
+        # FIXME: Tulip issue 196: why do we need register=False?
         # See also the comment in the _register() method
         return self._register(ov, pipe, finish_accept_pipe,
                               register=False)
