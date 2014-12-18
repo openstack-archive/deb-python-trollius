@@ -19,7 +19,7 @@ import textwrap
 
 PY3 = (sys.version_info >= (3,))
 HG = 'hg'
-_PYTHON_VERSIONS = [(3, 3)]
+_PYTHON_VERSIONS = [(2, 7), (3, 3), (3, 4)]
 PYTHON_VERSIONS = []
 for pyver in _PYTHON_VERSIONS:
     PYTHON_VERSIONS.append((pyver, 32))
