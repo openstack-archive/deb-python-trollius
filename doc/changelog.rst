@@ -19,6 +19,8 @@ Changes:
 
 Bugfixes:
 
+* Fix a race condition in BaseSubprocessTransport._try_finish(): ensure that
+  connection_made() is called before connection_lost().
 * Python issue #23009: selectors, make sure EpollSelecrtor.select() works when
   no file descriptor is registered.
 * Python issue #22922: Fix ProactorEventLoop.close(). Call
