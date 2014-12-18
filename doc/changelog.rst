@@ -14,6 +14,8 @@ Changes:
   functions. Patch by Donald Stufft.
 * Add run_aiotest.py: run the aiotest test suite.
 * tox now also run the aiotest test suite
+* Python issue #23074: get_event_loop() now raises an exception if the thread
+  has no event loop even if assertions are disabled.
 
 Bugfixes:
 
