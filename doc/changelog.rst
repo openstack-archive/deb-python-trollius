@@ -2,8 +2,8 @@
 Change log
 ++++++++++
 
-Version 1.0.4 (development version)
-===================================
+2014-12-19: Version 1.0.4
+=========================
 
 Changes:
 

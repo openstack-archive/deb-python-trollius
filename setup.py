@@ -7,6 +7,8 @@
 #  - test examples
 #  - update version in setup.py (version) and doc/conf.py (version, release)
 #  - set release date in doc/changelog.rst
+#  - check that "python setup.py sdist" contains all files tracked by
+#    the SCM (Mercurial): update MANIFEST.in if needed
 #  - hg ci
 #  - hg tag trollius-VERSION
 #  - hg push
