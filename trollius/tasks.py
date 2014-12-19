@@ -23,7 +23,7 @@ from . import events
 from . import executor
 from . import futures
 from .locks import Lock, Condition, Semaphore, _ContextManager
-from .coroutines import coroutine, From, Return, iscoroutinefunction, iscoroutine
+from .coroutines import coroutine, From, Return
 
 
 _PY34 = (sys.version_info >= (3, 4))
@@ -293,7 +293,7 @@ class Task(futures.Future):
             elif isinstance(result, coroutines.FromWrapper):
                 result = result.obj
 
-            if iscoroutine(result):
+            if coroutines.iscoroutine(result):
                 # "yield coroutine" creates a task, the current task
                 # will wait until the new task is done
                 result = self._loop.create_task(result)
