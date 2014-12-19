@@ -161,11 +161,11 @@ class BaseSelectorTests(test_utils.TestCase):
         d2 = object()
 
         s = FakeSelector()
-        key = s.register(fobj, selectors.EVENT_READ, d1)
+        s.register(fobj, selectors.EVENT_READ, d1)
 
         s.unregister = mock.Mock()
         s.register = mock.Mock()
-        key2 = s.modify(fobj, selectors.EVENT_READ, d2)
+        s.modify(fobj, selectors.EVENT_READ, d2)
         self.assertFalse(s.unregister.called)
         self.assertFalse(s.register.called)
 

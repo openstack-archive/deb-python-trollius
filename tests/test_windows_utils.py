@@ -10,14 +10,10 @@ if sys.platform != 'win32':
 
 from trollius import _overlapped
 from trollius import py33_winapi as _winapi
+from trollius import test_support as support
 from trollius import test_utils
 from trollius import windows_utils
-from trollius.test_support import IPV6_ENABLED
 from trollius.test_utils import mock
-try:
-    from test import support  # gc_collect, IPV6_ENABLED
-except ImportError:
-    from trollius import test_support as support
 
 
 class WinsocketpairTests(unittest.TestCase):

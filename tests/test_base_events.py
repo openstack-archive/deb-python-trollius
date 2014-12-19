@@ -12,17 +12,11 @@ import trollius as asyncio
 from trollius import Return, From
 from trollius import base_events
 from trollius import constants
+from trollius import test_support as support
 from trollius import test_utils
 from trollius.py33_exceptions import BlockingIOError
 from trollius.test_utils import mock
 from trollius.time_monotonic import time_monotonic
-from trollius.test_support import assert_python_ok
-try:
-    from test.script_helper import assert_python_ok
-    from test import support
-except ImportError:
-    from trollius import test_support as support
-    from trollius.test_support import assert_python_ok
 
 
 MOCK_ANY = mock.ANY
@@ -587,12 +581,12 @@ class BaseEventLoopTests(test_utils.TestCase):
             'loop = trollius.get_event_loop()',
             'print(loop.get_debug())'))
 
-        sts, stdout, stderr = assert_python_ok('-c', code,
-                                               TROLLIUSDEBUG='')
+        sts, stdout, stderr = support.assert_python_ok('-c', code,
+                                                       TROLLIUSDEBUG='')
         self.assertEqual(stdout.rstrip(), b'False')
 
-        sts, stdout, stderr = assert_python_ok('-c', code,
-                                               TROLLIUSDEBUG='1')
+        sts, stdout, stderr = support.assert_python_ok('-c', code,
+                                                       TROLLIUSDEBUG='1')
         self.assertEqual(stdout.rstrip(), b'True')
 
     def test_create_task(self):

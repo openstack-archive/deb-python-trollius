@@ -34,16 +34,13 @@ from trollius import compat
 from trollius import events
 from trollius import proactor_events
 from trollius import selector_events
+from trollius import test_support as support
 from trollius import test_utils
 from trollius.py33_exceptions import (wrap_error,
     BlockingIOError, ConnectionRefusedError,
     FileNotFoundError)
 from trollius.test_utils import mock
 from trollius.time_monotonic import time_monotonic
-try:
-    from test import support  # find_unused_port, IPV6_ENABLED, TEST_HOME_DIR
-except ImportError:
-    from trollius import test_support as support
 
 
 def data_file(filename):

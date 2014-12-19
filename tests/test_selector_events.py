@@ -1,8 +1,6 @@
 """Tests for selector_events.py"""
 
 import errno
-#import gc
-#import pprint
 import socket
 import sys
 import unittest
@@ -27,6 +25,7 @@ from trollius.selector_events import _SelectorSslTransport
 from trollius.selector_events import _SelectorTransport
 from trollius.selector_events import _SSL_REQUIRES_SELECT
 from trollius.test_utils import mock
+
 
 if sys.version_info >= (3,):
     UNICODE_STR = 'unicode'

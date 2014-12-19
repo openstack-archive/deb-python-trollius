@@ -2,11 +2,9 @@
 
 import collections
 import contextlib
-#import gc
 import errno
 import io
 import os
-#import pprint
 import signal
 import socket
 import stat

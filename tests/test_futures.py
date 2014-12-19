@@ -11,12 +11,9 @@ import unittest
 
 import trollius as asyncio
 from trollius import compat
+from trollius import test_support as support
 from trollius import test_utils
 from trollius.test_utils import mock
-try:
-    from test import support   # gc_collect
-except ImportError:
-    from trollius import test_support as support
 
 
 def get_thread_ident():
