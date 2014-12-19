@@ -10,7 +10,8 @@
 #  - hg ci
 #  - hg tag trollius-VERSION
 #  - hg push
-#  - python setup.py register sdist bdist_wheel upload
+#  - On Linux: python setup.py register sdist bdist_wheel upload
+#  - On Windows: python release.py release
 #  - increment version in setup.py (version) and doc/conf.py (version, release)
 #  - hg ci && hg push
 
