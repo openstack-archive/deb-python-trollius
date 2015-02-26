@@ -21,6 +21,6 @@ override_dh_install:
 
 ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
-	nosetests -v tests --exclude=test_subprocess_send_signal || true
+	nosetests -v tests --exclude='test_subprocess_send_signal|test_send_signal || true
 	nosetests3 -v tests --exclude='test_subprocess_send_signal|test_send_signal'
 endif
