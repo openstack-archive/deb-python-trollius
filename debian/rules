@@ -21,6 +21,9 @@ override_dh_install:
 
 ifeq (,$(findstring nocheck, $(DEB_BUILD_OPTIONS)))
 override_dh_auto_test:
-	nosetests -v tests --exclude='test_subprocess_send_signal|test_send_signal' || true
-	nosetests3 -v tests --exclude='test_subprocess_send_signal|test_send_signal'
+	set -e ; set -x ; for i in 2.7 $(PYTHON3S) ; do \
+		PYMAJOR=`echo $$i | cut -d'.' -f1` ; \
+		echo "===> Testing with python$$i (python$$PYMAJOR)" ; \
+		PYTHON=$$i python$$i -m nose -v test --exclude='test_subprocess_send_signal|test_send_signal' ; \
+        done
 endif
