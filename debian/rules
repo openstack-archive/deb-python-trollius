@@ -24,6 +24,6 @@ override_dh_auto_test:
 	set -e ; set -x ; for i in 2.7 $(PYTHON3S) ; do \
 		PYMAJOR=`echo $$i | cut -d'.' -f1` ; \
 		echo "===> Testing with python$$i (python$$PYMAJOR)" ; \
-		PYTHON=$$i python$$i -m nose -v test --exclude='test_subprocess_send_signal|test_send_signal' ; \
+		PYTHON=$$i python$$i -Wd runtests.py -r ; \
         done
 endif
