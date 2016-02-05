@@ -1,4 +1,4 @@
-python-trollius (2.0-1) unstable; urgency=medium
+python-trollius (2.1~b1-1) unstable; urgency=medium
 
   * New upstream release (Closes: #812309).
   * Fixed new upstream VCS URLs in debian/rules.
