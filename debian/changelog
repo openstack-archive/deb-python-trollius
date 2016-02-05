@@ -8,6 +8,7 @@ python-trollius (2.1~b1-1) unstable; urgency=medium
   * Remove Pre-Depends on dpkg.
   * Added fix-py35-compat.patch.
   * Standards-Version is now 3.9.6 (no change).
+  * VCS urls using https.
 
  -- Thomas Goirand <zigo@debian.org>  Fri, 05 Feb 2016 16:54:08 +0800
 
