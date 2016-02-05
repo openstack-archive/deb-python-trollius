@@ -2,6 +2,17 @@
 Change log
 ++++++++++
 
+Version 2.1
+===========
+
+Changes:
+
+* Ugly hack to support Python 3.5 with the PEP 479. asyncio coroutines are
+  not supported on Python 3.5.
+* Better exception traceback. Patch written by Dhawal Yogesh Bhanushali.
+* Drop support for Python 2.6 and 3.2.
+
+
 Version 2.0 (2015-07-13)
 ========================
 

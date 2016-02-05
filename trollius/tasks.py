@@ -9,7 +9,6 @@ __all__ = ['Task',
 
 import functools
 import linecache
-import sys
 import traceback
 import warnings
 try:
@@ -24,7 +23,7 @@ from . import events
 from . import executor
 from . import futures
 from .locks import Lock, Condition, Semaphore, _ContextManager
-from .coroutines import coroutine, From, Return
+from .coroutines import coroutine, From, Return, ReturnException
 
 
 
@@ -141,7 +140,11 @@ class Task(futures.Future):
         returned for a suspended coroutine.
         """
         frames = []
-        f = self._coro.gi_frame
+        try:
+            # 'async def' coroutines
+            f = self._coro.cr_frame
+        except AttributeError:
+            f = self._coro.gi_frame
         if f is not None:
             while f is not None:
                 if limit is not None:
@@ -232,6 +235,7 @@ class Task(futures.Future):
     def _step(self, value=None, exc=None, exc_tb=None):
         assert not self.done(), \
             '_step(): already done: {0!r}, {1!r}, {2!r}'.format(self, value, exc)
+
         if self._must_cancel:
             if not isinstance(exc, futures.CancelledError):
                 exc = futures.CancelledError()
@@ -247,15 +251,28 @@ class Task(futures.Future):
         # Call either coro.throw(exc) or coro.send(value).
         try:
             if exc is not None:
-                result = coro.throw(exc)
+                if exc_tb is not None:
+                   result = coro.throw(exc, None, exc_tb)
+                else:
+                   result = coro.throw(exc)
             else:
                 result = coro.send(value)
+        # On Python 3.3 and Python 3.4, ReturnException is not used in
+        # practice. But this except is kept to have a single code base
+        # for all Python versions.
+        except coroutines.ReturnException as exc:
+            if isinstance(exc, ReturnException):
+                exc.raised = True
+                result = exc.value
+            else:
+                result = None
+            self.set_result(result)
         except StopIteration as exc:
             if compat.PY33:
                 # asyncio Task object? get the result of the coroutine
                 result = exc.value
             else:
-                if isinstance(exc, Return):
+                if isinstance(exc, ReturnException):
                     exc.raised = True
                     result = exc.value
                 else:

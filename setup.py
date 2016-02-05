@@ -12,10 +12,12 @@
 #  - git tag trollius-VERSION
 #  - git push --tags
 #  - git push
-#  - On Linux: python setup.py register sdist bdist_wheel upload
+#  - On Linux: python setup.py register sdist upload
+#    FIXME: don't use bdist_wheel because of
+#    FIXME: https://github.com/haypo/trollius/issues/1
 #  - On Windows: python releaser.py release
 #  - increment version in setup.py (version) and doc/conf.py (version, release)
-#  - gt commit && git push
+#  - git commit -a && git push
 
 import os
 import sys
@@ -38,7 +40,7 @@ if os.name == 'nt':
     )
     extensions.append(ext)
 
-requirements = []
+requirements = ['six']
 if sys.version_info < (2, 7):
     requirements.append('ordereddict')
 if sys.version_info < (3,):
@@ -46,7 +48,7 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "2.0",
+    "version": "2.0.1",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',

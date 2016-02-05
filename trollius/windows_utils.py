@@ -16,6 +16,8 @@ import subprocess
 import tempfile
 import warnings
 
+import six
+
 from . import py33_winapi as _winapi
 from . import compat
 from .py33_exceptions import wrap_error, BlockingIOError, InterruptedError
@@ -168,7 +170,7 @@ class PipeHandle(object):
 
     def __del__(self):
         if self._handle is not None:
-            if compat.PY3:
+            if six.PY3:
                 warnings.warn("unclosed %r" % self, ResourceWarning)
             self.close()
 
