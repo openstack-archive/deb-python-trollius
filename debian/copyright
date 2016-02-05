@@ -2,12 +2,12 @@ Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: trollius
 Source: https://bitbucket.org/enovance/trollius/
 
-Files: debian/*
-Copyright: (c) 2013, Thomas Goirand <zigo@debian.org>
+Files: *
+Copyright: (c) 2013-2016, Victor Stinner <victor.stinner@gmail.com>
 License: Apache-2
 
-Files: *
-Copyright: (c) 2013, Victor Stinner <victor.stinner@gmail.com>
+Files: debian/*
+Copyright: (c) 2013-2016, Thomas Goirand <zigo@debian.org>
 License: Apache-2
 
 License: Apache-2

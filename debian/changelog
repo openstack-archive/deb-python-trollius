@@ -6,9 +6,9 @@ python-trollius (2.1~b1-1) unstable; urgency=medium
   * Testing with all versions of Python(3).
   * Move some build-depends into build-depends-indep.
   * Remove Pre-Depends on dpkg.
-  * Added fix-py35-compat.patch.
   * Standards-Version is now 3.9.6 (no change).
   * VCS urls using https.
+  * Fixed debian/copyright years and order.
 
  -- Thomas Goirand <zigo@debian.org>  Fri, 05 Feb 2016 16:54:08 +0800
 
