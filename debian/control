@@ -16,7 +16,7 @@ Build-Depends-Indep: python-concurrent.futures,
                      python3-mock,
                      python3-nose,
                      python3-unittest2,
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=openstack/python-trollius.git
 Vcs-Git: git://anonscm.debian.org/openstack/python-trollius.git
 Homepage: https://bitbucket.org/enovance/trollius/
