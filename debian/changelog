@@ -6,6 +6,7 @@ python-trollius (2.0-1) unstable; urgency=medium
   * Testing with all versions of Python(3).
   * Move some build-depends into build-depends-indep.
   * Remove Pre-Depends on dpkg.
+  * Added fix-py35-compat.patch.
 
  -- Thomas Goirand <zigo@debian.org>  Fri, 05 Feb 2016 16:54:08 +0800
 
