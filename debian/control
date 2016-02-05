@@ -4,16 +4,18 @@ Priority: optional
 Maintainer: PKG OpenStack <openstack-devel@lists.alioth.debian.org>
 Uploaders: Thomas Goirand <zigo@debian.org>,
 Build-Depends: debhelper (>= 9),
-               python-all (>= 2.6.6-3~),
-               python-concurrent.futures,
-               python-mock (>= 1.0),
-               python-nose,
+               dh-python,
+               python-all,
                python-setuptools,
-               python-unittest2,
                python3-all,
-               python3-mock,
-               python3-nose,
-               python3-setuptools
+               python3-setuptools,
+Build-Depends-Indep: python-concurrent.futures,
+                     python-mock,
+                     python-nose,
+                     python-unittest2,
+                     python3-mock,
+                     python3-nose,
+                     python3-unittest2,
 Standards-Version: 3.9.5
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=openstack/python-trollius.git
 Vcs-Git: git://anonscm.debian.org/openstack/python-trollius.git
@@ -21,8 +23,9 @@ Homepage: https://bitbucket.org/enovance/trollius/
 
 Package: python-trollius
 Architecture: all
-Pre-Depends: dpkg (>= 1.15.6~)
-Depends: python-concurrent.futures, ${misc:Depends}, ${python:Depends}
+Depends: python-concurrent.futures,
+         ${misc:Depends},
+         ${python:Depends},
 Description: port of the Tulip project on Python 2.7 - Python 2.x
  Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on
  Python 2. Trollius works on Python 2.6-3.4. It has been tested on Windows,
@@ -32,8 +35,8 @@ Description: port of the Tulip project on Python 2.7 - Python 2.x
 
 Package: python3-trollius
 Architecture: all
-Pre-Depends: dpkg (>= 1.15.6~)
-Depends: ${misc:Depends}, ${python3:Depends}
+Depends: ${misc:Depends},
+         ${python3:Depends},
 Description: port of the Tulip project on Python 2.7 - Python 3.x
  Trollius is a portage of the Tulip project (asyncio module, PEP 3156) on
  Python 2. Trollius works on Python 2.6-3.4. It has been tested on Windows,

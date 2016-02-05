@@ -4,6 +4,8 @@ python-trollius (2.0-1) unstable; urgency=medium
   * Fixed new upstream VCS URLs in debian/rules.
   * Removed non-active maintainers from uploaders.
   * Testing with all versions of Python(3).
+  * Move some build-depends into build-depends-indep.
+  * Remove Pre-Depends on dpkg.
 
  -- Thomas Goirand <zigo@debian.org>  Fri, 05 Feb 2016 16:54:08 +0800
 
