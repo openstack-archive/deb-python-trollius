@@ -36,6 +36,7 @@ except ImportError:  # pragma: no cover
     ssl = None
 
 from . import base_events
+from . import compat
 from . import events
 from . import futures
 from . import selectors
@@ -50,21 +51,17 @@ else:
     from socket import socketpair  # pragma: no cover
 
 try:
+    # Prefer unittest2 if available (on Python 2)
+    import unittest2 as unittest
+except ImportError:
     import unittest
-    skipIf = unittest.skipIf
-    skipUnless = unittest.skipUnless
-    SkipTest = unittest.SkipTest
-    _TestCase = unittest.TestCase
-except AttributeError:
-    # Python 2.6: use the backported unittest module called "unittest2"
-    import unittest2
-    skipIf = unittest2.skipIf
-    skipUnless = unittest2.skipUnless
-    SkipTest = unittest2.SkipTest
-    _TestCase = unittest2.TestCase
+
+skipIf = unittest.skipIf
+skipUnless = unittest.skipUnless
+SkipTest = unittest.SkipTest
 
 
-if not hasattr(_TestCase, 'assertRaisesRegex'):
+if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
     class _BaseTestCaseContext:
 
         def __init__(self, test_case):
@@ -190,7 +187,14 @@ class SilentWSGIRequestHandler(WSGIRequestHandler):
         pass
 
 
-class SilentWSGIServer(WSGIServer):
+class SilentWSGIServer(WSGIServer, object):
+
+    request_timeout = 2
+
+    def get_request(self):
+        request, client_addr = super(SilentWSGIServer, self).get_request()
+        request.settimeout(self.request_timeout)
+        return request, client_addr
 
     def handle_error(self, request, client_address):
         pass
@@ -239,7 +243,8 @@ def _run_test_server(address, use_ssl, server_cls, server_ssl_cls):
     httpd = server_class(address, SilentWSGIRequestHandler)
     httpd.set_app(app)
     httpd.address = httpd.server_address
-    server_thread = threading.Thread(target=httpd.serve_forever)
+    server_thread = threading.Thread(
+        target=lambda: httpd.serve_forever(poll_interval=0.05))
     server_thread.start()
     try:
         yield httpd
@@ -259,7 +264,9 @@ if hasattr(socket, 'AF_UNIX'):
             self.server_port = 80
 
 
-    class UnixWSGIServer(UnixHTTPServer, WSGIServer):
+    class UnixWSGIServer(UnixHTTPServer, WSGIServer, object):
+
+        request_timeout = 2
 
         def server_bind(self):
             UnixHTTPServer.server_bind(self)
@@ -267,6 +274,7 @@ if hasattr(socket, 'AF_UNIX'):
 
         def get_request(self):
             request, client_addr = super(UnixWSGIServer, self).get_request()
+            request.settimeout(self.request_timeout)
             # Code in the stdlib expects that get_request
             # will return a socket and a tuple (host, port).
             # However, this isn't true for UNIX sockets,
@@ -399,6 +407,7 @@ class TestLoop(base_events.BaseEventLoop):
             self._time += advance
 
     def close(self):
+        super(TestLoop, self).close()
         if self._check_on_close:
             try:
                 self._gen.send(0)
@@ -491,7 +500,7 @@ def get_function_source(func):
     return source
 
 
-class TestCase(_TestCase):
+class TestCase(unittest.TestCase):
     def set_event_loop(self, loop, cleanup=True):
         assert loop is not None
         # ensure that the event loop is passed explicitly in asyncio
@@ -507,7 +516,15 @@ class TestCase(_TestCase):
     def tearDown(self):
         events.set_event_loop(None)
 
-    if not hasattr(_TestCase, 'assertRaisesRegex'):
+        # Detect CPython bug #23353: ensure that yield/yield-from is not used
+        # in an except block of a generator
+        if sys.exc_info()[0] == SkipTest:
+            if compat.PY2:
+                sys.exc_clear()
+        else:
+            self.assertEqual(sys.exc_info(), (None, None, None))
+
+    if not hasattr(unittest.TestCase, 'assertRaisesRegex'):
         def assertRaisesRegex(self, expected_exception, expected_regex,
                               callable_obj=None, *args, **kwargs):
             """Asserts that the message in a raised exception matches a regex.
@@ -527,7 +544,7 @@ class TestCase(_TestCase):
 
             return context.handle('assertRaisesRegex', callable_obj, args, kwargs)
 
-    if not hasattr(_TestCase, 'assertRegex'):
+    if not hasattr(unittest.TestCase, 'assertRegex'):
         def assertRegex(self, text, expected_regex, msg=None):
             """Fail the test unless the text matches the regular expression."""
             if isinstance(expected_regex, (str, bytes)):
@@ -562,3 +579,14 @@ def disable_logger():
         yield
     finally:
         logger.setLevel(old_level)
+
+def mock_nonblocking_socket():
+    """Create a mock of a non-blocking socket."""
+    sock = mock.Mock(socket.socket)
+    sock.gettimeout.return_value = 0.0
+    return sock
+
+
+def force_legacy_ssl_support():
+    return mock.patch('trollius.sslproto._is_sslproto_available',
+                      return_value=False)

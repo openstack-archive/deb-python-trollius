@@ -4,12 +4,16 @@ import trollius as asyncio
 import os
 import signal
 import sys
-import unittest
+from trollius import BrokenPipeError, ConnectionResetError, ProcessLookupError
 from trollius import From, Return
+from trollius import base_subprocess
 from trollius import test_support as support
+from trollius.test_utils import mock
+from trollius.test_utils import unittest
+
 if sys.platform != 'win32':
     from trollius import unix_events
-from trollius.py33_exceptions import BrokenPipeError, ConnectionResetError
+
 
 # Program blocking
 PROGRAM_BLOCKED = [sys.executable, '-c', 'import time; time.sleep(3600)']
@@ -25,7 +29,57 @@ else:
                             'sys.stdout.write(data)'))
 PROGRAM_CAT = [sys.executable, '-c', PROGRAM_CAT]
 
-class SubprocessMixin(object):
+class TestSubprocessTransport(base_subprocess.BaseSubprocessTransport):
+    def _start(self, *args, **kwargs):
+        self._proc = mock.Mock()
+        self._proc.stdin = None
+        self._proc.stdout = None
+        self._proc.stderr = None
+
+
+class SubprocessTransportTests(test_utils.TestCase):
+    def setUp(self):
+        self.loop = self.new_test_loop()
+        self.set_event_loop(self.loop)
+
+
+    def create_transport(self, waiter=None):
+        protocol = mock.Mock()
+        protocol.connection_made._is_coroutine = False
+        protocol.process_exited._is_coroutine = False
+        transport = TestSubprocessTransport(
+                        self.loop, protocol, ['test'], False,
+                        None, None, None, 0, waiter=waiter)
+        return (transport, protocol)
+
+    def test_proc_exited(self):
+        waiter = asyncio.Future(loop=self.loop)
+        transport, protocol = self.create_transport(waiter)
+        transport._process_exited(6)
+        self.loop.run_until_complete(waiter)
+
+        self.assertEqual(transport.get_returncode(), 6)
+
+        self.assertTrue(protocol.connection_made.called)
+        self.assertTrue(protocol.process_exited.called)
+        self.assertTrue(protocol.connection_lost.called)
+        self.assertEqual(protocol.connection_lost.call_args[0], (None,))
+
+        self.assertFalse(transport._closed)
+        self.assertIsNone(transport._loop)
+        self.assertIsNone(transport._proc)
+        self.assertIsNone(transport._protocol)
+
+        # methods must raise ProcessLookupError if the process exited
+        self.assertRaises(ProcessLookupError,
+                          transport.send_signal, signal.SIGTERM)
+        self.assertRaises(ProcessLookupError, transport.terminate)
+        self.assertRaises(ProcessLookupError, transport.kill)
+
+        transport.close()
+
+
+class SubprocessMixin:
 
     def test_stdin_stdout(self):
         args = PROGRAM_CAT
@@ -80,7 +134,7 @@ class SubprocessMixin(object):
         exitcode = self.loop.run_until_complete(proc.wait())
         self.assertEqual(exitcode, 7)
 
-    @test_utils.skipUnless(hasattr(os, 'setsid'), "need os.setsid()")
+    @unittest.skipUnless(hasattr(os, 'setsid'), "need os.setsid()")
     def test_start_new_session(self):
         def start_new_session():
             os.setsid()
@@ -117,7 +171,7 @@ class SubprocessMixin(object):
         else:
             self.assertEqual(-signal.SIGTERM, returncode)
 
-    @test_utils.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
+    @unittest.skipIf(sys.platform == 'win32', "Don't have SIGHUP")
     def test_send_signal(self):
         code = '; '.join((
             'import sys, time',
@@ -125,7 +179,9 @@ class SubprocessMixin(object):
             'sys.stdout.flush()',
             'time.sleep(3600)'))
         args = [sys.executable, '-c', code]
-        create = asyncio.create_subprocess_exec(*args, loop=self.loop, stdout=subprocess.PIPE)
+        create = asyncio.create_subprocess_exec(*args,
+                                                stdout=subprocess.PIPE,
+                                                loop=self.loop)
         proc = self.loop.run_until_complete(create)
 
         @asyncio.coroutine
@@ -163,16 +219,213 @@ class SubprocessMixin(object):
 
         coro = write_stdin(proc, large_data)
         # drain() must raise BrokenPipeError or ConnectionResetError
-        self.assertRaises((BrokenPipeError, ConnectionResetError),
-                          self.loop.run_until_complete, coro)
+        with test_utils.disable_logger():
+            self.assertRaises((BrokenPipeError, ConnectionResetError),
+                              self.loop.run_until_complete, coro)
         self.loop.run_until_complete(proc.wait())
 
     def test_communicate_ignore_broken_pipe(self):
         proc, large_data = self.prepare_broken_pipe_test()
 
         # communicate() must ignore BrokenPipeError when feeding stdin
-        self.loop.run_until_complete(proc.communicate(large_data))
+        with test_utils.disable_logger():
+            self.loop.run_until_complete(proc.communicate(large_data))
         self.loop.run_until_complete(proc.wait())
+
+    def test_pause_reading(self):
+        limit = 10
+        size = (limit * 2 + 1)
+
+        @asyncio.coroutine
+        def test_pause_reading():
+            code = '\n'.join((
+                'import sys',
+                'sys.stdout.write("x" * %s)' % size,
+                'sys.stdout.flush()',
+            ))
+
+            connect_read_pipe = self.loop.connect_read_pipe
+
+            @asyncio.coroutine
+            def connect_read_pipe_mock(*args, **kw):
+                connect = connect_read_pipe(*args, **kw)
+                transport, protocol = yield From(connect)
+                transport.pause_reading = mock.Mock()
+                transport.resume_reading = mock.Mock()
+                raise Return(transport, protocol)
+
+            self.loop.connect_read_pipe = connect_read_pipe_mock
+
+            proc = yield From(asyncio.create_subprocess_exec(
+                                         sys.executable, '-c', code,
+                                         stdin=asyncio.subprocess.PIPE,
+                                         stdout=asyncio.subprocess.PIPE,
+                                         limit=limit,
+                                         loop=self.loop))
+            stdout_transport = proc._transport.get_pipe_transport(1)
+
+            stdout, stderr = yield From(proc.communicate())
+
+            # The child process produced more than limit bytes of output,
+            # the stream reader transport should pause the protocol to not
+            # allocate too much memory.
+            raise Return(stdout, stdout_transport)
+
+        # Issue #22685: Ensure that the stream reader pauses the protocol
+        # when the child process produces too much data
+        stdout, transport = self.loop.run_until_complete(test_pause_reading())
+
+        self.assertEqual(stdout, b'x' * size)
+        self.assertTrue(transport.pause_reading.called)
+        self.assertTrue(transport.resume_reading.called)
+
+    def test_stdin_not_inheritable(self):
+        # asyncio issue #209: stdin must not be inheritable, otherwise
+        # the Process.communicate() hangs
+        @asyncio.coroutine
+        def len_message(message):
+            code = 'import sys; data = sys.stdin.read(); print(len(data))'
+            proc = yield From(asyncio.create_subprocess_exec(
+                                          sys.executable, '-c', code,
+                                          stdin=asyncio.subprocess.PIPE,
+                                          stdout=asyncio.subprocess.PIPE,
+                                          stderr=asyncio.subprocess.PIPE,
+                                          close_fds=False,
+                                          loop=self.loop))
+            stdout, stderr = yield From(proc.communicate(message))
+            exitcode = yield From(proc.wait())
+            raise Return(stdout, exitcode)
+
+        output, exitcode = self.loop.run_until_complete(len_message(b'abc'))
+        self.assertEqual(output.rstrip(), b'3')
+        self.assertEqual(exitcode, 0)
+
+    def test_cancel_process_wait(self):
+        # Issue #23140: cancel Process.wait()
+
+        @asyncio.coroutine
+        def cancel_wait():
+            proc = yield From(asyncio.create_subprocess_exec(
+                                          *PROGRAM_BLOCKED,
+                                          loop=self.loop))
+
+            # Create an internal future waiting on the process exit
+            task = self.loop.create_task(proc.wait())
+            self.loop.call_soon(task.cancel)
+            try:
+                yield From(task)
+            except asyncio.CancelledError:
+                pass
+
+            # Cancel the future
+            task.cancel()
+
+            # Kill the process and wait until it is done
+            proc.kill()
+            yield From(proc.wait())
+
+        self.loop.run_until_complete(cancel_wait())
+
+    def test_cancel_make_subprocess_transport_exec(self):
+        @asyncio.coroutine
+        def cancel_make_transport():
+            coro = asyncio.create_subprocess_exec(*PROGRAM_BLOCKED,
+                                                  loop=self.loop)
+            task = self.loop.create_task(coro)
+
+            self.loop.call_soon(task.cancel)
+            try:
+                yield From(task)
+            except asyncio.CancelledError:
+                pass
+
+        # ignore the log:
+        # "Exception during subprocess creation, kill the subprocess"
+        with test_utils.disable_logger():
+            self.loop.run_until_complete(cancel_make_transport())
+
+    def test_cancel_post_init(self):
+        @asyncio.coroutine
+        def cancel_make_transport():
+            coro = self.loop.subprocess_exec(asyncio.SubprocessProtocol,
+                                             *PROGRAM_BLOCKED)
+            task = self.loop.create_task(coro)
+
+            self.loop.call_soon(task.cancel)
+            try:
+                yield From(task)
+            except asyncio.CancelledError:
+                pass
+
+        # ignore the log:
+        # "Exception during subprocess creation, kill the subprocess"
+        with test_utils.disable_logger():
+            self.loop.run_until_complete(cancel_make_transport())
+            test_utils.run_briefly(self.loop)
+
+    def test_close_kill_running(self):
+        @asyncio.coroutine
+        def kill_running():
+            create = self.loop.subprocess_exec(asyncio.SubprocessProtocol,
+                                               *PROGRAM_BLOCKED)
+            transport, protocol = yield From(create)
+
+            non_local = {'kill_called': False}
+            def kill():
+                non_local['kill_called'] = True
+                orig_kill()
+
+            proc = transport.get_extra_info('subprocess')
+            orig_kill = proc.kill
+            proc.kill = kill
+            returncode = transport.get_returncode()
+            transport.close()
+            yield From(transport._wait())
+            raise Return(returncode, non_local['kill_called'])
+
+        # Ignore "Close running child process: kill ..." log
+        with test_utils.disable_logger():
+            returncode, killed = self.loop.run_until_complete(kill_running())
+        self.assertIsNone(returncode)
+
+        # transport.close() must kill the process if it is still running
+        self.assertTrue(killed)
+        test_utils.run_briefly(self.loop)
+
+    def test_close_dont_kill_finished(self):
+        @asyncio.coroutine
+        def kill_running():
+            create = self.loop.subprocess_exec(asyncio.SubprocessProtocol,
+                                               *PROGRAM_BLOCKED)
+            transport, protocol = yield From(create)
+            proc = transport.get_extra_info('subprocess')
+
+            # kill the process (but asyncio is not notified immediatly)
+            proc.kill()
+            proc.wait()
+
+            proc.kill = mock.Mock()
+            proc_returncode = proc.poll()
+            transport_returncode = transport.get_returncode()
+            transport.close()
+            raise Return(proc_returncode, transport_returncode,
+                         proc.kill.called)
+
+        # Ignore "Unknown child process pid ..." log of SafeChildWatcher,
+        # emitted because the test already consumes the exit status:
+        # proc.wait()
+        with test_utils.disable_logger():
+            result = self.loop.run_until_complete(kill_running())
+            test_utils.run_briefly(self.loop)
+
+        proc_returncode, transport_return_code, killed = result
+
+        self.assertIsNotNone(proc_returncode)
+        self.assertIsNone(transport_return_code)
+
+        # transport.close() must not kill the process if it finished, even if
+        # the transport was not notified yet
+        self.assertFalse(killed)
 
 
 if sys.platform != 'win32':
@@ -184,19 +437,12 @@ if sys.platform != 'win32':
         def setUp(self):
             policy = asyncio.get_event_loop_policy()
             self.loop = policy.new_event_loop()
-
-            # ensure that the event loop is passed explicitly in asyncio
-            policy.set_event_loop(None)
+            self.set_event_loop(self.loop)
 
             watcher = self.Watcher()
             watcher.attach_loop(self.loop)
             policy.set_child_watcher(watcher)
-
-        def tearDown(self):
-            policy = asyncio.get_event_loop_policy()
-            policy.set_child_watcher(None)
-            self.loop.close()
-            super(SubprocessWatcherMixin, self).tearDown()
+            self.addCleanup(policy.set_child_watcher, None)
 
     class SubprocessSafeWatcherTests(SubprocessWatcherMixin,
                                      test_utils.TestCase):
@@ -213,17 +459,8 @@ else:
     class SubprocessProactorTests(SubprocessMixin, test_utils.TestCase):
 
         def setUp(self):
-            policy = asyncio.get_event_loop_policy()
             self.loop = asyncio.ProactorEventLoop()
-
-            # ensure that the event loop is passed explicitly in asyncio
-            policy.set_event_loop(None)
-
-        def tearDown(self):
-            policy = asyncio.get_event_loop_policy()
-            self.loop.close()
-            policy.set_event_loop(None)
-            super(SubprocessProactorTests, self).tearDown()
+            self.set_event_loop(self.loop)
 
 
 if __name__ == '__main__':

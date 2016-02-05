@@ -1,9 +1,8 @@
 """Abstract Transport class."""
 
 import sys
-from .compat import flatten_bytes
 
-_PY34 = sys.version_info >= (3, 4)
+from trollius import compat
 
 __all__ = ['BaseTransport', 'ReadTransport', 'WriteTransport',
            'Transport', 'DatagramTransport', 'SubprocessTransport',
@@ -95,8 +94,8 @@ class WriteTransport(BaseTransport):
         The default implementation concatenates the arguments and
         calls write() on the result.
         """
-        data = map(flatten_bytes, list_of_data)
-        self.write(b''.join(data))
+        data = compat.flatten_list_bytes(list_of_data)
+        self.write(data)
 
     def write_eof(self):
         """Close the write end after flushing buffered data.
@@ -235,8 +234,10 @@ class _FlowControlMixin(Transport):
     resume_writing() may be called.
     """
 
-    def __init__(self, extra=None):
+    def __init__(self, extra=None, loop=None):
         super(_FlowControlMixin, self).__init__(extra)
+        assert loop is not None
+        self._loop = loop
         self._protocol_paused = False
         self._set_write_buffer_limits()
 
@@ -269,6 +270,9 @@ class _FlowControlMixin(Transport):
                     'transport': self,
                     'protocol': self._protocol,
                 })
+
+    def get_write_buffer_limits(self):
+        return (self._low_water, self._high_water)
 
     def _set_write_buffer_limits(self, high=None, low=None):
         if high is None:

@@ -33,7 +33,7 @@ Here is a more detailed list of the package contents:
 * an interface for passing work off to a threadpool, for times when you
   absolutely, positively have to use a library that makes blocking I/O calls.
 
-Trollius is a portage of the `Tulip project <http://code.google.com/p/tulip/>`_
+Trollius is a portage of the `asyncio project <https://github.com/python/asyncio>`_
 (``asyncio`` module, `PEP 3156 <http://legacy.python.org/dev/peps/pep-3156/>`_)
 on Python 2. Trollius works on Python 2.6-3.5. It has been tested on Windows,
 Linux, Mac OS X, FreeBSD and OpenIndiana.
@@ -41,12 +41,16 @@ Linux, Mac OS X, FreeBSD and OpenIndiana.
 * `Asyncio documentation <http://docs.python.org/dev/library/asyncio.html>`_
 * `Trollius documentation <http://trollius.readthedocs.org/>`_ (this document)
 * `Trollius project in the Python Cheeseshop (PyPI)
-  <https://pypi.python.org/pypi/trollius>`_
-* `Trollius project at Bitbucket <https://bitbucket.org/enovance/trollius>`_
+  <https://pypi.python.org/pypi/trollius>`_ (download wheel packages and
+  tarballs)
+* `Trollius project at Github <https://github.com/haypo/trollius>`_
+  (bug tracker, source code)
+* Mailing list: `python-tulip Google Group
+  <https://groups.google.com/forum/?fromgroups#!forum/python-tulip>`_
+* IRC: ``#asyncio`` channel on the `Freenode network <https://freenode.net/>`_
 * Copyright/license: Open source, Apache 2.0. Enjoy!
 
-See also the `Tulip project <http://code.google.com/p/tulip/>`_ (asyncio module
-for Python 3.3).
+See also the `asyncio project at Github <https://github.com/python/asyncio>`_.
 
 
 Table Of Contents

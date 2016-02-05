@@ -95,18 +95,17 @@ except AttributeError:
                 self.suppress_ragged_eofs = suppress_ragged_eofs
                 self._makefile_refs = 0
 
-        def wrap_socket(sock, keyfile=None, certfile=None,
-                        server_side=False, cert_reqs=ssl.CERT_NONE,
-                        ssl_version=ssl.PROTOCOL_SSLv23, ca_certs=None,
-                        do_handshake_on_connect=True,
-                        suppress_ragged_eofs=True):
-            return BackportSSLSocket(sock, keyfile=keyfile, certfile=certfile,
-                             server_side=server_side, cert_reqs=cert_reqs,
-                             ssl_version=ssl_version, ca_certs=ca_certs,
-                             do_handshake_on_connect=do_handshake_on_connect,
-                             suppress_ragged_eofs=suppress_ragged_eofs)
+        def wrap_socket(sock, server_hostname=None, **kwargs):
+            # ignore server_hostname parameter, not supported
+            kwargs.pop('server_hostname', None)
+            return BackportSSLSocket(sock, **kwargs)
     else:
-        wrap_socket = ssl.wrap_socket
+        _wrap_socket = ssl.wrap_socket
+
+        def wrap_socket(sock, **kwargs):
+            # ignore server_hostname parameter, not supported
+            kwargs.pop('server_hostname', None)
+            return _wrap_socket(sock, **kwargs)
 
 
     class SSLContext(object):
@@ -119,12 +118,12 @@ except AttributeError:
             self.certfile = certfile
             self.keyfile = keyfile
 
-        def wrap_socket(self, sock, **kw):
+        def wrap_socket(self, sock, **kwargs):
             return wrap_socket(sock,
-                                   ssl_version=self.protocol,
-                                   certfile=self.certfile,
-                                   keyfile=self.keyfile,
-                                   **kw)
+                               ssl_version=self.protocol,
+                               certfile=self.certfile,
+                               keyfile=self.keyfile,
+                               **kwargs)
 
         @property
         def verify_mode(self):

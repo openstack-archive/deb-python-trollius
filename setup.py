@@ -1,18 +1,21 @@
 # Release procedure:
-#  - fill Tulip changelog
-#  - run maybe update_tulip.sh
-#  - run unit tests with concurrent.futures
-#  - run unit tests without concurrent.futures
-#  - run unit tests without ssl: set sys.modules['ssl']=None at startup
+#  - fill trollius changelog
+#  - run maybe ./update-asyncio-step1.sh
+#  - run all tests: tox
 #  - test examples
+#  - check that "python setup.py sdist" contains all files tracked by
+#    the SCM (Mercurial): update MANIFEST.in if needed
+#  - run test on Windows: releaser.py test
 #  - update version in setup.py (version) and doc/conf.py (version, release)
 #  - set release date in doc/changelog.rst
-#  - hg ci
-#  - hg tag trollius-VERSION
-#  - hg push
-#  - python setup.py register sdist bdist_wheel upload
+#  - git commit
+#  - git tag trollius-VERSION
+#  - git push --tags
+#  - git push
+#  - On Linux: python setup.py register sdist bdist_wheel upload
+#  - On Windows: python releaser.py release
 #  - increment version in setup.py (version) and doc/conf.py (version, release)
-#  - hg ci && hg push
+#  - gt commit && git push
 
 import os
 import sys
@@ -25,7 +28,7 @@ except ImportError:
     # We won't be able to build the Wheel file on Windows.
     from distutils.core import setup, Extension
 
-with open("README") as fp:
+with open("README.rst") as fp:
     long_description = fp.read()
 
 extensions = []
@@ -43,14 +46,14 @@ if sys.version_info < (3,):
 
 install_options = {
     "name": "trollius",
-    "version": "1.0.1",
+    "version": "2.0",
     "license": "Apache License 2.0",
     "author": 'Victor Stinner',
     "author_email": 'victor.stinner@gmail.com',
 
     "description": "Port of the Tulip project (asyncio module, PEP 3156) on Python 2",
     "long_description": long_description,
-    "url": "https://bitbucket.org/enovance/trollius/",
+    "url": "https://github.com/haypo/trollius",
 
     "classifiers": [
         "Programming Language :: Python",

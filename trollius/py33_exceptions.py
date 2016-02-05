@@ -1,13 +1,18 @@
 __all__ = ['BlockingIOError', 'BrokenPipeError', 'ChildProcessError',
            'ConnectionRefusedError', 'ConnectionResetError',
            'InterruptedError', 'ConnectionAbortedError', 'PermissionError',
-           'FileNotFoundError',
+           'FileNotFoundError', 'ProcessLookupError',
            ]
 
 import errno
 import select
 import socket
 import sys
+try:
+    import ssl
+except ImportError:
+    ssl = None
+
 from .compat import PY33
 
 if PY33:
@@ -121,6 +126,8 @@ if not PY33:
         try:
             return func(*args, **kw)
         except (socket.error, IOError, OSError) as exc:
+            if ssl is not None and isinstance(exc, ssl.SSLError):
+                raise
             if hasattr(exc, 'winerror'):
                 _wrap_error(exc, _MAP_ERRNO, exc.winerror)
                 # _MAP_ERRNO does not contain all Windows errors.

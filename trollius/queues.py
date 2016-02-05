@@ -1,11 +1,11 @@
 """Queues"""
 
-__all__ = ['Queue', 'PriorityQueue', 'LifoQueue', 'JoinableQueue',
-           'QueueFull', 'QueueEmpty']
+__all__ = ['Queue', 'PriorityQueue', 'LifoQueue', 'QueueFull', 'QueueEmpty']
 
 import collections
 import heapq
 
+from . import compat
 from . import events
 from . import futures
 from . import locks
@@ -13,12 +13,16 @@ from .coroutines import coroutine, From, Return
 
 
 class QueueEmpty(Exception):
-    'Exception raised by Queue.get(block=0)/get_nowait().'
+    """Exception raised when Queue.get_nowait() is called on a Queue object
+    which is empty.
+    """
     pass
 
 
 class QueueFull(Exception):
-    'Exception raised by Queue.put(block=0)/put_nowait().'
+    """Exception raised when the Queue.put_nowait() method is called on a Queue
+    object which is full.
+    """
     pass
 
 
@@ -26,11 +30,11 @@ class Queue(object):
     """A queue, useful for coordinating producer and consumer coroutines.
 
     If maxsize is less than or equal to zero, the queue size is infinite. If it
-    is an integer greater than 0, then "yield From(put())" will block when the
+    is an integer greater than 0, then "yield from put()" will block when the
     queue reaches maxsize, until an item is removed by get().
 
     Unlike the standard library Queue, you can reliably know this Queue's size
-    with qsize(), since your single-threaded trollius application won't be
+    with qsize(), since your single-threaded asyncio application won't be
     interrupted between calling qsize() and doing an operation on the Queue.
     """
 
@@ -45,7 +49,12 @@ class Queue(object):
         self._getters = collections.deque()
         # Pairs of (item, Future).
         self._putters = collections.deque()
+        self._unfinished_tasks = 0
+        self._finished = locks.Event(loop=self._loop)
+        self._finished.set()
         self._init(maxsize)
+
+    # These three are overridable in subclasses.
 
     def _init(self, maxsize):
         self._queue = collections.deque()
@@ -55,6 +64,13 @@ class Queue(object):
 
     def _put(self, item):
         self._queue.append(item)
+
+    # End of the overridable methods.
+
+    def __put_internal(self, item):
+        self._put(item)
+        self._unfinished_tasks += 1
+        self._finished.clear()
 
     def __repr__(self):
         return '<{0} at {1:#x} {2}>'.format(
@@ -71,6 +87,8 @@ class Queue(object):
             result += ' _getters[{0}]'.format(len(self._getters))
         if self._putters:
             result += ' _putters[{0}]'.format(len(self._putters))
+        if self._unfinished_tasks:
+            result += ' tasks={0}'.format(self._unfinished_tasks)
         return result
 
     def _consume_done_getters(self):
@@ -111,8 +129,10 @@ class Queue(object):
     def put(self, item):
         """Put an item into the queue.
 
-        If you yield From(put()), wait until a free slot is available
-        before adding item.
+        Put an item into the queue. If the queue is full, wait until a free
+        slot is available before adding item.
+
+        This method is a coroutine.
         """
         self._consume_done_getters()
         if self._getters:
@@ -120,10 +140,9 @@ class Queue(object):
                 'queue non-empty, why are getters waiting?')
 
             getter = self._getters.popleft()
+            self.__put_internal(item)
 
-            # Use _put and _get instead of passing item straight to getter, in
-            # case a subclass has logic that must run (e.g. JoinableQueue).
-            self._put(item)
+            # getter cannot be cancelled, we just removed done getters
             getter.set_result(self._get())
 
         elif self._maxsize > 0 and self._maxsize <= self.qsize():
@@ -133,7 +152,7 @@ class Queue(object):
             yield From(waiter)
 
         else:
-            self._put(item)
+            self.__put_internal(item)
 
     def put_nowait(self, item):
         """Put an item into the queue without blocking.
@@ -146,28 +165,29 @@ class Queue(object):
                 'queue non-empty, why are getters waiting?')
 
             getter = self._getters.popleft()
+            self.__put_internal(item)
 
-            # Use _put and _get instead of passing item straight to getter, in
-            # case a subclass has logic that must run (e.g. JoinableQueue).
-            self._put(item)
+            # getter cannot be cancelled, we just removed done getters
             getter.set_result(self._get())
 
         elif self._maxsize > 0 and self._maxsize <= self.qsize():
             raise QueueFull
         else:
-            self._put(item)
+            self.__put_internal(item)
 
     @coroutine
     def get(self):
         """Remove and return an item from the queue.
 
-        If you yield From(get()), wait until a item is available.
+        If queue is empty, wait until an item is available.
+
+        This method is a coroutine.
         """
         self._consume_done_putters()
         if self._putters:
             assert self.full(), 'queue not full, why are putters waiting?'
             item, putter = self._putters.popleft()
-            self._put(item)
+            self.__put_internal(item)
 
             # When a getter runs and frees up a slot so this putter can
             # run, we need to defer the put for a tick to ensure that
@@ -195,8 +215,10 @@ class Queue(object):
         if self._putters:
             assert self.full(), 'queue not full, why are putters waiting?'
             item, putter = self._putters.popleft()
-            self._put(item)
+            self.__put_internal(item)
             # Wake putter on next tick.
+
+            # getter cannot be cancelled, we just removed done putters
             putter.set_result(None)
 
             return self._get()
@@ -205,6 +227,38 @@ class Queue(object):
             return self._get()
         else:
             raise QueueEmpty
+
+    def task_done(self):
+        """Indicate that a formerly enqueued task is complete.
+
+        Used by queue consumers. For each get() used to fetch a task,
+        a subsequent call to task_done() tells the queue that the processing
+        on the task is complete.
+
+        If a join() is currently blocking, it will resume when all items have
+        been processed (meaning that a task_done() call was received for every
+        item that had been put() into the queue).
+
+        Raises ValueError if called more times than there were items placed in
+        the queue.
+        """
+        if self._unfinished_tasks <= 0:
+            raise ValueError('task_done() called too many times')
+        self._unfinished_tasks -= 1
+        if self._unfinished_tasks == 0:
+            self._finished.set()
+
+    @coroutine
+    def join(self):
+        """Block until all items in the queue have been gotten and processed.
+
+        The count of unfinished tasks goes up whenever an item is added to the
+        queue. The count goes down whenever a consumer calls task_done() to
+        indicate that the item was retrieved and all work on it is complete.
+        When the count of unfinished tasks drops to zero, join() unblocks.
+        """
+        if self._unfinished_tasks > 0:
+            yield From(self._finished.wait())
 
 
 class PriorityQueue(Queue):
@@ -236,54 +290,7 @@ class LifoQueue(Queue):
         return self._queue.pop()
 
 
-class JoinableQueue(Queue):
-    """A subclass of Queue with task_done() and join() methods."""
-
-    def __init__(self, maxsize=0, loop=None):
-        super(JoinableQueue, self).__init__(maxsize=maxsize, loop=loop)
-        self._unfinished_tasks = 0
-        self._finished = locks.Event(loop=self._loop)
-        self._finished.set()
-
-    def _format(self):
-        result = Queue._format(self)
-        if self._unfinished_tasks:
-            result += ' tasks={0}'.format(self._unfinished_tasks)
-        return result
-
-    def _put(self, item):
-        super(JoinableQueue, self)._put(item)
-        self._unfinished_tasks += 1
-        self._finished.clear()
-
-    def task_done(self):
-        """Indicate that a formerly enqueued task is complete.
-
-        Used by queue consumers. For each get() used to fetch a task,
-        a subsequent call to task_done() tells the queue that the processing
-        on the task is complete.
-
-        If a join() is currently blocking, it will resume when all items have
-        been processed (meaning that a task_done() call was received for every
-        item that had been put() into the queue).
-
-        Raises ValueError if called more times than there were items placed in
-        the queue.
-        """
-        if self._unfinished_tasks <= 0:
-            raise ValueError('task_done() called too many times')
-        self._unfinished_tasks -= 1
-        if self._unfinished_tasks == 0:
-            self._finished.set()
-
-    @coroutine
-    def join(self):
-        """Block until all items in the queue have been gotten and processed.
-
-        The count of unfinished tasks goes up whenever an item is added to the
-        queue. The count goes down whenever a consumer thread calls task_done()
-        to indicate that the item was retrieved and all work on it is complete.
-        When the count of unfinished tasks drops to zero, join() unblocks.
-        """
-        if self._unfinished_tasks > 0:
-            yield From(self._finished.wait())
+if not compat.PY35:
+    JoinableQueue = Queue
+    """Deprecated alias for Queue."""
+    __all__.append('JoinableQueue')

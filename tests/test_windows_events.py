@@ -1,10 +1,9 @@
-from trollius import test_utils
 import os
 import sys
-import unittest
+from trollius.test_utils import unittest
 
 if sys.platform != 'win32':
-    raise test_utils.SkipTest('Windows only')
+    raise unittest.SkipTest('Windows only')
 
 import trollius as asyncio
 from trollius import Return, From
@@ -12,6 +11,8 @@ from trollius import _overlapped
 from trollius import py33_winapi as _winapi
 from trollius import windows_events
 from trollius.py33_exceptions import PermissionError, FileNotFoundError
+from trollius import test_utils
+from trollius.test_utils import mock
 
 
 class UpperProto(asyncio.Protocol):
@@ -37,7 +38,7 @@ class ProactorTests(test_utils.TestCase):
     def test_close(self):
         a, b = self.loop._socketpair()
         trans = self.loop._make_socket_transport(a, asyncio.Protocol())
-        f = asyncio.async(self.loop.sock_recv(b, 100))
+        f = asyncio.ensure_future(self.loop.sock_recv(b, 100))
         trans.close()
         self.loop.run_until_complete(f)
         self.assertEqual(f.result(), b'')
@@ -68,7 +69,8 @@ class ProactorTests(test_utils.TestCase):
         clients = []
         for i in range(5):
             stream_reader = asyncio.StreamReader(loop=self.loop)
-            protocol = asyncio.StreamReaderProtocol(stream_reader)
+            protocol = asyncio.StreamReaderProtocol(stream_reader,
+                                                    loop=self.loop)
             trans, proto = yield From(self.loop.create_pipe_connection(
                 lambda: protocol, ADDRESS))
             self.assertIsInstance(trans, asyncio.Transport)
@@ -91,6 +93,18 @@ class ProactorTests(test_utils.TestCase):
 
         raise Return('done')
 
+    def test_connect_pipe_cancel(self):
+        exc = OSError()
+        exc.winerror = _overlapped.ERROR_PIPE_BUSY
+        with mock.patch.object(_overlapped, 'ConnectPipe', side_effect=exc) as connect:
+            coro = self.loop._proactor.connect_pipe('pipe_address')
+            task = self.loop.create_task(coro)
+
+            # check that it's possible to cancel connect_pipe()
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                self.loop.run_until_complete(task)
+
     def test_wait_for_handle(self):
         event = _overlapped.CreateEvent(None, True, False, None)
         self.addCleanup(_winapi.CloseHandle, event)
@@ -99,23 +113,28 @@ class ProactorTests(test_utils.TestCase):
         # result should be False at timeout
         fut = self.loop._proactor.wait_for_handle(event, 0.5)
         start = self.loop.time()
-        self.loop.run_until_complete(fut)
+        done = self.loop.run_until_complete(fut)
         elapsed = self.loop.time() - start
+
+        self.assertEqual(done, False)
         self.assertFalse(fut.result())
         self.assertTrue(0.48 < elapsed < 0.9, elapsed)
 
         _overlapped.SetEvent(event)
 
-        # Wait for for set event;
+        # Wait for set event;
         # result should be True immediately
         fut = self.loop._proactor.wait_for_handle(event, 10)
         start = self.loop.time()
-        self.loop.run_until_complete(fut)
+        done = self.loop.run_until_complete(fut)
         elapsed = self.loop.time() - start
+
+        self.assertEqual(done, True)
         self.assertTrue(fut.result())
         self.assertTrue(0 <= elapsed < 0.3, elapsed)
 
-        # Tulip issue #195: cancelling a done _WaitHandleFuture must not crash
+        # asyncio issue #195: cancelling a done _WaitHandleFuture
+        # must not crash
         fut.cancel()
 
     def test_wait_for_handle_cancel(self):
@@ -132,7 +151,8 @@ class ProactorTests(test_utils.TestCase):
         elapsed = self.loop.time() - start
         self.assertTrue(0 <= elapsed < 0.1, elapsed)
 
-        # Tulip issue #195: cancelling a _WaitHandleFuture twice must not crash
+        # asyncio issue #195: cancelling a _WaitHandleFuture twice
+        # must not crash
         fut = self.loop._proactor.wait_for_handle(event)
         fut.cancel()
         fut.cancel()

@@ -178,6 +178,8 @@ class BaseSelector(object):
         SelectorKey for this file object
         """
         mapping = self.get_map()
+        if mapping is None:
+            raise RuntimeError('Selector is closed')
         try:
             return mapping[fileobj]
         except KeyError:
@@ -260,6 +262,7 @@ class _BaseSelectorImpl(BaseSelector):
 
     def close(self):
         self._fd_to_key.clear()
+        self._map = None
 
     def get_map(self):
         return self._map
@@ -408,7 +411,7 @@ if hasattr(select, 'epoll'):
             key = super(EpollSelector, self).unregister(fileobj)
             try:
                 self._epoll.unregister(key.fd)
-            except OSError:
+            except IOError:
                 # This can happen if the FD was closed since it
                 # was registered.
                 pass
@@ -423,7 +426,12 @@ if hasattr(select, 'epoll'):
                 # epoll_wait() has a resolution of 1 millisecond, round away
                 # from zero to wait *at least* timeout seconds.
                 timeout = math.ceil(timeout * 1e3) * 1e-3
-            max_ev = len(self._fd_to_key)
+
+            # epoll_wait() expects `maxevents` to be greater than zero;
+            # we want to make sure that `select()` can be called when no
+            # FD is registered.
+            max_ev = max(len(self._fd_to_key), 1)
+
             ready = []
             try:
                 fd_event_list = wrap_error(self._epoll.poll, timeout, max_ev)
@@ -577,7 +585,8 @@ if hasattr(select, 'kqueue'):
             super(KqueueSelector, self).close()
 
 
-# Choose the best implementation: roughly, epoll|kqueue|devpoll > poll > select.
+# Choose the best implementation, roughly:
+#    epoll|kqueue|devpoll > poll > select.
 # select() also can't accept a FD > FD_SETSIZE (usually around 1024)
 if 'KqueueSelector' in globals():
     DefaultSelector = KqueueSelector

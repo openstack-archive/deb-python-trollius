@@ -7,12 +7,14 @@ except ImportError:
 import re
 import sys
 import threading
-import unittest
 
 import trollius as asyncio
+from trollius import From
+from trollius import compat
+from trollius import test_support as support
 from trollius import test_utils
-from trollius import test_support as support   # gc_collect
 from trollius.test_utils import mock
+from trollius.test_utils import unittest
 
 
 def get_thread_ident():
@@ -32,6 +34,7 @@ class FutureTests(test_utils.TestCase):
 
     def setUp(self):
         self.loop = self.new_test_loop()
+        self.addCleanup(self.loop.close)
 
     def test_initial_state(self):
         f = asyncio.Future(loop=self.loop)
@@ -114,7 +117,8 @@ class FutureTests(test_utils.TestCase):
         exc = RuntimeError()
         f_exception = asyncio.Future(loop=self.loop)
         f_exception.set_exception(exc)
-        self.assertEqual(repr(f_exception), '<Future finished exception=RuntimeError()>')
+        self.assertEqual(repr(f_exception),
+                         '<Future finished exception=RuntimeError()>')
         self.assertIs(f_exception.exception(), exc)
 
         def func_repr(func):
@@ -227,7 +231,7 @@ class FutureTests(test_utils.TestCase):
         del fut
         self.assertFalse(m_log.error.called)
 
-    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future(self):
 
         def run(arg):
@@ -245,7 +249,7 @@ class FutureTests(test_utils.TestCase):
         f2 = asyncio.wrap_future(f1)
         self.assertIs(f1, f2)
 
-    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     @mock.patch('trollius.futures.events')
     def test_wrap_future_use_global_loop(self, m_events):
         def run(arg):
@@ -255,7 +259,7 @@ class FutureTests(test_utils.TestCase):
         f2 = asyncio.wrap_future(f1)
         self.assertIs(m_events.get_event_loop.return_value, f2._loop)
 
-    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel(self):
         f1 = concurrent.futures.Future()
         f2 = asyncio.wrap_future(f1, loop=self.loop)
@@ -264,7 +268,7 @@ class FutureTests(test_utils.TestCase):
         self.assertTrue(f1.cancelled())
         self.assertTrue(f2.cancelled())
 
-    @test_utils.skipIf(concurrent is None, 'need concurrent.futures')
+    @unittest.skipIf(concurrent is None, 'need concurrent.futures')
     def test_wrap_future_cancel2(self):
         f1 = concurrent.futures.Future()
         f2 = asyncio.wrap_future(f1, loop=self.loop)
@@ -279,11 +283,17 @@ class FutureTests(test_utils.TestCase):
         self.loop.set_debug(True)
 
         future = asyncio.Future(loop=self.loop)
-        self.check_soure_traceback(future._source_traceback, -1)
+        lineno = sys._getframe().f_lineno - 1
+        self.assertIsInstance(future._source_traceback, list)
+        filename = sys._getframe().f_code.co_filename
+        self.assertEqual(future._source_traceback[-1][:3],
+                         (filename,
+                          lineno,
+                          'test_future_source_traceback'))
 
     @mock.patch('trollius.base_events.logger')
-    def test_future_exception_never_retrieved(self, m_log):
-        self.loop.set_debug(True)
+    def check_future_exception_never_retrieved(self, debug, m_log):
+        self.loop.set_debug(debug)
 
         def memory_error():
             try:
@@ -293,39 +303,69 @@ class FutureTests(test_utils.TestCase):
         exc = memory_error()
 
         future = asyncio.Future(loop=self.loop)
-        source_traceback = future._source_traceback
+        if debug:
+            source_traceback = future._source_traceback
         future.set_exception(exc)
         future = None
         test_utils.run_briefly(self.loop)
         support.gc_collect()
 
         if sys.version_info >= (3, 4):
-            frame = source_traceback[-1]
-            regex = (r'^Future exception was never retrieved\n'
-                     r'future: <Future finished exception=MemoryError\(\) created at {filename}:{lineno}>\n'
-                     r'source_traceback: Object created at \(most recent call last\):\n'
-                     r'  File'
-                     r'.*\n'
-                     r'  File "{filename}", line {lineno}, in test_future_exception_never_retrieved\n'
-                     r'    future = asyncio\.Future\(loop=self\.loop\)$'
-                     ).format(filename=re.escape(frame[0]), lineno=frame[1])
+            if debug:
+                frame = source_traceback[-1]
+                regex = (r'^Future exception was never retrieved\n'
+                         r'future: <Future finished exception=MemoryError\(\) '
+                             r'created at {filename}:{lineno}>\n'
+                         r'source_traceback: Object '
+                            r'created at \(most recent call last\):\n'
+                         r'  File'
+                         r'.*\n'
+                         r'  File "{filename}", line {lineno}, '
+                            r'in check_future_exception_never_retrieved\n'
+                         r'    future = asyncio\.Future\(loop=self\.loop\)$'
+                         ).format(filename=re.escape(frame[0]),
+                                  lineno=frame[1])
+            else:
+                regex = (r'^Future exception was never retrieved\n'
+                         r'future: '
+                            r'<Future finished exception=MemoryError\(\)>$'
+                         )
             exc_info = (type(exc), exc, exc.__traceback__)
             m_log.error.assert_called_once_with(mock.ANY, exc_info=exc_info)
         else:
-            frame = source_traceback[-1]
-            regex = (r'^Future/Task exception was never retrieved\n'
-                     r'Future/Task created at \(most recent call last\):\n'
-                     r'  File'
-                     r'.*\n'
-                     r'  File "{filename}", line {lineno}, in test_future_exception_never_retrieved\n'
-                     r'    future = asyncio\.Future\(loop=self\.loop\)\n'
-                     r'Traceback \(most recent call last\):\n'
-                     r'.*\n'
-                     r'MemoryError$'
-                     ).format(filename=re.escape(frame[0]), lineno=frame[1])
+            if debug:
+                frame = source_traceback[-1]
+                regex = (r'^Future/Task exception was never retrieved\n'
+                         r'Future/Task created at \(most recent call last\):\n'
+                         r'  File'
+                         r'.*\n'
+                         r'  File "{filename}", line {lineno}, '
+                            r'in check_future_exception_never_retrieved\n'
+                         r'    future = asyncio\.Future\(loop=self\.loop\)\n'
+                         r'Traceback \(most recent call last\):\n'
+                         r'.*\n'
+                         r'MemoryError$'
+                         ).format(filename=re.escape(frame[0]),
+                                  lineno=frame[1])
+            elif compat.PY3:
+                regex = (r'^Future/Task exception was never retrieved\n'
+                         r'Traceback \(most recent call last\):\n'
+                         r'.*\n'
+                         r'MemoryError$'
+                         )
+            else:
+                regex = (r'^Future/Task exception was never retrieved\n'
+                         r'MemoryError$'
+                         )
             m_log.error.assert_called_once_with(mock.ANY, exc_info=False)
         message = m_log.error.call_args[0][0]
         self.assertRegex(message, re.compile(regex, re.DOTALL))
+
+    def test_future_exception_never_retrieved(self):
+        self.check_future_exception_never_retrieved(False)
+
+    def test_future_exception_never_retrieved_debug(self):
+        self.check_future_exception_never_retrieved(True)
 
     def test_set_result_unless_cancelled(self):
         fut = asyncio.Future(loop=self.loop)

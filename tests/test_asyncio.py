@@ -2,7 +2,7 @@ from trollius import test_utils
 from trollius import From, Return
 import trollius
 import trollius.coroutines
-import unittest
+from trollius.test_utils import unittest
 
 try:
     import asyncio
@@ -87,7 +87,7 @@ class AsyncioTests(test_utils.TestCase):
         fut = asyncio.Future()
         self.assertIs(fut._loop, self.loop)
 
-        fut2 = trollius.async(fut)
+        fut2 = trollius.ensure_future(fut)
         self.assertIs(fut2, fut)
         self.assertIs(fut._loop, self.loop)
 

@@ -6,11 +6,13 @@ __all__ = ['StreamReader', 'StreamWriter', 'StreamReaderProtocol',
            ]
 
 import socket
+import sys
 
 if hasattr(socket, 'AF_UNIX'):
     __all__.extend(['open_unix_connection', 'start_unix_server'])
 
 from . import coroutines
+from . import compat
 from . import events
 from . import futures
 from . import protocols
@@ -99,8 +101,8 @@ def start_server(client_connected_cb, host=None, port=None,
                                         loop=loop)
         return protocol
 
-    result = yield From(loop.create_server(factory, host, port, **kwds))
-    raise Return(result)
+    server = yield From(loop.create_server(factory, host, port, **kwds))
+    raise Return(server)
 
 
 if hasattr(socket, 'AF_UNIX'):
@@ -133,8 +135,8 @@ if hasattr(socket, 'AF_UNIX'):
                                             loop=loop)
             return protocol
 
-        res = (yield From(loop.create_unix_server(factory, path, **kwds)))
-        raise Return(res)
+        server = (yield From(loop.create_unix_server(factory, path, **kwds)))
+        raise Return(server)
 
 
 class FlowControlMixin(protocols.Protocol):
@@ -148,7 +150,10 @@ class FlowControlMixin(protocols.Protocol):
     """
 
     def __init__(self, loop=None):
-        self._loop = loop  # May be None; we may never need it.
+        if loop is None:
+            self._loop = events.get_event_loop()
+        else:
+            self._loop = loop
         self._paused = False
         self._drain_waiter = None
         self._connection_lost = False
@@ -309,11 +314,12 @@ class StreamReader(object):
         # it also doubles as half the buffer limit.
         self._limit = limit
         if loop is None:
-            loop = events.get_event_loop()
-        self._loop = loop
+            self._loop = events.get_event_loop()
+        else:
+            self._loop = loop
         self._buffer = bytearray()
-        self._eof = False  # Whether we're done.
-        self._waiter = None  # A future.
+        self._eof = False    # Whether we're done.
+        self._waiter = None  # A future used by _wait_for_data()
         self._exception = None
         self._transport = None
         self._paused = False
@@ -330,6 +336,14 @@ class StreamReader(object):
             if not waiter.cancelled():
                 waiter.set_exception(exc)
 
+    def _wakeup_waiter(self):
+        """Wakeup read() or readline() function waiting for data or EOF."""
+        waiter = self._waiter
+        if waiter is not None:
+            self._waiter = None
+            if not waiter.cancelled():
+                waiter.set_result(None)
+
     def set_transport(self, transport):
         assert self._transport is None, 'Transport already set'
         self._transport = transport
@@ -341,11 +355,7 @@ class StreamReader(object):
 
     def feed_eof(self):
         self._eof = True
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(True)
+        self._wakeup_waiter()
 
     def at_eof(self):
         """Return True if the buffer is empty and 'feed_eof' was called."""
@@ -358,12 +368,7 @@ class StreamReader(object):
             return
 
         self._buffer.extend(data)
-
-        waiter = self._waiter
-        if waiter is not None:
-            self._waiter = None
-            if not waiter.cancelled():
-                waiter.set_result(False)
+        self._wakeup_waiter()
 
         if (self._transport is not None and
             not self._paused and
@@ -378,7 +383,9 @@ class StreamReader(object):
             else:
                 self._paused = True
 
-    def _create_waiter(self, func_name):
+    @coroutine
+    def _wait_for_data(self, func_name):
+        """Wait until feed_data() or feed_eof() is called."""
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
         # would have an unexpected behaviour. It would not possible to know
@@ -386,7 +393,19 @@ class StreamReader(object):
         if self._waiter is not None:
             raise RuntimeError('%s() called while another coroutine is '
                                'already waiting for incoming data' % func_name)
-        return futures.Future(loop=self._loop)
+
+        # In asyncio, there is no need to recheck if we got data or EOF thanks
+        # to "yield from". In trollius, a StreamReader method can be called
+        # after the _wait_for_data() coroutine is scheduled and before it is
+        # really executed.
+        if self._buffer or self._eof:
+            return
+
+        self._waiter = futures.Future(loop=self._loop)
+        try:
+            yield From(self._waiter)
+        finally:
+            self._waiter = None
 
     @coroutine
     def readline(self):
@@ -416,11 +435,7 @@ class StreamReader(object):
                 break
 
             if not_enough:
-                self._waiter = self._create_waiter('readline')
-                try:
-                    yield From(self._waiter)
-                finally:
-                    self._waiter = None
+                yield From(self._wait_for_data('readline'))
 
         self._maybe_resume_transport()
         raise Return(bytes(line))
@@ -447,11 +462,7 @@ class StreamReader(object):
             raise Return(b''.join(blocks))
         else:
             if not self._buffer and not self._eof:
-                self._waiter = self._create_waiter('read')
-                try:
-                    yield From(self._waiter)
-                finally:
-                    self._waiter = None
+                yield From(self._wait_for_data('read'))
 
         if n < 0 or len(self._buffer) <= n:
             data = bytes(self._buffer)
@@ -486,3 +497,16 @@ class StreamReader(object):
             n -= len(block)
 
         raise Return(b''.join(blocks))
+
+    # FIXME: should we support __aiter__ and __anext__ in Trollius?
+    #if compat.PY35:
+    #    @coroutine
+    #    def __aiter__(self):
+    #        return self
+    #
+    #    @coroutine
+    #    def __anext__(self):
+    #        val = yield from self.readline()
+    #        if val == b'':
+    #            raise StopAsyncIteration
+    #        return val

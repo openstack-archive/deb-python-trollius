@@ -21,7 +21,6 @@ try:
 except ImportError:
     import repr as reprlib   # Python 2
 
-from trollius import compat
 try:
     import asyncio
 except (ImportError, SyntaxError):
@@ -29,37 +28,20 @@ except (ImportError, SyntaxError):
     # from" if asyncio module is in the Python path
     asyncio = None
 
-
-_PY34 = sys.version_info >= (3, 4)
-
-if not compat.PY34:
-    # Backported functools.unwrap() from Python 3.4, without the stop parameter
-    # (not needed here)
-    #
-    # @trollius.coroutine decorator chains wrapper using @functools.wrap
-    # backported from Python 3.4.
-    def _unwrap(func):
-        f = func  # remember the original func for error reporting
-        memo = set((id(f),))   # Memoise by id to tolerate non-hashable objects
-        while hasattr(func, '__wrapped__'):
-            func = func.__wrapped__
-            id_func = id(func)
-            if id_func in memo:
-                raise ValueError('wrapper loop when unwrapping {0!r}'.format(f))
-            memo.add(id_func)
-        return func
-else:
-    _unwrap = inspect.unwrap
+from trollius import compat
 
 
 def _get_function_source(func):
-    func = _unwrap(func)
+    if compat.PY34:
+        func = inspect.unwrap(func)
+    elif hasattr(func, '__wrapped__'):
+        func = func.__wrapped__
     if inspect.isfunction(func):
         code = func.__code__
         return (code.co_filename, code.co_firstlineno)
     if isinstance(func, functools.partial):
         return _get_function_source(func.func)
-    if _PY34 and isinstance(func, functools.partialmethod):
+    if compat.PY34 and isinstance(func, functools.partialmethod):
         return _get_function_source(func.func)
     return None
 
@@ -82,18 +64,21 @@ def _format_callback(func, args, suffix=''):
             suffix = _format_args(args) + suffix
         return _format_callback(func.func, func.args, suffix)
 
-    if compat.PY33:
-        func_repr = getattr(func, '__qualname__', None)
+    if hasattr(func, '__qualname__'):
+        func_repr = getattr(func, '__qualname__')
+    elif hasattr(func, '__name__'):
+        func_repr = getattr(func, '__name__')
     else:
-        func_repr = getattr(func, '__name__', None)
-    if not func_repr:
         func_repr = repr(func)
 
     if args is not None:
         func_repr += _format_args(args)
     if suffix:
         func_repr += suffix
+    return func_repr
 
+def _format_callback_source(func, args):
+    func_repr = _format_callback(func, args)
     source = _get_function_source(func)
     if source:
         func_repr += ' at %s:%s' % source
@@ -104,7 +89,7 @@ class Handle(object):
     """Object returned by callback registration methods."""
 
     __slots__ = ('_callback', '_args', '_cancelled', '_loop',
-                 '_source_traceback', '__weakref__')
+                 '_source_traceback', '_repr', '__weakref__')
 
     def __init__(self, callback, args, loop):
         assert not isinstance(callback, Handle), 'A Handle is not a callback'
@@ -112,32 +97,45 @@ class Handle(object):
         self._callback = callback
         self._args = args
         self._cancelled = False
+        self._repr = None
         if self._loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
         else:
             self._source_traceback = None
 
-    def __repr__(self):
+    def _repr_info(self):
         info = [self.__class__.__name__]
         if self._cancelled:
             info.append('cancelled')
         if self._callback is not None:
-            info.append(_format_callback(self._callback, self._args))
+            info.append(_format_callback_source(self._callback, self._args))
         if self._source_traceback:
             frame = self._source_traceback[-1]
             info.append('created at %s:%s' % (frame[0], frame[1]))
+        return info
+
+    def __repr__(self):
+        if self._repr is not None:
+            return self._repr
+        info = self._repr_info()
         return '<%s>' % ' '.join(info)
 
     def cancel(self):
-        self._cancelled = True
-        self._callback = None
-        self._args = None
+        if not self._cancelled:
+            self._cancelled = True
+            if self._loop.get_debug():
+                # Keep a representation in debug mode to keep callback and
+                # parameters. For example, to log the warning
+                # "Executing <Handle...> took 2.5 second"
+                self._repr = repr(self)
+            self._callback = None
+            self._args = None
 
     def _run(self):
         try:
             self._callback(*self._args)
         except Exception as exc:
-            cb = _format_callback(self._callback, self._args)
+            cb = _format_callback_source(self._callback, self._args)
             msg = 'Exception in callback {0}'.format(cb)
             context = {
                 'message': msg,
@@ -153,7 +151,7 @@ class Handle(object):
 class TimerHandle(Handle):
     """Object returned by timed callback registration methods."""
 
-    __slots__ = ['_when']
+    __slots__ = ['_scheduled', '_when']
 
     def __init__(self, when, callback, args, loop):
         assert when is not None
@@ -161,18 +159,13 @@ class TimerHandle(Handle):
         if self._source_traceback:
             del self._source_traceback[-1]
         self._when = when
+        self._scheduled = False
 
-    def __repr__(self):
-        info = []
-        if self._cancelled:
-            info.append('cancelled')
-        info.append('when=%s' % self._when)
-        if self._callback is not None:
-            info.append(_format_callback(self._callback, self._args))
-        if self._source_traceback:
-            frame = self._source_traceback[-1]
-            info.append('created at %s:%s' % (frame[0], frame[1]))
-        return '<%s %s>' % (self.__class__.__name__, ' '.join(info))
+    def _repr_info(self):
+        info = super(TimerHandle, self)._repr_info()
+        pos = 2 if self._cancelled else 1
+        info.insert(pos, 'when=%s' % self._when)
+        return info
 
     def __hash__(self):
         return hash(self._when)
@@ -204,6 +197,11 @@ class TimerHandle(Handle):
     def __ne__(self, other):
         equal = self.__eq__(other)
         return NotImplemented if equal is NotImplemented else not equal
+
+    def cancel(self):
+        if not self._cancelled:
+            self._loop._timer_handle_cancelled(self)
+        super(TimerHandle, self).cancel()
 
 
 class AbstractServer(object):
@@ -270,6 +268,10 @@ else:
 
         # Methods scheduling callbacks.  All these return Handles.
 
+        def _timer_handle_cancelled(self, handle):
+            """Notification that a TimerHandle has been cancelled."""
+            raise NotImplementedError
+
         def call_soon(self, callback, *args):
             return self.call_later(0, callback, *args)
 
@@ -292,7 +294,7 @@ else:
         def call_soon_threadsafe(self, callback, *args):
             raise NotImplementedError
 
-        def run_in_executor(self, executor, callback, *args):
+        def run_in_executor(self, executor, func, *args):
             raise NotImplementedError
 
         def set_default_executor(self, executor):
@@ -451,6 +453,14 @@ else:
         def remove_signal_handler(self, sig):
             raise NotImplementedError
 
+        # Task factory.
+
+        def set_task_factory(self, factory):
+            raise NotImplementedError
+
+        def get_task_factory(self):
+            raise NotImplementedError
+
         # Error handlers.
 
         def set_exception_handler(self, handler):
@@ -536,9 +546,9 @@ class BaseDefaultEventLoopPolicy(AbstractEventLoopPolicy):
             not self._local._set_called and
             isinstance(threading.current_thread(), threading._MainThread)):
             self.set_event_loop(self.new_event_loop())
-        assert self._local._loop is not None, \
-               ('There is no current event loop in thread %r.' %
-                threading.current_thread().name)
+        if self._local._loop is None:
+            raise RuntimeError('There is no current event loop in thread %r.'
+                               % threading.current_thread().name)
         return self._local._loop
 
     def set_event_loop(self, loop):

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Run Tulip unittests.
+"""Run trollius unittests.
 
 Usage:
   python3 runtests.py [flags] [pattern] ...
@@ -29,7 +29,8 @@ import random
 import re
 import sys
 import textwrap
-from trollius.compat import PY33
+PY2 = (sys.version_info < (3,))
+PY33 = (sys.version_info >= (3, 3))
 if PY33:
     import importlib.machinery
 else:
@@ -38,25 +39,31 @@ try:
     import coverage
 except ImportError:
     coverage = None
-if sys.version_info < (3,):
+if PY2:
     sys.exc_clear()
 
 try:
-    import unittest
-    from unittest.signals import installHandler
-except ImportError:
     import unittest2 as unittest
     from unittest2.signals import installHandler
+except ImportError:
+    import unittest
+    from unittest.signals import installHandler
 
 ARGS = optparse.OptionParser(description="Run all unittests.", usage="%prog [options] [pattern] [pattern2 ...]")
 ARGS.add_option(
-    '-v', '--verbose', action="store_true", dest='verbose',
+    '-v', '--verbose', type=int, dest='verbose',
     default=0, help='verbose')
 ARGS.add_option(
     '-x', action="store_true", dest='exclude', help='exclude tests')
 ARGS.add_option(
     '-f', '--failfast', action="store_true", default=False,
     dest='failfast', help='Stop on first fail or error')
+ARGS.add_option(
+    '--no-ssl', action="store_true", default=False,
+    help='Disable the SSL module')
+ARGS.add_option(
+    '--no-concurrent', action="store_true", default=False,
+    help='Disable the concurrent module')
 ARGS.add_option(
     '-c', '--catch', action="store_true", default=False,
     dest='catchbreak', help='Catch control-C and display results')
@@ -92,6 +99,8 @@ else:
 
 
 def load_modules(basedir, suffix='.py'):
+    import trollius.test_utils
+
     def list_dir(prefix, dir):
         files = []
 
@@ -119,7 +128,7 @@ def load_modules(basedir, suffix='.py'):
     for modname, sourcefile in list_dir('', basedir):
         if modname == 'runtests':
             continue
-        if modname == 'test_asyncio' and sys.version_info <= (3, 3):
+        if modname == 'test_asyncio' and not PY33:
             print("Skipping '{0}': need at least Python 3.3".format(modname),
                   file=sys.stderr)
             continue
@@ -128,7 +137,7 @@ def load_modules(basedir, suffix='.py'):
             mods.append((mod, sourcefile))
         except SyntaxError:
             raise
-        except Exception as err:
+        except trollius.test_utils.SkipTest as err:
             print("Skipping '{0}': {1}".format(modname, err), file=sys.stderr)
 
     return mods
@@ -138,7 +147,7 @@ def randomize_tests(tests, seed):
     if seed is None:
         seed = random.randrange(10000000)
     random.seed(seed)
-    print("Using random seed", seed)
+    print("Randomize test execution order (seed: %s)" % seed)
     random.shuffle(tests._tests)
 
 
@@ -222,8 +231,25 @@ class TestRunner(unittest.TextTestRunner):
         return result
 
 
+def _runtests(args, tests):
+    v = 0 if args.quiet else args.verbose + 1
+    runner_factory = TestRunner if args.findleaks else unittest.TextTestRunner
+    if args.randomize:
+        randomize_tests(tests, args.seed)
+    runner = runner_factory(verbosity=v, failfast=args.failfast)
+    sys.stdout.flush()
+    sys.stderr.flush()
+    return runner.run(tests)
+
+
 def runtests():
     args, pattern = ARGS.parse_args()
+
+    if args.no_ssl:
+        sys.modules['ssl'] = None
+
+    if args.no_concurrent:
+        sys.modules['concurrent'] = None
 
     if args.coverage and coverage is None:
         URL = "bitbucket.org/pypa/setuptools/raw/bootstrap/ez_setup.py"
@@ -255,9 +281,6 @@ def runtests():
 
     v = 0 if args.quiet else args.verbose + 1
     failfast = args.failfast
-    catchbreak = args.catchbreak
-    findleaks = args.findleaks
-    runner_factory = TestRunner if findleaks else unittest.TextTestRunner
 
     if args.coverage:
         cov = coverage.coverage(branch=True,
@@ -265,7 +288,6 @@ def runtests():
                                 )
         cov.start()
 
-    logger = logging.getLogger()
     if v == 0:
         level = logging.CRITICAL
     elif v == 1:
@@ -279,24 +301,22 @@ def runtests():
     logging.basicConfig(level=level)
 
     finder = TestsFinder(args.testsdir, includes, excludes)
-    if catchbreak:
+    if args.catchbreak:
         installHandler()
+    import trollius.coroutines
+    if trollius.coroutines._DEBUG:
+        print("Run tests in debug mode")
+    else:
+        print("Run tests in release mode")
     try:
+        tests = finder.load_tests()
         if args.forever:
             while True:
-                tests = finder.load_tests()
-                if args.randomize:
-                    randomize_tests(tests, args.seed)
-                result = runner_factory(verbosity=v,
-                                        failfast=failfast).run(tests)
+                result = _runtests(args, tests)
                 if not result.wasSuccessful():
                     sys.exit(1)
         else:
-            tests = finder.load_tests()
-            if args.randomize:
-                randomize_tests(tests, args.seed)
-            result = runner_factory(verbosity=v,
-                                    failfast=failfast).run(tests)
+            result = _runtests(args, tests)
             sys.exit(not result.wasSuccessful())
     finally:
         if args.coverage:

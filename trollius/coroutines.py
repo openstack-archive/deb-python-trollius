@@ -1,5 +1,6 @@
 __all__ = ['coroutine',
-           'iscoroutinefunction', 'iscoroutine']
+           'iscoroutinefunction', 'iscoroutine',
+           'From', 'Return']
 
 import functools
 import inspect
@@ -21,13 +22,30 @@ _YIELD_FROM = opcode.opmap.get('YIELD_FROM', None)
 # If you set _DEBUG to true, @coroutine will wrap the resulting
 # generator objects in a CoroWrapper instance (defined below).  That
 # instance will log a message when the generator is never iterated
-# over, which may happen when you forget to use "yield" with a
+# over, which may happen when you forget to use "yield from" with a
 # coroutine call.  Note that the value of the _DEBUG flag is taken
 # when the decorator is used, so to be of any use it must be set
 # before you define your coroutines.  A downside of using this feature
 # is that tracebacks show entries for the CoroWrapper.__next__ method
 # when _DEBUG is true.
 _DEBUG = bool(os.environ.get('TROLLIUSDEBUG'))
+
+
+try:
+    _types_coroutine = types.coroutine
+except AttributeError:
+    _types_coroutine = None
+
+try:
+    _inspect_iscoroutinefunction = inspect.iscoroutinefunction
+except AttributeError:
+    _inspect_iscoroutinefunction = lambda func: False
+
+try:
+    from collections.abc import Coroutine as _CoroutineABC, \
+                                Awaitable as _AwaitableABC
+except ImportError:
+    _CoroutineABC = _AwaitableABC = None
 
 
 if _YIELD_FROM is not None:
@@ -86,10 +104,32 @@ else:
             else:
                 self.value = args
             self.raised = False
+            if _DEBUG:
+                frame = sys._getframe(1)
+                self._source_traceback = traceback.extract_stack(frame)
+                # explicitly clear the reference to avoid reference cycles
+                frame = None
+            else:
+                self._source_traceback = None
 
         def __del__(self):
-            if not self.raised:
-                logger.error('Return(%r) used without raise', self.value)
+            if self.raised:
+                return
+
+            fmt = 'Return(%r) used without raise'
+            if self._source_traceback:
+                fmt += '\nReturn created at (most recent call last):\n'
+                tb = ''.join(traceback.format_list(self._source_traceback))
+                fmt += tb.rstrip()
+            logger.error(fmt, self.value)
+
+
+def debug_wrapper(gen):
+    # This function is called from 'sys.set_coroutine_wrapper'.
+    # We only wrap here coroutines defined via 'async def' syntax.
+    # Generator-based coroutines are wrapped in @coroutine
+    # decorator.
+    return CoroWrapper(gen, None)
 
 
 def _coroutine_at_yield_from(coro):
@@ -107,16 +147,16 @@ def _coroutine_at_yield_from(coro):
     return (instr == _YIELD_FROM)
 
 
-class CoroWrapper(object):
+class CoroWrapper:
     # Wrapper for coroutine object in _DEBUG mode.
 
-    def __init__(self, gen, func):
-        assert inspect.isgenerator(gen), gen
+    def __init__(self, gen, func=None):
+        assert inspect.isgenerator(gen) or inspect.iscoroutine(gen), gen
         self.gen = gen
-        self.func = func
+        self.func = func # Used to unwrap @coroutine decorator
         self._source_traceback = traceback.extract_stack(sys._getframe(1))
-        # __name__, __qualname__, __doc__ attributes are set by the coroutine()
-        # decorator
+        self.__name__ = getattr(gen, '__name__', None)
+        self.__qualname__ = getattr(gen, '__qualname__', None)
 
     def __repr__(self):
         coro_repr = _format_coroutine(self)
@@ -166,10 +206,36 @@ class CoroWrapper(object):
     def gi_code(self):
         return self.gen.gi_code
 
+    if compat.PY35:
+
+        __await__ = __iter__ # make compatible with 'await' expression
+
+        @property
+        def gi_yieldfrom(self):
+            return self.gen.gi_yieldfrom
+
+        @property
+        def cr_await(self):
+            return self.gen.cr_await
+
+        @property
+        def cr_running(self):
+            return self.gen.cr_running
+
+        @property
+        def cr_code(self):
+            return self.gen.cr_code
+
+        @property
+        def cr_frame(self):
+            return self.gen.cr_frame
+
     def __del__(self):
         # Be careful accessing self.gen.frame -- self.gen might not exist.
         gen = getattr(self, 'gen', None)
         frame = getattr(gen, 'gi_frame', None)
+        if frame is None:
+            frame = getattr(gen, 'cr_frame', None)
         if frame is not None and frame.f_lasti == -1:
             msg = '%r was never yielded from' % self
             tb = getattr(self, '_source_traceback', ())
@@ -237,6 +303,13 @@ def coroutine(func):
     If the coroutine is not yielded from before it is destroyed,
     an error message is logged.
     """
+    if _inspect_iscoroutinefunction(func):
+        # In Python 3.5 that's all we need to do for coroutines
+        # defiend with "async def".
+        # Wrapping in CoroWrapper will happen via
+        # 'sys.set_coroutine_wrapper' function.
+        return func
+
     if inspect.isgeneratorfunction(func):
         coro = func
     else:
@@ -244,28 +317,38 @@ def coroutine(func):
         def coro(*args, **kw):
             res = func(*args, **kw)
             if (isinstance(res, futures._FUTURE_CLASSES)
-            or inspect.isgenerator(res)):
+                or inspect.isgenerator(res)):
                 res = yield From(res)
-            raise Return(res)
-
-    if not _DEBUG:
-        wrapper = coro
-    else:
-        @_wraps(func)
-        def wrapper(*args, **kwds):
-            coro_wrapper = CoroWrapper(coro(*args, **kwds), func)
-            if coro_wrapper._source_traceback:
-                del coro_wrapper._source_traceback[-1]
-            for attr in ('__name__', '__qualname__', '__doc__'):
+            elif _AwaitableABC is not None:
+                # If 'func' returns an Awaitable (new in 3.5) we
+                # want to run it.
                 try:
-                    value = getattr(func, attr)
+                    await_meth = res.__await__
                 except AttributeError:
                     pass
                 else:
-                    setattr(coro_wrapper, attr, value)
-            return coro_wrapper
-        if not compat.PY3:
-            wrapper.__wrapped__ = func
+                    if isinstance(res, _AwaitableABC):
+                        res = yield From(await_meth())
+            raise Return(res)
+
+    if not _DEBUG:
+        if _types_coroutine is None:
+            wrapper = coro
+        else:
+            wrapper = _types_coroutine(coro)
+    else:
+        @_wraps(func)
+        def wrapper(*args, **kwds):
+            w = CoroWrapper(coro(*args, **kwds), func=func)
+            if w._source_traceback:
+                del w._source_traceback[-1]
+            # Python < 3.5 does not implement __qualname__
+            # on generator objects, so we set it manually.
+            # We use getattr as some callables (such as
+            # functools.partial may lack __qualname__).
+            w.__name__ = getattr(func, '__name__', None)
+            w.__qualname__ = getattr(func, '__qualname__', None)
+            return w
 
     wrapper._is_coroutine = True  # For iscoroutinefunction().
     return wrapper
@@ -273,16 +356,19 @@ def coroutine(func):
 
 def iscoroutinefunction(func):
     """Return True if func is a decorated coroutine function."""
-    return getattr(func, '_is_coroutine', False)
+    return (getattr(func, '_is_coroutine', False) or
+            _inspect_iscoroutinefunction(func))
 
 
 _COROUTINE_TYPES = (types.GeneratorType, CoroWrapper)
+if _CoroutineABC is not None:
+    _COROUTINE_TYPES += (_CoroutineABC,)
 if events.asyncio is not None:
     # Accept also asyncio CoroWrapper for interoperability
     if hasattr(events.asyncio, 'coroutines'):
         _COROUTINE_TYPES += (events.asyncio.coroutines.CoroWrapper,)
     else:
-        # old Tulip/Python versions
+        # old asyncio/Python versions
         _COROUTINE_TYPES += (events.asyncio.tasks.CoroWrapper,)
 
 def iscoroutine(obj):
@@ -292,22 +378,48 @@ def iscoroutine(obj):
 
 def _format_coroutine(coro):
     assert iscoroutine(coro)
-    coro_name = getattr(coro, '__qualname__', coro.__name__)
 
-    filename = coro.gi_code.co_filename
-    if (isinstance(coro, CoroWrapper)
-    and not inspect.isgeneratorfunction(coro.func)):
-        filename, lineno = events._get_function_source(coro.func)
-        if coro.gi_frame is None:
-            coro_repr = '%s() done, defined at %s:%s' % (coro_name, filename, lineno)
-        else:
-            coro_repr = '%s() running, defined at %s:%s' % (coro_name, filename, lineno)
-    elif coro.gi_frame is not None:
-        lineno = coro.gi_frame.f_lineno
-        coro_repr = '%s() running at %s:%s' % (coro_name, filename, lineno)
+    coro_name = None
+    if isinstance(coro, CoroWrapper):
+        func = coro.func
+        coro_name = coro.__qualname__
+        if coro_name is not None:
+            coro_name = '{0}()'.format(coro_name)
     else:
-        lineno = coro.gi_code.co_firstlineno
-        coro_repr = '%s() done, defined at %s:%s' % (coro_name, filename, lineno)
+        func = coro
+
+    if coro_name is None:
+        coro_name = events._format_callback(func, ())
+
+    try:
+        coro_code = coro.gi_code
+    except AttributeError:
+        coro_code = coro.cr_code
+
+    try:
+        coro_frame = coro.gi_frame
+    except AttributeError:
+        coro_frame = coro.cr_frame
+
+    filename = coro_code.co_filename
+    if (isinstance(coro, CoroWrapper)
+    and not inspect.isgeneratorfunction(coro.func)
+    and coro.func is not None):
+        filename, lineno = events._get_function_source(coro.func)
+        if coro_frame is None:
+            coro_repr = ('%s done, defined at %s:%s'
+                         % (coro_name, filename, lineno))
+        else:
+            coro_repr = ('%s running, defined at %s:%s'
+                         % (coro_name, filename, lineno))
+    elif coro_frame is not None:
+        lineno = coro_frame.f_lineno
+        coro_repr = ('%s running at %s:%s'
+                     % (coro_name, filename, lineno))
+    else:
+        lineno = coro_code.co_firstlineno
+        coro_repr = ('%s done, defined at %s:%s'
+                     % (coro_name, filename, lineno))
 
     return coro_repr
 

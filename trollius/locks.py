@@ -3,7 +3,9 @@
 __all__ = ['Lock', 'Event', 'Condition', 'Semaphore', 'BoundedSemaphore']
 
 import collections
+import sys
 
+from . import compat
 from . import events
 from . import futures
 from .coroutines import coroutine, From, Return
@@ -39,7 +41,37 @@ class _ContextManager:
             self._lock = None  # Crudely prevent reuse.
 
 
-class Lock(object):
+class _ContextManagerMixin(object):
+    def __enter__(self):
+        raise RuntimeError(
+            '"yield From" should be used as context manager expression')
+
+    def __exit__(self, *args):
+        # This must exist because __enter__ exists, even though that
+        # always raises; that's how the with-statement works.
+        pass
+
+    # FIXME: support PEP 492?
+    # if compat.PY35:
+
+    #     def __await__(self):
+    #         # To make "with await lock" work.
+    #         yield from self.acquire()
+    #         return _ContextManager(self)
+
+    #     @coroutine
+    #     def __aenter__(self):
+    #         yield from self.acquire()
+    #         # We have no use for the "as ..."  clause in the with
+    #         # statement for locks.
+    #         return None
+
+    #     @coroutine
+    #     def __aexit__(self, exc_type, exc, tb):
+    #         self.release()
+
+
+class Lock(_ContextManagerMixin):
     """Primitive lock objects.
 
     A primitive lock is a synchronization primitive that is not owned
@@ -63,7 +95,7 @@ class Lock(object):
 
     acquire() is a coroutine and should be called with 'yield From'.
 
-    Locks also support the context manager protocol.  '(yield From(lock))'
+    Locks also support the context management protocol.  '(yield From(lock))'
     should be used as context manager expression.
 
     Usage:
@@ -153,15 +185,6 @@ class Lock(object):
         else:
             raise RuntimeError('Lock is not acquired.')
 
-    def __enter__(self):
-        raise RuntimeError(
-            '"yield" should be used as context manager expression')
-
-    def __exit__(self, *args):
-        # This must exist because __enter__ exists, even though that
-        # always raises; that's how the with-statement works.
-        pass
-
 
 class Event(object):
     """Asynchronous equivalent to threading.Event.
@@ -229,7 +252,7 @@ class Event(object):
             self._waiters.remove(fut)
 
 
-class Condition(object):
+class Condition(_ContextManagerMixin):
     """Asynchronous equivalent to threading.Condition.
 
     This class implements condition variable objects. A condition variable
@@ -290,8 +313,19 @@ class Condition(object):
             finally:
                 self._waiters.remove(fut)
 
-        finally:
+        except Exception as exc:
+            # Workaround CPython bug #23353: using yield/yield-from in an
+            # except block of a generator doesn't clear properly
+            # sys.exc_info()
+            err = exc
+        else:
+            err = None
+
+        if err is not None:
             yield From(self.acquire())
+            raise err
+
+        yield From(self.acquire())
 
     @coroutine
     def wait_for(self, predicate):
@@ -339,15 +373,8 @@ class Condition(object):
         """
         self.notify(len(self._waiters))
 
-    def __enter__(self):
-        raise RuntimeError(
-            '"yield From" should be used as context manager expression')
 
-    def __exit__(self, *args):
-        pass
-
-
-class Semaphore(object):
+class Semaphore(_ContextManagerMixin):
     """A Semaphore implementation.
 
     A semaphore manages an internal counter which is decremented by each
@@ -355,7 +382,7 @@ class Semaphore(object):
     can never go below zero; when acquire() finds that it is zero, it blocks,
     waiting until some other thread calls release().
 
-    Semaphores also support the context manager protocol.
+    Semaphores also support the context management protocol.
 
     The optional argument gives the initial value for the internal
     counter; it defaults to 1. If the value given is less than 0,
@@ -417,13 +444,6 @@ class Semaphore(object):
             if not waiter.done():
                 waiter.set_result(True)
                 break
-
-    def __enter__(self):
-        raise RuntimeError(
-            '"yield" should be used as context manager expression')
-
-    def __exit__(self, *args):
-        pass
 
 
 class BoundedSemaphore(Semaphore):

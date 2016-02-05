@@ -39,8 +39,8 @@ Trollius on Windows:
 
 .. note::
 
-   Only wheel packages for Python 2.7 are currently distributed on the
-   Cheeseshop (PyPI). If you need wheel packages for other Python versions,
+   Only wheel packages for Python 2.7, 3.3 and 3.4 are currently distributed on
+   the Cheeseshop (PyPI). If you need wheel packages for other Python versions,
    please ask.
 
 Download source code
@@ -49,13 +49,13 @@ Download source code
 Command to download the development version of the source code (``trollius``
 branch)::
 
-    hg clone 'https://bitbucket.org/enovance/trollius#trollius'
+    git clone https://github.com/haypo/trollius.git -b trollius
 
 The actual code lives in the ``trollius`` subdirectory. Tests are in the
 ``tests`` subdirectory.
 
-See the `trollius project at Bitbucket
-<https://bitbucket.org/enovance/trollius>`_.
+See the `trollius project at Github
+<https://github.com/haypo/trollius>`_.
 
 The source code of the Trollius project is in the ``trollius`` branch of the
 Mercurial repository, not in the default branch. The default branch is the

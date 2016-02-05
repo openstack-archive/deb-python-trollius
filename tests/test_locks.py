@@ -1,12 +1,12 @@
 """Tests for lock.py"""
 
-import unittest
 import re
 
 import trollius as asyncio
 from trollius import From, Return
 from trollius import test_utils
 from trollius.test_utils import mock
+from trollius.test_utils import unittest
 
 
 STR_RGX_REPR = (
@@ -230,7 +230,7 @@ class LockTests(test_utils.TestCase):
         except RuntimeError as err:
             self.assertEqual(
                 str(err),
-                '"yield" should be used as context manager expression')
+                '"yield From" should be used as context manager expression')
 
         self.assertFalse(lock.locked())
 
@@ -856,7 +856,7 @@ class SemaphoreTests(test_utils.TestCase):
         except RuntimeError as err:
             self.assertEqual(
                 str(err),
-                '"yield" should be used as context manager expression')
+                '"yield From" should be used as context manager expression')
 
         self.assertEqual(2, sem._value)
 

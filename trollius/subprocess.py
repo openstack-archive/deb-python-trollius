@@ -2,22 +2,21 @@ from __future__ import absolute_import
 
 __all__ = ['create_subprocess_exec', 'create_subprocess_shell']
 
-import collections
 import subprocess
 
 from . import events
-from . import futures
 from . import protocols
 from . import streams
 from . import tasks
 from .coroutines import coroutine, From, Return
-from .py33_exceptions import (BrokenPipeError, ConnectionResetError,
-                              ProcessLookupError)
+from .py33_exceptions import BrokenPipeError, ConnectionResetError
 from .log import logger
 
 
 PIPE = subprocess.PIPE
 STDOUT = subprocess.STDOUT
+if hasattr(subprocess, 'DEVNULL'):
+    DEVNULL = subprocess.DEVNULL
 
 
 class SubprocessStreamProtocol(streams.FlowControlMixin,
@@ -28,8 +27,6 @@ class SubprocessStreamProtocol(streams.FlowControlMixin,
         super(SubprocessStreamProtocol, self).__init__(loop=loop)
         self._limit = limit
         self.stdin = self.stdout = self.stderr = None
-        self.waiter = futures.Future(loop=loop)
-        self._waiters = collections.deque()
         self._transport = None
 
     def __repr__(self):
@@ -44,19 +41,25 @@ class SubprocessStreamProtocol(streams.FlowControlMixin,
 
     def connection_made(self, transport):
         self._transport = transport
-        if transport.get_pipe_transport(1):
+
+        stdout_transport = transport.get_pipe_transport(1)
+        if stdout_transport is not None:
             self.stdout = streams.StreamReader(limit=self._limit,
                                                loop=self._loop)
-        if transport.get_pipe_transport(2):
+            self.stdout.set_transport(stdout_transport)
+
+        stderr_transport = transport.get_pipe_transport(2)
+        if stderr_transport is not None:
             self.stderr = streams.StreamReader(limit=self._limit,
                                                loop=self._loop)
-        stdin = transport.get_pipe_transport(0)
-        if stdin is not None:
-            self.stdin = streams.StreamWriter(stdin,
+            self.stderr.set_transport(stderr_transport)
+
+        stdin_transport = transport.get_pipe_transport(0)
+        if stdin_transport is not None:
+            self.stdin = streams.StreamWriter(stdin_transport,
                                               protocol=self,
                                               reader=None,
                                               loop=self._loop)
-        self.waiter.set_result(None)
 
     def pipe_data_received(self, fd, data):
         if fd == 1:
@@ -88,11 +91,8 @@ class SubprocessStreamProtocol(streams.FlowControlMixin,
                 reader.set_exception(exc)
 
     def process_exited(self):
-        # wake up futures waiting for wait()
-        returncode = self._transport.get_returncode()
-        while self._waiters:
-            waiter = self._waiters.popleft()
-            waiter.set_result(returncode)
+        self._transport.close()
+        self._transport = None
 
 
 class Process:
@@ -103,9 +103,7 @@ class Process:
         self.stdin = protocol.stdin
         self.stdout = protocol.stdout
         self.stderr = protocol.stderr
-        # transport.get_pid() cannot be used because it fails
-        # if the process already exited
-        self.pid = self._transport.get_extra_info('subprocess').pid
+        self.pid = transport.get_pid()
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.pid)
@@ -116,30 +114,19 @@ class Process:
 
     @coroutine
     def wait(self):
-        """Wait until the process exit and return the process return code."""
-        returncode = self._transport.get_returncode()
-        if returncode is not None:
-            raise Return(returncode)
+        """Wait until the process exit and return the process return code.
 
-        waiter = futures.Future(loop=self._loop)
-        self._protocol._waiters.append(waiter)
-        yield From(waiter)
-        raise Return(waiter.result())
-
-    def _check_alive(self):
-        if self._transport.get_returncode() is not None:
-            raise ProcessLookupError()
+        This method is a coroutine."""
+        return_code = yield From(self._transport._wait())
+        raise Return(return_code)
 
     def send_signal(self, signal):
-        self._check_alive()
         self._transport.send_signal(signal)
 
     def terminate(self):
-        self._check_alive()
         self._transport.terminate()
 
     def kill(self):
-        self._check_alive()
         self._transport.kill()
 
     @coroutine
@@ -214,10 +201,9 @@ def create_subprocess_shell(cmd, **kwds):
     protocol_factory = lambda: SubprocessStreamProtocol(limit=limit,
                                                         loop=loop)
     transport, protocol = yield From(loop.subprocess_shell(
-                                       protocol_factory,
-                                       cmd, stdin=stdin, stdout=stdout,
-                                       stderr=stderr, **kwds))
-    yield From(protocol.waiter)
+                                            protocol_factory,
+                                            cmd, stdin=stdin, stdout=stdout,
+                                            stderr=stderr, **kwds))
     raise Return(Process(transport, protocol, loop))
 
 @coroutine
@@ -232,9 +218,8 @@ def create_subprocess_exec(program, *args, **kwds):
     protocol_factory = lambda: SubprocessStreamProtocol(limit=limit,
                                                         loop=loop)
     transport, protocol = yield From(loop.subprocess_exec(
-                                       protocol_factory,
-                                       program, *args,
-                                       stdin=stdin, stdout=stdout,
-                                       stderr=stderr, **kwds))
-    yield From(protocol.waiter)
+                                            protocol_factory,
+                                            program, *args,
+                                            stdin=stdin, stdout=stdout,
+                                            stderr=stderr, **kwds))
     raise Return(Process(transport, protocol, loop))

@@ -1,7 +1,9 @@
-"""
-Compatibility constants and functions for the different Python versions.
-"""
+"""Compatibility helpers for the different Python versions."""
+
 import sys
+
+# Python 2 or older?
+PY2 = (sys.version_info <= (2,))
 
 # Python 2.6 or older?
 PY26 = (sys.version_info < (2, 7))
@@ -14,6 +16,9 @@ PY33 = (sys.version_info >= (3, 3))
 
 # Python 3.4 or newer?
 PY34 = sys.version_info >= (3, 4)
+
+# Python 3.5 or newer?
+PY35 = sys.version_info >= (3, 5)
 
 if PY3:
     integer_types = (int,)
@@ -30,6 +35,16 @@ else:
         BYTES_TYPES = (str, bytearray, buffer)
     else: # Python 2.7
         BYTES_TYPES = (str, bytearray, memoryview, buffer)
+
+
+if PY3:
+    def reraise(tp, value, tb=None):
+        if value.__traceback__ is not tb:
+            raise value.with_traceback(tb)
+        raise value
+else:
+    exec("""def reraise(tp, value, tb=None):  raise tp, value, tb""")
+
 
 def flatten_bytes(data):
     """
@@ -51,3 +66,9 @@ def flatten_bytes(data):
         return data.tobytes()
     else:
         return data
+
+
+def flatten_list_bytes(data):
+    """Concatenate a sequence of bytes-like objects."""
+    data = map(flatten_bytes, data)
+    return b''.join(data)

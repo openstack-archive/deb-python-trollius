@@ -45,6 +45,8 @@ def test_call(*args, **kw):
         print("%s: exit code %s" % (' '.join(args), exitcode))
     except asyncio.TimeoutError:
         print("timeout! (%.1f sec)" % timeout)
+        proc.kill()
+        yield from proc.wait()
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(cat(loop))
