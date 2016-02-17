@@ -1,3 +1,9 @@
+python-trollius (2.1~b1-3) unstable; urgency=medium
+
+  * Update the homepage field (Closes: #814979).
+
+ -- Thomas Goirand <zigo@debian.org>  Wed, 17 Feb 2016 17:52:07 +0000
+
 python-trollius (2.1~b1-2) unstable; urgency=medium
 
   * Added openstack-pkg-tools as build-depends (Closes: #814986).
