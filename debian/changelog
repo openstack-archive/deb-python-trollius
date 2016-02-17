@@ -1,3 +1,9 @@
+python-trollius (2.1~b1-2) unstable; urgency=medium
+
+  * Added openstack-pkg-tools as build-depends (Closes: #814986).
+
+ -- Thomas Goirand <zigo@debian.org>  Wed, 17 Feb 2016 12:44:46 +0000
+
 python-trollius (2.1~b1-1) unstable; urgency=medium
 
   * New upstream release (Closes: #812309).
