@@ -1,3 +1,12 @@
+========================
+Team and repository tags
+========================
+
+.. image:: http://governance.openstack.org/badges/deb-python-trollius.svg
+    :target: http://governance.openstack.org/reference/tags/index.html
+
+.. Change things from this point on
+
 The asyncio module provides infrastructure for writing single-threaded
 concurrent code using coroutines, multiplexing I/O access over sockets and
 other resources, running network clients and servers, and other related
