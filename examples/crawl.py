@@ -23,7 +23,7 @@ import logging
 import re
 import sys
 import time
-import urllib.parse
+from six.moves.urllib import parse
 
 
 ARGS = argparse.ArgumentParser(description="Web crawler")
@@ -286,7 +286,7 @@ class Request:
         self.log = log
         self.url = url
         self.pool = pool
-        self.parts = urllib.parse.urlparse(self.url)
+        self.parts = parse.urlparse(self.url)
         self.scheme = self.parts.scheme
         assert self.scheme in ('http', 'https'), repr(url)
         self.ssl = self.parts.scheme == 'https'
@@ -531,7 +531,7 @@ class Fetcher:
             return
         next_url = self.response.get_redirect_url()
         if next_url:
-            self.next_url = urllib.parse.urljoin(self.url, next_url)
+            self.next_url = parse.urljoin(self.url, next_url)
             if self.max_redirect > 0:
                 self.log(1, 'redirect to', self.next_url, 'from', self.url)
                 self.crawler.add_url(self.next_url, self.max_redirect-1)
@@ -556,8 +556,8 @@ class Fetcher:
                     self.new_urls = set()
                     for url in self.urls:
                         url = unescape(url)
-                        url = urllib.parse.urljoin(self.url, url)
-                        url, frag = urllib.parse.urldefrag(url)
+                        url = parse.urljoin(self.url, url)
+                        url, frag = parse.urldefrag(url)
                         if self.crawler.add_url(url):
                             self.new_urls.add(url)
 
@@ -657,8 +657,8 @@ class Crawler:
         self.pool = ConnectionPool(self.log, max_pool, max_tasks)
         self.root_domains = set()
         for root in roots:
-            parts = urllib.parse.urlparse(root)
-            host, port = urllib.parse.splitport(parts.netloc)
+            parts = parse.urlparse(root)
+            host, port = parse.splitport(parts.netloc)
             if not host:
                 continue
             if re.match(r'\A[\d\.]*\Z', host):
@@ -731,11 +731,11 @@ class Crawler:
         """Add a URL to the todo list if not seen before."""
         if self.exclude and re.search(self.exclude, url):
             return False
-        parts = urllib.parse.urlparse(url)
+        parts = parse.urlparse(url)
         if parts.scheme not in ('http', 'https'):
             self.log(2, 'skipping non-http scheme in', url)
             return False
-        host, port = urllib.parse.splitport(parts.netloc)
+        host, port = parse.splitport(parts.netloc)
         if not self.host_okay(host):
             self.log(2, 'skipping non-root host in', url)
             return False

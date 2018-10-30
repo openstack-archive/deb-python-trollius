@@ -40,7 +40,7 @@ class Response:
 
 @coroutine
 def fetch(url, verbose=True):
-    parts = urllib.parse.urlparse(url)
+    parts = six.moves.urllib.parse.urlparse(url)
     if parts.scheme == 'http':
         ssl = False
     elif parts.scheme == 'https':

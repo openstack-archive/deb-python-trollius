@@ -15,7 +15,7 @@ class Request:
     def __init__(self, url, verbose=True):
         self.url = url
         self.verbose = verbose
-        self.parts = urllib.parse.urlparse(self.url)
+        self.parts = six.moves.urllib.parse.urlparse(self.url)
         self.scheme = self.parts.scheme
         assert self.scheme in ('http', 'https'), repr(url)
         self.ssl = self.parts.scheme == 'https'
